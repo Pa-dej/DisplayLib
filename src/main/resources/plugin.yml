@@ -1,0 +1,7 @@
+name: DisplayLib
+version: '${version}'
+main: padej.displayLib.DisplayLib
+api-version: '1.21'
+load: STARTUP
+authors: [ Padej_ ]
+description: Display API library for working with displays
