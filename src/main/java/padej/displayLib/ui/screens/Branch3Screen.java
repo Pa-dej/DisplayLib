@@ -22,14 +22,6 @@ public class Branch3Screen extends Screen {
     private final TextColor defaultColor = TextColor.fromHexString("#FFFFFF");
     private final TextColor hoverColor = TextColor.fromHexString("#FCD720");
 
-    public Branch3Screen() {
-        super();
-    }
-
-    public Branch3Screen(Player viewer, Location location) {
-        super(viewer, location);
-    }
-
     public Branch3Screen(Player viewer, Location location, String text, float scale) {
         super(viewer, location, text, scale);
     }
@@ -40,7 +32,8 @@ public class Branch3Screen extends Screen {
     }
 
     @Override
-    public void createScreenWidgets(Player player) {
+    public void createScreenWidgets() {
+        Player player = getViewer();
         WidgetPosition basePosition = new WidgetPosition(-0.42f, 0.3f);
 
         TextDisplayButtonConfig jumpButtonConfig = new TextDisplayButtonConfig(

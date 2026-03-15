@@ -14,14 +14,6 @@ import org.joml.AxisAngle4f;
 import org.joml.Vector3f;
 
 public class Branch4Screen extends Screen {
-    public Branch4Screen() {
-        super();
-    }
-
-    public Branch4Screen(Player viewer, Location location) {
-        super(viewer, location);
-    }
-
     public Branch4Screen(Player viewer, Location location, String text, float scale) {
         super(viewer, location, text, scale);
     }
@@ -32,7 +24,8 @@ public class Branch4Screen extends Screen {
     }
 
     @Override
-    public void createScreenWidgets(Player player) {
+    public void createScreenWidgets() {
+        Player player = getViewer();
         WidgetPosition basePosition = new WidgetPosition(-0.3f, 0.3f);
         WidgetPosition centerPosition = new WidgetPosition(0.1f, -0.1f);
         TextColor defaultColor = TextColor.fromHexString("#FFFFFF");
@@ -45,7 +38,6 @@ public class Branch4Screen extends Screen {
                         () -> player.setGameMode(GameMode.SURVIVAL))
                         .setPosition(basePosition.clone().addDepth(-0.01f))
                         .setTooltip(Component.text("Режим выживания"))
-                        .setTooltipDelay(30)
                         .setBackgroundColor(Color.fromRGB(40, 40, 40))
                         .setBackgroundAlpha(150)
                         .setHoveredBackgroundColor(Color.fromRGB(60, 60, 60))
@@ -57,7 +49,6 @@ public class Branch4Screen extends Screen {
                         () -> player.setGameMode(GameMode.CREATIVE))
                         .setPosition(basePosition.clone().addVertical(0.15f).addDepth(-0.01f))
                         .setTooltip(Component.text("Творческий режим"))
-                        .setTooltipDelay(30)
                         .setBackgroundColor(Color.fromRGB(40, 40, 40))
                         .setBackgroundAlpha(150)
                         .setHoveredBackgroundColor(Color.fromRGB(60, 60, 60))
@@ -69,7 +60,6 @@ public class Branch4Screen extends Screen {
                         () -> player.setGameMode(GameMode.ADVENTURE))
                         .setPosition(basePosition.clone().addVertical(0.30f).addDepth(-0.01f))
                         .setTooltip(Component.text("Режим приключения"))
-                        .setTooltipDelay(30)
                         .setBackgroundColor(Color.fromRGB(40, 40, 40))
                         .setBackgroundAlpha(150)
                         .setHoveredBackgroundColor(Color.fromRGB(60, 60, 60))
@@ -81,11 +71,9 @@ public class Branch4Screen extends Screen {
                         () -> player.setGameMode(GameMode.SPECTATOR))
                         .setPosition(basePosition.clone().addVertical(0.45f).addDepth(-0.01f))
                         .setTooltip(Component.text("Режим наблюдателя"))
-                        .setTooltipDelay(30)
                         .setBackgroundColor(Color.fromRGB(40, 40, 40))
                         .setBackgroundAlpha(150)
                         .setHoveredBackgroundColor(Color.fromRGB(60, 60, 60))
-                        .setHoveredBackgroundAlpha(180)
                         .setHoveredBackgroundAlpha(180),
 
                 new TextDisplayButtonConfig(
@@ -100,7 +88,6 @@ public class Branch4Screen extends Screen {
                         .setBackgroundColor(Color.fromRGB(40, 40, 40))
                         .setBackgroundAlpha(150)
                         .setHoveredBackgroundColor(Color.fromRGB(60, 60, 60))
-                        .setHoveredBackgroundAlpha(180)
                         .setHoveredBackgroundAlpha(180)
                         .setHoveredTransformation(new Transformation(
                         new Vector3f(0, -0.25f, 0),

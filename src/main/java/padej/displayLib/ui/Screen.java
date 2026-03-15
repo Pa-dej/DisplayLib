@@ -12,11 +12,13 @@ import net.kyori.adventure.text.format.TextColor;
 import org.bukkit.Bukkit;
 import org.bukkit.Color;
 import org.bukkit.Location;
+import org.bukkit.Material;
 import org.bukkit.entity.Display;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.TextDisplay;
 import org.bukkit.util.Transformation;
 import org.bukkit.util.Vector;
+import org.joml.AxisAngle4f;
 import org.joml.Vector3f;
 
 import java.util.ArrayList;
@@ -38,6 +40,7 @@ public abstract class Screen extends WidgetManager implements IDisplayable, IPar
     @AlwaysOnScreen(Screen.class)
     private TextDisplayButtonWidget closeButton;
 
+    // Единственный конструктор - принимает все необходимые параметры
     public Screen(Player viewer, Location location, String text, float scale) {
         super(viewer, location);
         this.viewer = viewer;
@@ -216,10 +219,52 @@ public abstract class Screen extends WidgetManager implements IDisplayable, IPar
             createTitleBarControlWidgets();
         }
 
-        createScreenWidgets(player);
+        createScreenWidgets();
     }
 
-    public void createScreenWidgets(Player player) {
+    public void createScreenWidgets() {
+    }
+
+    // Статический фабричный метод для создания экранов
+    public static <T extends Screen> T create(Class<T> screenClass, Player viewer, Location location) {
+        try {
+            return screenClass.getConstructor(Player.class, Location.class, String.class, float.class)
+                    .newInstance(viewer, location, " ", 10.0f);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to create screen: " + screenClass.getSimpleName(), e);
+        }
+    }
+
+    // Удобный метод для получения viewer
+    public Player getViewer() {
+        return viewer;
+    }
+
+    // Удобный метод для добавления кнопок с автоматическим позиционированием
+    protected void addButton(Material material, String tooltip, Runnable action, int index) {
+        addButton(material, tooltip, action, index, new WidgetPosition(-0.42f, 0.3f));
+    }
+
+    protected void addButton(Material material, String tooltip, Runnable action, int index, WidgetPosition basePosition) {
+        addButton(material, tooltip, action, index, basePosition, 0.17f);
+    }
+
+    protected void addButton(Material material, String tooltip, Runnable action, int index, WidgetPosition basePosition, float step) {
+        ItemDisplayButtonConfig config = new ItemDisplayButtonConfig(material, action)
+                .setTooltip(tooltip)
+                .setPosition(new WidgetPosition(
+                        basePosition.getRightMultiplier(),
+                        basePosition.getUpMultiplier() + step * index,
+                        basePosition.getDepth()
+                ))
+                .setHoveredTransformation(new Transformation(
+                        new Vector3f(0, 0, 0),
+                        new AxisAngle4f(),
+                        new Vector3f(0.2f, 0.2f, 0.15f),
+                        new AxisAngle4f()
+                ), 2);
+        
+        createWidget(config);
     }
 
     protected void createTitleBarControlWidgets() {
@@ -491,19 +536,7 @@ public abstract class Screen extends WidgetManager implements IDisplayable, IPar
         }
     }
 
-    protected Screen() {
-        super(null, new Location(org.bukkit.Bukkit.getWorlds().getFirst(), 0, 0, 0));
-        this.viewer = null;
-        background = null;
-        CURRENT_SCREEN_CLASS = this.getClass();
-    }
 
-    protected Screen(Player viewer, Location location) {
-        super(viewer, location);
-        this.viewer = viewer;
-        background = null;
-        CURRENT_SCREEN_CLASS = this.getClass();
-    }
 
     public Class<? extends Screen> getCurrentScreenClass() {
         return CURRENT_SCREEN_CLASS;

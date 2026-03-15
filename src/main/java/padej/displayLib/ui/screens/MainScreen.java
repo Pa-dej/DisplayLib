@@ -2,110 +2,76 @@ package padej.displayLib.ui.screens;
 
 import padej.displayLib.ui.Screen;
 import padej.displayLib.ui.annotations.Main;
-import padej.displayLib.ui.widgets.ItemDisplayButtonConfig;
+import padej.displayLib.ui.widgets.ItemDisplayButtonWidget;
+import padej.displayLib.ui.widgets.Widget;
 import padej.displayLib.ui.widgets.WidgetPosition;
+import padej.displayLib.ui.screens.ChangeScreen;
 import org.bukkit.Bukkit;
 import org.bukkit.Color;
 import org.bukkit.Location;
 import org.bukkit.Material;
-import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.ItemDisplay;
 import org.bukkit.entity.Player;
+import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.SkullMeta;
-import org.bukkit.util.Transformation;
-import org.joml.AxisAngle4f;
-import org.joml.Vector3f;
 
 @Main
 public class MainScreen extends Screen {
-    public MainScreen() {
-        super(); // Используем конструктор для временных экранов
-    }
-
     public MainScreen(Player viewer, Location location, String text, float scale) {
         super(viewer, location, text, scale);
     }
 
     @Override
-    public void createScreenWidgets(Player player) {
-        // Создаем кнопки ветвления
-        WidgetPosition basePosition = new WidgetPosition(-0.42f, 0.3f);
-        float step = 0.17f;
+    public void createScreenWidgets() {
+        // Создаем кнопки ветвления с упрощенным API
+        addButton(Material.COMPASS, "Ветка 1", () -> {
+            ChangeScreen.switchTo(getViewer(), MainScreen.class, Branch1Screen.class);
+        }, 0);
 
-        ItemDisplayButtonConfig[] branchButtons = {
-                new ItemDisplayButtonConfig(Material.COMPASS, () -> {
-                    ChangeScreen.switchTo(player, MainScreen.class, Branch1Screen.class);
-                })
-                        .setTooltip("Ветка 1")
-                        .setTooltipDelay(30)
-                        .setPosition(basePosition.clone())
-                        .setHoveredTransformation(new Transformation(
-                        new Vector3f(0, 0, 0),
-                        new AxisAngle4f(),
-                        new Vector3f(0.2f, 0.2f, 0.15f),
-                        new AxisAngle4f()
-                ), 2),
+        addButton(Material.MAP, "Ветка 2", () -> {
+            ChangeScreen.switchTo(getViewer(), MainScreen.class, Branch2Screen.class);
+        }, 1);
 
-                new ItemDisplayButtonConfig(Material.MAP, () -> {
-                    ChangeScreen.switchTo(player, MainScreen.class, Branch2Screen.class);
-                })
-                        .setTooltip("Ветка 2")
-                        .setTooltipDelay(30)
-                        .setPosition(basePosition.clone().addVertical(step))
-                        .setHoveredTransformation(new Transformation(
-                        new Vector3f(0, 0, 0),
-                        new AxisAngle4f(),
-                        new Vector3f(0.2f, 0.2f, 0.15f),
-                        new AxisAngle4f()
-                ), 2),
+        addButton(Material.PLAYER_HEAD, "Ветка 3", () -> {
+            ChangeScreen.switchTo(getViewer(), MainScreen.class, Branch3Screen.class);
+        }, 2);
 
-                new ItemDisplayButtonConfig(Material.PLAYER_HEAD, () -> {
-                    ChangeScreen.switchTo(player, MainScreen.class, Branch3Screen.class);
-                })
-                        .setDisplayTransform(ItemDisplay.ItemDisplayTransform.GUI)
-                        .setGlowColor(Color.RED)
-                        .setTooltip("Ветка 3")
-                        .setTooltipDelay(30)
-                        .setPosition(basePosition.clone().addVertical(step * 2).addDepth(-0.02))
-                        .setHoveredTransformation(new Transformation(
-                                new Vector3f(0, 0, 0),
-                                new AxisAngle4f(),
-                                new Vector3f(0.2f, 0.2f, 0.15f),
-                                new AxisAngle4f()
-                        ), 2)
-                        .setItemMeta((meta) -> {
-                    SkullMeta skullMeta = (SkullMeta) meta;
-                    skullMeta.setOwningPlayer(Bukkit.getOfflinePlayer("Padej_"));
-                    return meta;
-                }),
+        addButton(Material.AMETHYST_SHARD, "Ветка 4", () -> {
+            ChangeScreen.switchTo(getViewer(), MainScreen.class, Branch4Screen.class);
+        }, 3);
 
-                new ItemDisplayButtonConfig(Material.AMETHYST_SHARD, () -> {
-                    ChangeScreen.switchTo(player, MainScreen.class, Branch4Screen.class);
-                })
-                        .setTooltip("Ветка 4")
-                        .setTooltipDelay(30)
-                        .setPosition(basePosition.clone().addVertical(step * 3))
-                        .setHoveredTransformation(new Transformation(
-                        new Vector3f(0, 0, 0),
-                        new AxisAngle4f(),
-                        new Vector3f(0.2f, 0.2f, 0.15f),
-                        new AxisAngle4f()
-                ), 2),
+        // Золотой слиток выше остальных (индекс -1)
+        addButton(Material.GOLD_INGOT, "Ветка 5", () -> {
+            ChangeScreen.switchTo(getViewer(), MainScreen.class, Branch5Screen.class);
+        }, -1);
 
-                new ItemDisplayButtonConfig(Material.GOLD_INGOT, () -> {
-                    ChangeScreen.switchTo(player, MainScreen.class, Branch5Screen.class);
-                })
-                        .setPosition(basePosition.clone().addVertical(-step))
-                        .setHoveredTransformation(new Transformation(
-                        new Vector3f(0, 0, 0),
-                        new AxisAngle4f(),
-                        new Vector3f(0.2f, 0.2f, 0.15f),
-                        new AxisAngle4f()
-                ), 2)
-        };
+        // Настраиваем специальные свойства для головы игрока
+        customizePlayerHead();
+    }
 
-        for (ItemDisplayButtonConfig config : branchButtons) {
-            createWidget(config);
+    private void customizePlayerHead() {
+        // Находим виджет с головой игрока и настраиваем его
+        for (Widget widget : getChildren()) {
+            if (widget instanceof ItemDisplayButtonWidget) {
+                ItemDisplayButtonWidget itemWidget = (ItemDisplayButtonWidget) widget;
+                if (itemWidget.getDisplay() != null && 
+                    itemWidget.getDisplay().getItemStack() != null &&
+                    itemWidget.getDisplay().getItemStack().getType() == Material.PLAYER_HEAD) {
+                    
+                    // Устанавливаем свечение
+                    itemWidget.getDisplay().setGlowColorOverride(Color.RED);
+                    
+                    // Устанавливаем владельца головы
+                    ItemStack headItem = itemWidget.getDisplay().getItemStack();
+                    if (headItem.getItemMeta() instanceof SkullMeta) {
+                        SkullMeta skullMeta = (SkullMeta) headItem.getItemMeta();
+                        skullMeta.setOwningPlayer(Bukkit.getOfflinePlayer("Padej_"));
+                        headItem.setItemMeta(skullMeta);
+                        itemWidget.getDisplay().setItemStack(headItem);
+                    }
+                    break;
+                }
+            }
         }
     }
 }

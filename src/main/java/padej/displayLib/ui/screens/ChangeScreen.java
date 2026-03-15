@@ -73,33 +73,15 @@ public class ChangeScreen {
 
                 // Создаем новый менеджер
                 WidgetManager newManager;
-                try {
-                    if (IDisplayable.class.isAssignableFrom(to)) {
-                        // Пробуем создать с четырьмя параметрами
-                        newManager = to.getConstructor(
-                                Player.class,
-                                Location.class,
-                                String.class,
-                                float.class
-                        ).newInstance(
-                                player,
-                                oldLocation,
-                                " ",
-                                10.0f
-                        );
-                    } else {
-                        // Пробуем создать с двумя параметрами
+                if (Screen.class.isAssignableFrom(to)) {
+                    // Используем фабричный метод для Screen
+                    newManager = Screen.create((Class<? extends Screen>) to, player, oldLocation);
+                } else {
+                    // Для других типов используем старый способ
+                    try {
                         newManager = to.getConstructor(Player.class, Location.class)
                                 .newInstance(player, oldLocation);
-                    }
-                } catch (NoSuchMethodException e) {
-                    // Если не нашли нужный конструктор, пробуем другой вариант
-                    if (IDisplayable.class.isAssignableFrom(to)) {
-                        // Пробуем создать с двумя параметрами
-                        newManager = to.getConstructor(Player.class, Location.class)
-                                .newInstance(player, oldLocation);
-                    } else {
-                        // Пробуем создать с четырьмя параметрами
+                    } catch (NoSuchMethodException e) {
                         newManager = to.getConstructor(
                                 Player.class,
                                 Location.class,
@@ -134,19 +116,44 @@ public class ChangeScreen {
 
     public static void switchToParent(Player player, Class<? extends WidgetManager> managerClass) {
         try {
-            WidgetManager tempManager = managerClass.getDeclaredConstructor().newInstance();
-            
-            if (tempManager instanceof IParentable) {
-                Class<? extends WidgetManager> parentClass = ((IParentable) tempManager).getParentManager();
-                if (parentClass != null) {
-                    switchTo(player, managerClass, parentClass);
+            // Используем фабричный метод для создания временного экземпляра
+            if (Screen.class.isAssignableFrom(managerClass)) {
+                // Для Screen используем фабричный метод с временной локацией
+                Location tempLocation = player.getLocation();
+                Screen tempScreen = Screen.create((Class<? extends Screen>) managerClass, player, tempLocation);
+                
+                if (tempScreen instanceof IParentable) {
+                    Class<? extends WidgetManager> parentClass = ((IParentable) tempScreen).getParentManager();
+                    if (parentClass != null) {
+                        // Удаляем временный экран
+                        tempScreen.remove();
+                        switchTo(player, managerClass, parentClass);
+                    } else {
+                        tempScreen.remove();
+                        LOGGER.warn("Попытка переключения на родительский менеджер для {} не удалась - родительский менеджер не найден",
+                                managerClass.getSimpleName());
+                    }
                 } else {
-                    LOGGER.warn("Попытка переключения на родительский менеджер для {} не удалась - родительский менеджер не найден",
+                    tempScreen.remove();
+                    LOGGER.warn("Попытка переключения на родительский менеджер для {} не удалась - тип не поддерживает иерархию",
                             managerClass.getSimpleName());
                 }
             } else {
-                LOGGER.warn("Попытка переключения на родительский менеджер для {} не удалась - тип не поддерживает иерархию",
-                        managerClass.getSimpleName());
+                // Для других типов используем старый способ
+                WidgetManager tempManager = managerClass.getDeclaredConstructor().newInstance();
+                
+                if (tempManager instanceof IParentable) {
+                    Class<? extends WidgetManager> parentClass = ((IParentable) tempManager).getParentManager();
+                    if (parentClass != null) {
+                        switchTo(player, managerClass, parentClass);
+                    } else {
+                        LOGGER.warn("Попытка переключения на родительский менеджер для {} не удалась - родительский менеджер не найден",
+                                managerClass.getSimpleName());
+                    }
+                } else {
+                    LOGGER.warn("Попытка переключения на родительский менеджер для {} не удалась - тип не поддерживает иерархию",
+                            managerClass.getSimpleName());
+                }
             }
         } catch (Exception e) {
             LOGGER.error("Ошибка при получении родительского менеджера для {}", managerClass.getSimpleName(), e);

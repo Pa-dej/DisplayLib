@@ -14,7 +14,7 @@ public class ItemDisplayButtonConfig {
     private Runnable onClick;
     private String tooltip;
     private TextColor tooltipColor;
-    private int tooltipDelay;
+    private int tooltipDelay = 30; // Дефолтное значение
     private boolean hasTooltip;
     private WidgetPosition position;
     private ItemDisplay.ItemDisplayTransform displayTransform = ItemDisplay.ItemDisplayTransform.GUI;

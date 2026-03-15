@@ -1,5 +1,6 @@
 package padej.displayLib.api.events;
 
+import org.jetbrains.annotations.NotNull;
 import padej.displayLib.ui.widgets.Widget;
 import org.bukkit.entity.Player;
 import org.bukkit.event.Cancellable;
@@ -36,7 +37,7 @@ public class DisplayClickEvent extends Event implements Cancellable {
     }
     
     @Override
-    public HandlerList getHandlers() {
+    public @NotNull HandlerList getHandlers() {
         return handlers;
     }
     

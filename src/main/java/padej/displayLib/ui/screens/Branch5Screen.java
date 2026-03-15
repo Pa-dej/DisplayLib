@@ -1,17 +1,13 @@
 package padej.displayLib.ui.screens;
 
 import padej.displayLib.ui.Screen;
-import padej.displayLib.ui.widgets.ItemDisplayButtonConfig;
 import padej.displayLib.ui.widgets.WidgetPosition;
+import padej.displayLib.ui.screens.ChangeScreen;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
 
 public class Branch5Screen extends Screen {
-    public Branch5Screen() {
-        super();
-    }
-
     public Branch5Screen(Player viewer, Location location, String text, float scale) {
         super(viewer, location, text, scale);
     }
@@ -22,19 +18,12 @@ public class Branch5Screen extends Screen {
     }
 
     @Override
-    public void createScreenWidgets(Player player) {
-        WidgetPosition basePosition = new WidgetPosition(-0.42f, 0.3f);
-        float step = 0.15f;
-
-        ItemDisplayButtonConfig[] branchButtons = {
-                new ItemDisplayButtonConfig(Material.NETHER_STAR, () -> {
-                    ChangeScreen.switchTo(player, Branch5Screen.class, Branch51Screen.class);
-                })
-                        .setPosition(basePosition.clone().addHorizontal(step))
-        };
-
-        for (ItemDisplayButtonConfig config : branchButtons) {
-            createWidget(config);
-        }
+    public void createScreenWidgets() {
+        // Создаем кнопку с горизонтальным смещением
+        WidgetPosition basePosition = new WidgetPosition(-0.42f + 0.15f, 0.3f); // Смещение вправо
+        
+        addButton(Material.NETHER_STAR, "Подветка 5.1", () -> {
+            ChangeScreen.switchTo(getViewer(), Branch5Screen.class, Branch51Screen.class);
+        }, 0, basePosition);
     }
 }
