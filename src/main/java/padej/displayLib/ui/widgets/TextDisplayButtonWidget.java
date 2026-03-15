@@ -266,45 +266,28 @@ public class TextDisplayButtonWidget implements Widget {
     // Методы для Lua API
     @Override
     public boolean isVisible() {
-        boolean result = visible && display != null && !display.isDead();
-        System.out.println("[DEBUG] isVisible() - visible flag: " + visible + ", display exists: " + (display != null) + ", display dead: " + (display != null ? display.isDead() : "null") + " -> result: " + result);
-        return result;
+        return visible && display != null && !display.isDead();
     }
     
     @Override
     public void setVisible(boolean visible) {
-        System.out.println("[DEBUG] TextDisplayButtonWidget.setVisible(" + visible + ") called");
-        System.out.println("[DEBUG] Current visible flag: " + this.visible);
-        System.out.println("[DEBUG] Display exists: " + (display != null));
-        System.out.println("[DEBUG] Display dead: " + (display != null ? display.isDead() : "null"));
-        
         this.visible = visible;
         
         if (display != null) {
             if (visible) {
                 if (display.isDead()) {
-                    System.out.println("[DEBUG] Display is dead, respawning...");
                     // Пересоздаем entity если он был удален
                     spawn();
-                    System.out.println("[DEBUG] Respawned. New display exists: " + (display != null));
-                } else {
-                    System.out.println("[DEBUG] Display already exists and alive");
+                    positionCached = false; // Сбрасываем кеш позиции
                 }
             } else {
-                System.out.println("[DEBUG] Removing display...");
                 display.remove();
-                System.out.println("[DEBUG] Display removed");
             }
-        } else {
-            System.out.println("[DEBUG] Display is null");
-            if (visible) {
-                System.out.println("[DEBUG] Creating new display...");
-                spawn();
-                System.out.println("[DEBUG] New display created: " + (display != null));
-            }
+        } else if (visible) {
+            // Создаем новый display если его нет
+            spawn();
+            positionCached = false; // Сбрасываем кеш позиции
         }
-        
-        System.out.println("[DEBUG] Final state - visible flag: " + this.visible + ", display exists: " + (display != null));
     }
     
     @Override

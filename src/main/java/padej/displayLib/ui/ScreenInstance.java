@@ -36,6 +36,9 @@ public class ScreenInstance extends WidgetManager {
     private final float screenYaw;
     private final float screenPitch;
     
+    /** Флаг предотвращения рекурсии при закрытии */
+    private boolean isClosing = false;
+    
     /** Смещение виджетов по глубине относительно фона для избежания Z-fighting */
     private static final float WIDGET_DEPTH_OFFSET = 0.001f;
     
@@ -317,6 +320,9 @@ public class ScreenInstance extends WidgetManager {
 
     @Override
     protected void tryClose() {
+        if (isClosing) return;
+        isClosing = true;
+        
         // Вызываем on_close перед закрытием
         callLuaFunction("on_close");
         

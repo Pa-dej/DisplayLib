@@ -286,10 +286,15 @@ public class ItemDisplayButtonWidget implements Widget {
                 if (display.isDead()) {
                     // Пересоздаем entity если он был удален
                     spawn();
+                    positionCached = false; // Сбрасываем кеш позиции
                 }
             } else {
                 display.remove();
             }
+        } else if (visible) {
+            // Создаем новый display если его нет
+            spawn();
+            positionCached = false; // Сбрасываем кеш позиции
         }
     }
     

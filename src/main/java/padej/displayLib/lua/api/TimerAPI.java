@@ -71,11 +71,15 @@ public class TimerAPI extends LuaTable {
                 
                 AtomicInteger counter = new AtomicInteger(0);
                 
-                BukkitTask task = Bukkit.getScheduler().runTaskTimer(plugin, () -> {
+                // Используем массив для хранения ссылки на таск
+                final BukkitTask[] taskRef = new BukkitTask[1];
+                
+                taskRef[0] = Bukkit.getScheduler().runTaskTimer(plugin, () -> {
                     int current = counter.incrementAndGet();
                     if (current > maxCount) {
-                        // Таймер завершен, но мы не можем отменить себя изнутри
-                        // Просто не выполняем функцию
+                        // Отменяем таймер изнутри
+                        taskRef[0].cancel();
+                        activeTasks.remove(taskRef[0]);
                         return;
                     }
                     
@@ -86,14 +90,8 @@ public class TimerAPI extends LuaTable {
                     }
                 }, 0L, periodTicks);
                 
-                // Отменяем таймер через нужное количество тиков
-                Bukkit.getScheduler().runTaskLater(plugin, () -> {
-                    activeTasks.remove(task);
-                    task.cancel();
-                }, periodTicks * maxCount + 1);
-                
-                activeTasks.add(task);
-                return LuaValue.valueOf(task.getTaskId());
+                activeTasks.add(taskRef[0]);
+                return LuaValue.valueOf(taskRef[0].getTaskId());
             }
         });
         
