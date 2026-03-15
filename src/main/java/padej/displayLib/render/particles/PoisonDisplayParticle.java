@@ -19,9 +19,9 @@ public class PoisonDisplayParticle implements DisplayParticle {
     private static final Random random = new Random();
     private static final int MAX_AGE = 80;
     private static final double MIN_SCALE = 0.5;
-    private static final double VELOCITY_DECAY = 0.9; // Коэффициент замедления
-    private static final double INITIAL_VELOCITY = 0.1; // Начальная скорость вверх
-    private static final double SPAWN_OFFSET = 0.7; // Разброс по координатам
+    private static final double VELOCITY_DECAY = 0.9;
+    private static final double INITIAL_VELOCITY = 0.1;
+    private static final double SPAWN_OFFSET = 0.7;
 
     private final Location position;
     private final DefaultSquare square;
@@ -31,12 +31,11 @@ public class PoisonDisplayParticle implements DisplayParticle {
         this.age = 0;
         this.velocityY = INITIAL_VELOCITY;
 
-        // Генерация случайного смещения
-        double offsetX = random.nextDouble() * (2 * SPAWN_OFFSET) - SPAWN_OFFSET; // [-0.7, 0.7]
+        double offsetX = random.nextDouble() * (2 * SPAWN_OFFSET) - SPAWN_OFFSET;
         double offsetY = random.nextDouble() * (2 * SPAWN_OFFSET) - SPAWN_OFFSET;
         double offsetZ = random.nextDouble() * (2 * SPAWN_OFFSET) - SPAWN_OFFSET;
 
-        this.position = spawnLocation.clone().add(offsetX, offsetY, offsetZ); // Смещение точки спавна
+        this.position = spawnLocation.clone().add(offsetX, offsetY, offsetZ);
 
         this.square = new StringRectangle(
                 0,
@@ -46,7 +45,7 @@ public class PoisonDisplayParticle implements DisplayParticle {
                 false,
                 "§a☠"
         ) {};
-        square.spawn(position); // Спавн с учётом разброса
+        square.spawn(position);
         square.getTextDisplay().setBrightness(new Display.Brightness(15, 15));
     }
 
@@ -78,10 +77,8 @@ public class PoisonDisplayParticle implements DisplayParticle {
             ));
         }
 
-        // Двигаем частицу вверх
         position.add(0, velocityY, 0);
 
-        // Замедляем скорость
         velocityY *= VELOCITY_DECAY;
 
         square.getTextDisplay().teleport(position);

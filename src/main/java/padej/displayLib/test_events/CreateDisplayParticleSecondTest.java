@@ -27,7 +27,7 @@ public class CreateDisplayParticleSecondTest implements Listener {
 
             if (action.isRightClick()) {
                 for (int i = 0; i < 40; i++) {
-                    ExampleComponentDisplayParticle particle = new ExampleComponentDisplayParticle(player, spawnLocation); // Передаем игрока
+                    ExampleComponentDisplayParticle particle = new ExampleComponentDisplayParticle(player, spawnLocation);
                     DISPLAY_PARTICLES.add(particle);
                 }
                 player.getWorld().spawnParticle(Particle.EXPLOSION, spawnLocation, 1, 0, 0, 0, 0);

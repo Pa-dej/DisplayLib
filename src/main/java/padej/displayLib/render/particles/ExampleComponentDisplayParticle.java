@@ -34,21 +34,19 @@ public class ExampleComponentDisplayParticle implements DisplayParticle {
     private final Location source;
     private final DefaultSquare square;
     private final int maxAge;
-    private boolean isRapidSpeed;  // Переменная для отслеживания первых 10 тиков
+    private boolean isRapidSpeed;
 
     public ExampleComponentDisplayParticle(Player player, Location spawnLocation) {
         this.age = 0;
         this.source = spawnLocation.clone();
         this.position = spawnLocation.clone();
         this.maxAge = random.nextInt(MAX_LIFE - MIN_LIFE + 1) + MIN_LIFE;
-        this.isRapidSpeed = true;  // Устанавливаем начальную скорость высокой
+        this.isRapidSpeed = true;
 
         this.velocity = getInitialVelocity(player);
-        
-        // Получаем случайный цвет
+
         java.awt.Color awtColor = ColorUtil.getRandomPartyPopperRGBColor();
-        
-        // Создаем компонент с цветом
+
         Component coloredText = Component.text(getRandomChar())
                 .color(TextColor.color(awtColor.getRed(), awtColor.getGreen(), awtColor.getBlue()));
         
@@ -65,19 +63,15 @@ public class ExampleComponentDisplayParticle implements DisplayParticle {
         square.getTextDisplay().setBrightness(new Display.Brightness(15, 15));
     }
 
-    // Метод для вычисления начальной скорости с разбросом
     private Vector getInitialVelocity(Player player) {
-        Vector direction = player.getEyeLocation().getDirection().normalize(); // Вектор взгляда игрока
+        Vector direction = player.getEyeLocation().getDirection().normalize();
 
-        // Разброс: конусный угол (30 градусов в радианах)
         double spread = Math.toRadians(30);
-        double randomYaw = (random.nextDouble() - 0.5) * spread; // Отклонение по горизонтали
-        double randomPitch = (random.nextDouble() - 0.5) * spread; // Отклонение по вертикали
+        double randomYaw = (random.nextDouble() - 0.5) * spread;
+        double randomPitch = (random.nextDouble() - 0.5) * spread;
 
-        // Создаем случайное вращение вектора взгляда
         Vector spreadVector = direction.clone().rotateAroundY(randomYaw).rotateAroundX(randomPitch);
 
-        // Увеличенная начальная скорость (для первых 10 тиков)
         double speed = isRapidSpeed ? 0.25 + (0.2 - 0.1) * random.nextDouble() : 0.005 + (0.015 - 0.005) * random.nextDouble();
         return spreadVector.multiply(speed);
     }
@@ -100,9 +94,8 @@ public class ExampleComponentDisplayParticle implements DisplayParticle {
             return;
         }
 
-        // Первые 10 тиков с высокой скоростью
         if (isRapidSpeed && age > 5) {
-            isRapidSpeed = false;  // После 10 тиков сбрасываем скорость на обычную
+            isRapidSpeed = false;
             velocity.setX(velocity.getX() / 2).setY(velocity.getY() / 2).setZ(velocity.getZ() / 2);
         }
 
@@ -119,7 +112,7 @@ public class ExampleComponentDisplayParticle implements DisplayParticle {
         velocity.setX(velocity.getX() + swayX);
         velocity.setZ(velocity.getZ() + swayZ);
 
-        velocity.multiply(1 - AIR_DRAG_COEFFICIENT);  // Замедление из-за сопротивления воздуха
+        velocity.multiply(1 - AIR_DRAG_COEFFICIENT);
 
         Location oldPosition = position.clone();
         position.add(velocity);

@@ -11,8 +11,7 @@ public class PointDetection {
     public static boolean lookingAtPoint(@NotNull Vector eye, @NotNull Vector direction, Vector point, double horizontalTolerance, double verticalTolerance) {
         double pointDistance = eye.distance(point);
         Vector lookingAtPoint = eye.clone().add(direction.clone().multiply(pointDistance));
-        
-        // Разделяем расстояние на горизонтальное и вертикальное
+
         double horizontalDist = Math.sqrt(Math.pow(lookingAtPoint.getX() - point.getX(), 2) + Math.pow(lookingAtPoint.getZ() - point.getZ(), 2));
         double verticalDist = Math.abs(lookingAtPoint.getY() - point.getY());
         

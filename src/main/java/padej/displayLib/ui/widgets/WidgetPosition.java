@@ -1,9 +1,9 @@
 package padej.displayLib.ui.widgets;
 
 public class WidgetPosition {
-    private double horizontal;  // rightMultiplier -> horizontal
-    private double vertical;    // upMultiplier -> vertical
-    private double depth;       // добавляем depth
+    private double horizontal;
+    private double vertical;
+    private double depth;
 
     public WidgetPosition(double horizontal, double vertical) {
         this.horizontal = horizontal;
@@ -74,7 +74,6 @@ public class WidgetPosition {
         return this;
     }
 
-    // Для обратной совместимости
     public double getRightMultiplier() {
         return horizontal;
     }

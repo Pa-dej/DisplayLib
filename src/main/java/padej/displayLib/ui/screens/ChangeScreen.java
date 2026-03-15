@@ -56,7 +56,6 @@ public class ChangeScreen {
                 Color backgroundColor = null;
                 float yaw = 0, pitch = 0;
 
-                // Сохраняем параметры отображения, если доступны
                 if (currentManager instanceof IDisplayable) {
                     IDisplayable displayable = (IDisplayable) currentManager;
                     if (displayable.getTextDisplay() != null) {
@@ -71,13 +70,10 @@ public class ChangeScreen {
                 
                 UIManager.getInstance().unregisterScreen(player);
 
-                // Создаем новый менеджер
                 WidgetManager newManager;
                 if (Screen.class.isAssignableFrom(to)) {
-                    // Используем фабричный метод для Screen
                     newManager = Screen.create((Class<? extends Screen>) to, player, oldLocation);
                 } else {
-                    // Для других типов используем старый способ
                     try {
                         newManager = to.getConstructor(Player.class, Location.class)
                                 .newInstance(player, oldLocation);
@@ -96,7 +92,6 @@ public class ChangeScreen {
                     }
                 }
 
-                // Восстанавливаем параметры отображения
                 if (backgroundColor != null && newManager instanceof IDisplayable) {
                     IDisplayable displayable = (IDisplayable) newManager;
                     displayable.setBackgroundColor(backgroundColor);
@@ -116,16 +111,13 @@ public class ChangeScreen {
 
     public static void switchToParent(Player player, Class<? extends WidgetManager> managerClass) {
         try {
-            // Используем фабричный метод для создания временного экземпляра
             if (Screen.class.isAssignableFrom(managerClass)) {
-                // Для Screen используем фабричный метод с временной локацией
                 Location tempLocation = player.getLocation();
                 Screen tempScreen = Screen.create((Class<? extends Screen>) managerClass, player, tempLocation);
                 
                 if (tempScreen instanceof IParentable) {
                     Class<? extends WidgetManager> parentClass = ((IParentable) tempScreen).getParentManager();
                     if (parentClass != null) {
-                        // Удаляем временный экран
                         tempScreen.remove();
                         switchTo(player, managerClass, parentClass);
                     } else {
@@ -139,7 +131,6 @@ public class ChangeScreen {
                             managerClass.getSimpleName());
                 }
             } else {
-                // Для других типов используем старый способ
                 WidgetManager tempManager = managerClass.getDeclaredConstructor().newInstance();
                 
                 if (tempManager instanceof IParentable) {

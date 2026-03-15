@@ -17,10 +17,8 @@ public final class DisplayLib extends JavaPlugin {
 
     @Override
     public void onEnable() {
-        // Инициализируем UIManager
         UIManager.getInstance();
 
-        // Регистрируем тестовые события
         getServer().getPluginManager().registerEvents(new ApplyHighlightToBlockTest(), this);
         getServer().getPluginManager().registerEvents(new CreateDisplayParticleFirstTest(), this);
         getServer().getPluginManager().registerEvents(new CreateDisplayParticleSecondTest(), this);
@@ -39,14 +37,12 @@ public final class DisplayLib extends JavaPlugin {
 
     @Override
     public void onDisable() {
-        // Очищаем все активные UI элементы
         UIManager manager = UIManager.getInstance();
         if (manager.hasActiveScreens()) {
             getLogger().info("Cleaning up active UI screens...");
             manager.cleanup();
         }
-        
-        // Очищаем другие ресурсы плагина
+
         DISPLAY_PARTICLES.clear();
     }
 

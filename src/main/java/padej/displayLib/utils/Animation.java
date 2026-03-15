@@ -38,12 +38,11 @@ public class Animation {
                 return;
             }
 
-            // Устанавливаем правильную трансформацию сразу без анимации
             screen.getTextDisplay().setTransformation(
                     new Transformation(
-                            new Vector3f(0, 0, 0), // Нормальная позиция
+                            new Vector3f(0, 0, 0),
                             new AxisAngle4f(),
-                            new Vector3f(10, 4, 1), // Правильный масштаб
+                            new Vector3f(10, 4, 1),
                             new AxisAngle4f()
                     )
             );

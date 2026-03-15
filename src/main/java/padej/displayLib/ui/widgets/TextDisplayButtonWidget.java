@@ -47,6 +47,9 @@ public class TextDisplayButtonWidget implements Widget {
     private Vector3f translation;
     private Transformation hoveredTransformation;
     private int hoveredTransformationDuration;
+    
+    private Vector cachedPosition;
+    private boolean positionCached = false;
 
     public static TextDisplayButtonWidget create(Location location, Player viewer, TextDisplayButtonConfig config) {
         TextDisplayButtonWidget widget = new TextDisplayButtonWidget();
@@ -104,9 +107,28 @@ public class TextDisplayButtonWidget implements Widget {
 
         Vector eye = viewer.getEyeLocation().toVector();
         Vector direction = viewer.getEyeLocation().getDirection();
-        Vector point = display.getLocation().toVector();
 
-        return PointDetection.lookingAtPoint(eye, direction, point, horizontalTolerance, verticalTolerance);
+        if (!positionCached) {
+            cachedPosition = display.getLocation().toVector();
+            positionCached = true;
+        }
+
+        Vector toWidget = cachedPosition.clone().subtract(eye).normalize();
+        if (toWidget.dot(direction) < 0.5) return false;
+
+        return PointDetection.lookingAtPoint(eye, direction, cachedPosition, horizontalTolerance, verticalTolerance);
+    }
+    
+    public void updateCachedPosition() {
+        if (display != null) {
+            cachedPosition = display.getLocation().toVector();
+            positionCached = true;
+        }
+    }
+    
+    @Override
+    public Location getLocation() {
+        return display != null ? display.getLocation() : location;
     }
 
     @Override
@@ -127,6 +149,7 @@ public class TextDisplayButtonWidget implements Widget {
             display = null;
         }
         hideTooltip();
+
     }
 
     public void removeWithAnimation(int duration) {

@@ -85,7 +85,6 @@ public class SmoothMotionAndRotationTest implements Listener {
                     if (blockDisplay != null) {
                         blockDisplay.teleport(newLocation);
 
-                        // Вращение вокруг всех осей
                         float rotationAmount = CLOCKWISE ? rotationSpeed : -rotationSpeed;
                         rotationAngle += rotationAmount;
 

@@ -10,10 +10,8 @@ public class HighlightEvent implements Listener {
 
     @EventHandler
     public void onBlockBreak(BlockBreakEvent event) {
-        // Получаем координаты разрушенного блока
         Location brokenBlockLocation = event.getBlock().getLocation();
 
-        // Удаляем выделение для этого блока
         Highlight.removeSelectionOnBlockPos(
                 brokenBlockLocation.getBlockX(),
                 brokenBlockLocation.getBlockY(),

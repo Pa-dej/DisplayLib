@@ -54,10 +54,10 @@ public class RotationRelativeToCenterPointTest implements Listener {
     }
 
     private void startSpin(Player player) {
-        final float rotationSpeed = 0.035f; // Скорость вращения
+        final float rotationSpeed = 0.035f;
 
         BukkitRunnable task = new BukkitRunnable() {
-            private final boolean CLOCKWISE = new Random().nextBoolean(); // Случайное направление вращения
+            private final boolean CLOCKWISE = new Random().nextBoolean();
 
             @Override
             public void run() {
@@ -71,21 +71,18 @@ public class RotationRelativeToCenterPointTest implements Listener {
                     if (blockDisplay != null) {
                         float rotationAmount = CLOCKWISE ? rotationSpeed : -rotationSpeed;
 
-                        // Получаем текущее положение и трансформацию
                         Transformation currentTransform = cube.getTransformation();
-                        Vector3f translation = new Vector3f(currentTransform.getTranslation()); // Текущая позиция
-                        Vector3f scale = new Vector3f(currentTransform.getScale()); // Размер
+                        Vector3f translation = new Vector3f(currentTransform.getTranslation());
+                        Vector3f scale = new Vector3f(currentTransform.getScale());
                         Quaternionf leftRotation = new Quaternionf(currentTransform.getLeftRotation());
                         Quaternionf rightRotation = new Quaternionf(currentTransform.getRightRotation());
 
-                        // Создаем новые повороты вокруг центра объекта
                         Quaternionf rotation = new Quaternionf().rotateXYZ(rotationAmount, rotationAmount * 0.5f, rotationAmount * 1.5f);
                         leftRotation.mul(rotation);
                         rightRotation.mul(rotation);
 
-                        // Обновляем трансформацию с учетом позиции как центра вращения
                         blockDisplay.setTransformation(new Transformation(
-                                translation, // translation используется как центр вращения
+                                translation,
                                 leftRotation,
                                 scale,
                                 rightRotation

@@ -29,7 +29,6 @@ public class UIManager implements Listener {
     private boolean isUpdateTaskRunning = false;
 
     private UIManager() {
-        // Регистрируем слушатель событий
         Bukkit.getPluginManager().registerEvents(this, DisplayLib.getInstance());
     }
 
@@ -61,16 +60,9 @@ public class UIManager implements Listener {
 
         for (Widget widget : manager.children) {
             if (widget.isHovered()) {
-                // Получаем позицию виджета
-                Location widgetLoc = null;
-                if (widget instanceof ItemDisplayButtonWidget) {
-                    widgetLoc = ((ItemDisplayButtonWidget) widget).getDisplay().getLocation();
-                } else if (widget instanceof TextDisplayButtonWidget) {
-                    widgetLoc = ((TextDisplayButtonWidget) widget).getDisplay().getLocation();
-                }
+                Location widgetLoc = widget.getLocation();
 
                 if (widgetLoc != null) {
-                    // Вычисляем расстояние от глаз игрока до виджета
                     double distance = manager.viewer.getEyeLocation().distance(widgetLoc);
                     if (distance < nearestDistance) {
                         nearestDistance = distance;
@@ -92,7 +84,6 @@ public class UIManager implements Listener {
                 Widget nearestWidget = getNearestHoveredWidget(manager);
                 if (nearestWidget != null) {
                     event.setCancelled(true);
-                    // Создаем и вызываем событие клика только для ближайшего виджета
                     DisplayClickEvent clickEvent = new DisplayClickEvent(player, nearestWidget);
                     Bukkit.getPluginManager().callEvent(clickEvent);
                     if (!clickEvent.isCancelled()) {
@@ -116,7 +107,6 @@ public class UIManager implements Listener {
             Widget nearestWidget = getNearestHoveredWidget(manager);
             if (nearestWidget != null) {
                 event.setCancelled(true);
-                // Создаем и вызываем событие клика только для ближайшего виджета
                 DisplayClickEvent clickEvent = new DisplayClickEvent(player, nearestWidget);
                 Bukkit.getPluginManager().callEvent(clickEvent);
                 if (!clickEvent.isCancelled()) {
@@ -134,7 +124,7 @@ public class UIManager implements Listener {
                         manager.update();
                     }
                 }
-            }, 0L, 1L);
+            }, 0L, 5L);
             isUpdateTaskRunning = true;
         }
     }
@@ -151,7 +141,7 @@ public class UIManager implements Listener {
         Player player = event.getPlayer();
         WidgetManager manager = activeScreens.get(player);
         if (manager != null) {
-            manager.remove(); // Мгновенное удаление при выходе
+            manager.remove();
             unregisterScreen(player);
         }
     }
@@ -161,30 +151,25 @@ public class UIManager implements Listener {
         Player player = event.getEntity();
         WidgetManager manager = activeScreens.get(player);
         if (manager != null) {
-            manager.remove(); // Мгновенное удаление при смерти
+            manager.remove();
             unregisterScreen(player);
         }
     }
 
     public void cleanup() {
-        // Создаем копию для безопасной итерации
         Map<Player, WidgetManager> screensToRemove = new HashMap<>(activeScreens);
-        
-        // Удаляем все активные экраны
+
         for (Map.Entry<Player, WidgetManager> entry : screensToRemove.entrySet()) {
             WidgetManager manager = entry.getValue();
             if (manager != null) {
-                // Принудительно удаляем все виджеты
                 manager.remove();
                 unregisterScreen(entry.getKey());
             }
         }
-        
-        // Останавливаем задачу обновления
+
         stopUpdateTask();
     }
 
-    // Добавим метод для проверки наличия активных экранов
     public boolean hasActiveScreens() {
         return !activeScreens.isEmpty();
     }

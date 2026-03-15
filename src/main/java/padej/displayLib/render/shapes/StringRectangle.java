@@ -34,7 +34,7 @@ public abstract class StringRectangle extends DefaultSquare {
         if (display != null) {
             display.text(Component.text(text));
             display.setTransformation(new Transformation(
-                    new Vector3f(-getScale() / 80f, -getScale() / 16f, 0), // 16 and 80 is const's. Idk. Mojang, why?
+                    new Vector3f(-getScale() / 80f, -getScale() / 16f, 0),
                     new AxisAngle4f(),
                     new Vector3f(getScale(), getScale(), 1),
                     new AxisAngle4f()

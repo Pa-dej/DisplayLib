@@ -16,6 +16,8 @@ public abstract class WidgetManager {
     public Player viewer;
     protected Location location;
     
+    private boolean isDirty = false;
+    
     public WidgetManager(Player viewer, Location location) {
         this.viewer = viewer;
         this.location = location;
@@ -26,11 +28,16 @@ public abstract class WidgetManager {
         return child;
     }
     
+    public void markDirty() {
+        isDirty = true;
+    }
+    
     public void update() {
-        // Удаляем недействительные виджеты перед обновлением
-        children.removeIf(widget -> !widget.isValid());
-        
-        // Обновляем оставшиеся виджеты
+        if (isDirty) {
+            children.removeIf(widget -> !widget.isValid());
+            isDirty = false;
+        }
+
         for (Widget widget : children) {
             widget.update();
         }
@@ -44,12 +51,13 @@ public abstract class WidgetManager {
     }
     
     public void remove() {
-        // Создаем копию списка для безопасной итерации
         List<Widget> toRemove = new ArrayList<>(children);
         for (Widget widget : toRemove) {
             widget.remove();
         }
         children.clear();
+
+        markDirty();
     }
 
     public boolean isLookingAtWidget() {
@@ -62,12 +70,7 @@ public abstract class WidgetManager {
 
         for (Widget widget : children) {
             if (widget.isHovered()) {
-                Location widgetLoc = null;
-                if (widget instanceof ItemDisplayButtonWidget) {
-                    widgetLoc = ((ItemDisplayButtonWidget) widget).getDisplay().getLocation();
-                } else if (widget instanceof TextDisplayButtonWidget) {
-                    widgetLoc = ((TextDisplayButtonWidget) widget).getDisplay().getLocation();
-                }
+                Location widgetLoc = widget.getLocation();
 
                 if (widgetLoc != null) {
                     double distance = viewer.getEyeLocation().distance(widgetLoc);

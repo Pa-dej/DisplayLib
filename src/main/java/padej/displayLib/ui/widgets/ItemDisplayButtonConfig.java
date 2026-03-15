@@ -14,7 +14,7 @@ public class ItemDisplayButtonConfig {
     private Runnable onClick;
     private String tooltip;
     private TextColor tooltipColor;
-    private int tooltipDelay = 30; // Дефолтное значение
+    private int tooltipDelay = 30;
     private boolean hasTooltip;
     private WidgetPosition position;
     private ItemDisplay.ItemDisplayTransform displayTransform = ItemDisplay.ItemDisplayTransform.GUI;
@@ -39,7 +39,7 @@ public class ItemDisplayButtonConfig {
         this.material = material;
         this.onClick = onClick;
         this.hasTooltip = false;
-        this.tooltipColor = TextColor.fromHexString("#fcd720"); // Цвет по умолчанию
+        this.tooltipColor = TextColor.fromHexString("#fcd720");
     }
 
     public ItemDisplayButtonConfig setTooltip(String tooltip) {

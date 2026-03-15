@@ -1,6 +1,7 @@
 package padej.displayLib.ui.widgets;
 
-// Базовый класс для всех виджетов
+import org.bukkit.Location;
+
 public interface Widget {
     
     boolean isHovered();
@@ -10,6 +11,8 @@ public interface Widget {
     void remove();
     
     void update();
+    
+    Location getLocation();
     
     default boolean isValid() {
         return true;

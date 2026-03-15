@@ -111,13 +111,10 @@ public class PointDetectSecondTest implements Listener {
             public void run() {
                 if (cube.getBlockDisplay() == null) return;
 
-                // Отображаем частицы вдоль вектора
                 Location initialLoc = initialLocation.get(player);
                 Vector initialDir = initialDirection.get(player);
                 if (initialLoc != null && initialDir != null) {
-                    // Начальная точка (на 5 блоков назад от центра)
                     Vector startPoint = initialLoc.toVector().clone().add(initialDir.clone().multiply(-5));
-                    // Рисуем частицы на протяжении 10 блоков
                     for (double i = 0; i <= 10; i += 0.25) {
                         Vector particlePos = startPoint.clone().add(initialDir.clone().multiply(i));
                         initialLoc.getWorld().spawnParticle(
@@ -143,8 +140,7 @@ public class PointDetectSecondTest implements Listener {
                     Vector currentPos = eye.clone().add(direction.clone().multiply(dragDistance.get(player)));
                     Vector initialToCurrentPos = currentPos.clone().subtract(moveStart.toVector());
                     double projection = initialToCurrentPos.dot(moveDir) / moveDir.lengthSquared();
-                    
-                    // Ограничиваем проекцию в пределах ±5 блоков
+
                     projection = Math.max(-5.0, Math.min(5.0, projection));
                     
                     Vector newPosition = moveStart.toVector().clone().add(moveDir.clone().multiply(projection));

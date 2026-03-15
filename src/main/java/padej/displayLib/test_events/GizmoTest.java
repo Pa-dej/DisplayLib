@@ -55,23 +55,19 @@ public class GizmoTest implements Listener {
         Player player = event.getPlayer();
         if (!(player.getInventory().getItemInMainHand().getType() == Material.CLAY_BALL && ItemUtil.isExperimental(player.getInventory().getItemInMainHand()))) return;
 
-        // Если у игрока уже есть гизмо, удаляем их
         if (playerGizmos.containsKey(player)) {
             removeAllGizmos(player);
             return;
         }
 
-        // Получаем все сущности в радиусе 15 блоков
         Collection<Entity> nearbyEntities = player.getWorld().getNearbyEntities(
             player.getLocation(),
             15, 15, 15,
             entity -> {
-                // Проверяем, что это не игрок-создатель
                 if (entity.equals(player)) {
                     return false;
                 }
-                
-                // Проверяем, не является ли сущность частью гизмо
+
                 for (Map<Entity, GizmoData> gizmos : playerGizmos.values()) {
                     for (GizmoData gizmoData : gizmos.values()) {
                         if (gizmoData.mainGizmo.getBlockDisplay().equals(entity) ||
@@ -86,7 +82,6 @@ public class GizmoTest implements Listener {
 
         Map<Entity, GizmoData> entityGizmos = new HashMap<>();
 
-        // Создаем гизмо для каждой найденной сущности
         for (Entity entity : nearbyEntities) {
             Location spawnLocation = entity.getLocation().add(0, entity.getHeight() / 2, 0);
             
@@ -145,7 +140,6 @@ public class GizmoTest implements Listener {
 
             for (GizmoData gizmoData : gizmos.values()) {
                 Vector point = gizmoData.mainGizmo.getBlockDisplay().getLocation().toVector();
-                // Получаем текущий размер из трансформации
                 float currentScale = gizmoData.mainGizmo.getBlockDisplay().getTransformation().getScale().x;
                 
                 if (PointDetection.lookingAtPoint(eye, direction, point, 0.1 + (currentScale * 0.6))) {
@@ -153,16 +147,13 @@ public class GizmoTest implements Listener {
                     player.playSound(player.getLocation(), Sound.BLOCK_DISPENSER_FAIL, 1.0f, 2.0f);
                     
                     if (!gizmoData.isDragging) {
-                        // Начинаем перетаскивание
                         gizmoData.isDragging = true;
                         gizmoData.mainGizmo.getBlockDisplay().setBlock(Material.EMERALD_BLOCK.createBlockData());
                         gizmoData.mainGizmo.getBlockDisplay().setGlowColorOverride(Color.LIME);
                         gizmoData.outlineGizmo.getBlockDisplay().setBlock(Material.LIME_STAINED_GLASS.createBlockData());
-                        
-                        // Сохраняем расстояние для перетаскивания
+
                         gizmoData.dragDistance = eye.distance(point);
                     } else {
-                        // Заканчиваем перетаскивание
                         gizmoData.isDragging = false;
                         gizmoData.mainGizmo.getBlockDisplay().setBlock(Material.IRON_BLOCK.createBlockData());
                         gizmoData.mainGizmo.getBlockDisplay().setGlowColorOverride(Color.WHITE);
@@ -193,42 +184,34 @@ public class GizmoTest implements Listener {
                         continue;
                     }
 
-                    // Вычисляем размер гизмо на основе расстояния
                     double distance = player.getLocation().distance(entity.getLocation());
                     double maxDistance = 20.0;
                     double maxSizeIncrease = 5.0;
-                    
-                    // Ограничиваем расстояние и вычисляем коэффициент увеличения
+
                     distance = Math.min(distance, maxDistance);
                     double sizeMultiplier = distance / maxDistance;
                     double sizeIncrease = sizeMultiplier * maxSizeIncrease;
-                    
-                    // Базовые размеры + динамическое увеличение
+
                     float baseMainScale = 0.15f;
                     float baseOutlineScale = 0.2f;
                     float mainScale = (float)(baseMainScale * (1 + sizeIncrease));
                     float outlineScale = (float)(baseOutlineScale * (1 + sizeIncrease));
-                    
-                    // Обновляем размеры кубов
+
                     gizmoData.mainGizmo.getBlockDisplay().setTransformationMatrix(
                         new Matrix4f()
                             .translate(-mainScale / 2, -mainScale / 2, -mainScale / 2)
                             .scale(mainScale)
                     );
 
-                    // Проверяем, смотрит ли игрок на гизмо
                     Vector eye = player.getEyeLocation().toVector();
                     Vector direction = player.getEyeLocation().getDirection();
                     Vector point = gizmoData.mainGizmo.getBlockDisplay().getLocation().toVector();
-                    // Добавляем 0.1 от текущего размера к базовому радиусу обнаружения
                     boolean isDetect = PointDetection.lookingAtPoint(eye, direction, point, 0.1 + (mainScale * 0.6));
 
-                    // Используем динамический вектор для трансформации
                     Vector translation = new Vector(-outlineScale / 2, -outlineScale / 2, -outlineScale / 2);
                     float growScale = outlineScale * 1.2f;
                     float scaleStep = (growScale - outlineScale) / 2;
 
-                    // Обновляем анимацию при наведении
                     if (isDetect && !gizmoData.isLooking) {
                         Animation.applyTransformationWithInterpolation(gizmoData.outlineGizmo.getBlockDisplay(), 
                             new Matrix4f()
@@ -248,7 +231,6 @@ public class GizmoTest implements Listener {
                         );
                         gizmoData.isLooking = false;
                     } else if (!isDetect) {
-                        // Обновляем размер даже когда не смотрим
                         gizmoData.outlineGizmo.getBlockDisplay().setTransformationMatrix(
                             new Matrix4f()
                                 .translate((float)translation.getX(), 
@@ -259,14 +241,12 @@ public class GizmoTest implements Listener {
                     }
 
                     if (gizmoData.isDragging) {
-                        // Перемещаем гизмо в направлении взгляда игрока
                         Vector newPosition = eye.add(direction.multiply(gizmoData.dragDistance));
                         Location newLocation = newPosition.toLocation(player.getWorld());
                         gizmoData.mainGizmo.getBlockDisplay().teleport(newLocation);
                         gizmoData.outlineGizmo.getBlockDisplay().teleport(newLocation);
                         entity.teleport(newLocation);
                     } else {
-                        // Если не перетаскиваем, гизмо следует за сущностью на высоте её центра
                         Location entityLocation = entity.getLocation().add(0, entity.getHeight() / 2, 0);
                         gizmoData.mainGizmo.getBlockDisplay().teleport(entityLocation);
                         gizmoData.outlineGizmo.getBlockDisplay().teleport(entityLocation);

@@ -77,7 +77,6 @@ public class ExampleSquareDisplayParticle implements DisplayParticle {
 
         square.getTextDisplay().text(Component.text(age));
 
-        // Проверка, есть ли твёрдый блок под частицей
         if (!position.clone().subtract(0, 0.1, 0).getBlock().getType().isSolid()) {
             velocity.setY(velocity.getY() - GRAVITY_ACCELERATION);
         } else {

@@ -27,6 +27,6 @@ public class Branch2Screen extends Screen {
 
         addButton(Material.EMERALD, "Подветка 4", () -> {
             getViewer().sendMessage("Ветка 4");
-        }, 0, new WidgetPosition(-0.42f + 0.15f, 0.3f)); // Горизонтальное смещение
+        }, 0, new WidgetPosition(-0.42f + 0.15f, 0.3f));
     }
 }

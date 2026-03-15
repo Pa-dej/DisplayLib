@@ -6,13 +6,11 @@ import org.joml.Vector3f;
 
 public class VertexUtil {
 
-    // Метод для получения координат углов куба
     public static Location[] getCubeVertexes(Display cube) {
         float size = cube.getTransformation().getScale().x;
         Location[] corners = new Location[8];
 
         Vector3f offset;
-        // Используем метод из DefaultDisplay
         offset = padej.displayLib.render.shapes.DefaultDisplay.getOffset(AlignmentType.NONE, size);
 
         for (int x = 0; x <= 1; x++) {
@@ -29,7 +27,6 @@ public class VertexUtil {
         return corners;
     }
 
-    // Метод для проверки, находится ли точка внутри области, образованной вершинами
     public static boolean isInsideVertexesArea(Location targetLocation, Location[] cubeVertexes) {
         double minX = Double.MAX_VALUE;
         double maxX = -Double.MAX_VALUE;
@@ -52,13 +49,11 @@ public class VertexUtil {
                 targetLocation.getZ() >= minZ && targetLocation.getZ() <= maxZ;
     }
 
-    // Метод для проверки пересечения отрезка с кубом
     public static boolean doesSegmentIntersectArea(Segment segment, Location[] cubeVertexes) {
         Location[] segmentMinMax = segment.getMinMaxPoints();
         Location minPoint = segmentMinMax[0];
         Location maxPoint = segmentMinMax[1];
 
-        // Получаем минимальные и максимальные границы куба
         double minX = Double.MAX_VALUE;
         double maxX = -Double.MAX_VALUE;
         double minY = Double.MAX_VALUE;

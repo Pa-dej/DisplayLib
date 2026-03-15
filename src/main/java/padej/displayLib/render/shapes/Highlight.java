@@ -23,7 +23,7 @@ import java.util.Map;
 public class Highlight {
 
     private static final float MIN_OFFSET = 1e-4f;
-    private static final int COLOR_CHANGE_SPEED = 5; // Скорость изменения цвета
+    private static final int COLOR_CHANGE_SPEED = 5;
     private static Color currentStartColor;
     private static Color currentEndColor;
     private static Color currentColor;
@@ -32,9 +32,8 @@ public class Highlight {
     public static Map<String, List<TextDisplay>> blockPosDisplays = new HashMap<>();
 
     private static float t = 0.0f;
-    private static boolean increasing = true; // Направление интерполяции
+    private static boolean increasing = true;
 
-    // Метод для установки цветов в зависимости от стиля
     private static void setHighlightStyle(HighlightStyle style) {
         switch (style) {
             case SILVER:
@@ -84,9 +83,8 @@ public class Highlight {
         }
     }
 
-    // Метод для создания дисплеев только с той стороны, где сосед isAir
     public static void createSides(Location location, HighlightStyle style, int alpha) {
-        setHighlightStyle(style);  // Устанавливаем цвета в зависимости от стиля
+        setHighlightStyle(style);
         addIfNotNull(southSide(location), location);
         addIfNotNull(eastSide(location), location);
         addIfNotNull(northSide(location), location);
@@ -103,7 +101,6 @@ public class Highlight {
         }
     }
 
-    // Метод для удаления дисплеев по BlockPos
     public static void removeSelectionOnBlockPos(int x, int y, int z) {
         String blockPosKey = x + "," + y + "," + z;
         List<TextDisplay> displaysToRemove = blockPosDisplays.remove(blockPosKey);
@@ -114,7 +111,6 @@ public class Highlight {
         }
     }
 
-    // Метод для удаления всех дисплеев
     public static void removeAllSelections() {
         for (List<TextDisplay> displaysList : blockPosDisplays.values()) {
             for (TextDisplay display : displaysList) {
@@ -142,13 +138,13 @@ public class Highlight {
             t += COLOR_CHANGE_SPEED / 100.0f;
             if (t >= 1.0f) {
                 t = 1.0f;
-                increasing = false; // Начинаем уменьшать
+                increasing = false;
             }
         } else {
             t -= COLOR_CHANGE_SPEED / 100.0f;
             if (t <= 0.0f) {
                 t = 0.0f;
-                increasing = true; // Начинаем увеличивать
+                increasing = true;
             }
         }
     }

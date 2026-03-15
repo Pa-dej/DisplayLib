@@ -181,7 +181,6 @@ public class TextDisplayButtonConfig {
         return privateVisible;
     }
 
-    // Геттеры
     public Component getText() {
         return text;
     }

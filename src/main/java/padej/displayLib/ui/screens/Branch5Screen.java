@@ -19,9 +19,8 @@ public class Branch5Screen extends Screen {
 
     @Override
     public void createScreenWidgets() {
-        // Создаем кнопку с горизонтальным смещением
-        WidgetPosition basePosition = new WidgetPosition(-0.42f + 0.15f, 0.3f); // Смещение вправо
-        
+        WidgetPosition basePosition = new WidgetPosition(-0.42f + 0.15f, 0.3f);
+
         addButton(Material.NETHER_STAR, "Подветка 5.1", () -> {
             ChangeScreen.switchTo(getViewer(), Branch5Screen.class, Branch51Screen.class);
         }, 0, basePosition);

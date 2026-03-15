@@ -40,7 +40,6 @@ public abstract class Screen extends WidgetManager implements IDisplayable, IPar
     @AlwaysOnScreen(Screen.class)
     private TextDisplayButtonWidget closeButton;
 
-    // Единственный конструктор - принимает все необходимые параметры
     public Screen(Player viewer, Location location, String text, float scale) {
         super(viewer, location);
         this.viewer = viewer;
@@ -56,7 +55,7 @@ public abstract class Screen extends WidgetManager implements IDisplayable, IPar
                 .setBackgroundColor(Color.fromRGB(0, 0, 0))
                 .setBackgroundAlpha(160)
                 .setPosition(new WidgetPosition(0, 0, 0))
-                .setTranslation(new Vector3f(0, 0, 0)); // Устанавливаем правильную позицию сразу
+                .setTranslation(new Vector3f(0, 0, 0));
 
         background = createTextWidget(backgroundConfig);
 
@@ -78,14 +77,12 @@ public abstract class Screen extends WidgetManager implements IDisplayable, IPar
 
         resetVarsAndBackground();
 
-        // Удаляем все виджеты, включая фон
         List<Widget> toRemove = new ArrayList<>(children);
         for (Widget widget : toRemove) {
             widget.remove();
         }
         children.clear();
 
-        // Явно удаляем фон, если он еще существует
         if (background != null) {
             background.remove();
             background = null;
@@ -225,7 +222,6 @@ public abstract class Screen extends WidgetManager implements IDisplayable, IPar
     public void createScreenWidgets() {
     }
 
-    // Статический фабричный метод для создания экранов
     public static <T extends Screen> T create(Class<T> screenClass, Player viewer, Location location) {
         try {
             return screenClass.getConstructor(Player.class, Location.class, String.class, float.class)
@@ -235,12 +231,10 @@ public abstract class Screen extends WidgetManager implements IDisplayable, IPar
         }
     }
 
-    // Удобный метод для получения viewer
     public Player getViewer() {
         return viewer;
     }
 
-    // Удобный метод для добавления кнопок с автоматическим позиционированием
     protected void addButton(Material material, String tooltip, Runnable action, int index) {
         addButton(material, tooltip, action, index, new WidgetPosition(-0.42f, 0.3f));
     }
@@ -447,7 +441,6 @@ public abstract class Screen extends WidgetManager implements IDisplayable, IPar
     public void updatePosition() {
         if (!isFollowing) return;
 
-        // Удаляем недействительные виджеты перед обновлением позиции
         children.removeIf(widget -> !widget.isValid());
 
         Location newLoc = viewer.getLocation().clone();
@@ -456,7 +449,6 @@ public abstract class Screen extends WidgetManager implements IDisplayable, IPar
         location.setY(newPos.getY());
         location.setZ(newPos.getZ());
 
-        // Обновляем позицию фона
         if (background != null && background.isValid()) {
             TextDisplay textDisplay = background.getDisplay();
             Location displayLoc = textDisplay.getLocation();
@@ -466,7 +458,6 @@ public abstract class Screen extends WidgetManager implements IDisplayable, IPar
             textDisplay.teleport(displayLoc);
         }
 
-        // Обновляем позиции всех виджетов
         for (Widget widget : new ArrayList<>(children)) {
             if (widget == background) continue;
 
@@ -496,6 +487,8 @@ public abstract class Screen extends WidgetManager implements IDisplayable, IPar
         buttonLoc.setPitch(currentLoc.getPitch());
 
         widget.getDisplay().teleport(buttonLoc);
+
+        widget.updateCachedPosition();
     }
 
     private void updateWidgetPosition(TextDisplayButtonWidget widget) {
@@ -516,6 +509,8 @@ public abstract class Screen extends WidgetManager implements IDisplayable, IPar
         buttonLoc.setPitch(currentLoc.getPitch());
 
         widget.getDisplay().teleport(buttonLoc);
+
+        widget.updateCachedPosition();
     }
 
     private Runnable onClose;
