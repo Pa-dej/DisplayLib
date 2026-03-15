@@ -57,6 +57,13 @@ public class ItemDisplayButtonWidget implements Widget {
     private float savedPitch = 0.0f;
     private boolean hasRotation = false;
     
+    // Сохранение оригинального onClick для setEnabled
+    private Runnable originalOnClick;
+    private boolean enabled = true;
+    
+    // Отслеживание видимости
+    private boolean visible = true;
+    
     private Vector cachedPosition;
     private boolean positionCached = false;
 
@@ -65,6 +72,7 @@ public class ItemDisplayButtonWidget implements Widget {
         widget.location = location;
         widget.viewer = viewer;
         widget.onClick = config.getOnClick();
+        widget.originalOnClick = config.getOnClick(); // Сохраняем оригинальный onClick
         widget.itemType = config.getMaterial();
         widget.position = config.getPosition();
         widget.displayTransform = config.getDisplayTransform();
@@ -156,7 +164,7 @@ public class ItemDisplayButtonWidget implements Widget {
 
     @Override
     public void handleClick() {
-        if (onClick != null) {
+        if (enabled && onClick != null) {
             onClick.run();
             
             if (soundEnabled) {
@@ -251,7 +259,8 @@ public class ItemDisplayButtonWidget implements Widget {
     }
 
     public boolean isValid() {
-        return display != null && !display.isDead();
+        // Виджет валиден если он был создан (независимо от видимости)
+        return location != null && viewer != null;
     }
 
     public ItemDisplay getDisplay() {
@@ -265,11 +274,13 @@ public class ItemDisplayButtonWidget implements Widget {
     // Методы для Lua API
     @Override
     public boolean isVisible() {
-        return display != null && !display.isDead();
+        return visible && display != null && !display.isDead();
     }
     
     @Override
     public void setVisible(boolean visible) {
+        this.visible = visible;
+        
         if (display != null) {
             if (visible) {
                 if (display.isDead()) {
@@ -289,11 +300,12 @@ public class ItemDisplayButtonWidget implements Widget {
     
     @Override
     public void setEnabled(boolean enabled) {
-        if (!enabled) {
-            onClick = null;
+        this.enabled = enabled;
+        if (enabled && originalOnClick != null) {
+            this.onClick = originalOnClick;
+        } else if (!enabled) {
+            this.onClick = null;
         }
-        // Включение требует восстановления оригинального onClick, что сложно
-        // Пока что просто отключаем
     }
     
     @Override
@@ -314,13 +326,15 @@ public class ItemDisplayButtonWidget implements Widget {
      * Сохранить ориентацию для восстановления после пересоздания
      */
     public void saveRotation(float yaw, float pitch) {
-        this.savedYaw = yaw;
-        this.savedPitch = pitch;
+        // Для ItemDisplay нужно скорректировать ориентацию
+        // ItemDisplay имеет другую систему координат чем TextDisplay
+        this.savedYaw = yaw + 180.0f;
+        this.savedPitch = -pitch;
         this.hasRotation = true;
         
         // Применяем ориентацию если display уже существует
         if (display != null) {
-            display.setRotation(yaw, pitch);
+            display.setRotation(this.savedYaw, this.savedPitch);
             display.setBillboard(org.bukkit.entity.Display.Billboard.FIXED);
         }
     }

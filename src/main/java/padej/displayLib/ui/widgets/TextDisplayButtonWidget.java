@@ -53,6 +53,13 @@ public class TextDisplayButtonWidget implements Widget {
     private float savedPitch = 0.0f;
     private boolean hasRotation = false;
     
+    // Сохранение оригинального onClick для setEnabled
+    private Runnable originalOnClick;
+    private boolean enabled = true;
+    
+    // Отслеживание видимости
+    private boolean visible = true;
+    
     private Vector cachedPosition;
     private boolean positionCached = false;
 
@@ -61,6 +68,7 @@ public class TextDisplayButtonWidget implements Widget {
         widget.location = location;
         widget.viewer = viewer;
         widget.onClick = config.getOnClick();
+        widget.originalOnClick = config.getOnClick(); // Сохраняем оригинальный onClick
         widget.text = config.getText();
         widget.hoveredText = config.getHoveredText();
         widget.position = config.getPosition();
@@ -144,7 +152,7 @@ public class TextDisplayButtonWidget implements Widget {
 
     @Override
     public void handleClick() {
-        if (onClick != null) {
+        if (enabled && onClick != null) {
             onClick.run();
             
             if (soundEnabled) {
@@ -243,7 +251,8 @@ public class TextDisplayButtonWidget implements Widget {
     }
 
     public boolean isValid() {
-        return display != null && !display.isDead();
+        // Виджет валиден если он был создан (независимо от видимости)
+        return location != null && viewer != null;
     }
 
     public TextDisplay getDisplay() {
@@ -257,21 +266,45 @@ public class TextDisplayButtonWidget implements Widget {
     // Методы для Lua API
     @Override
     public boolean isVisible() {
-        return display != null && !display.isDead();
+        boolean result = visible && display != null && !display.isDead();
+        System.out.println("[DEBUG] isVisible() - visible flag: " + visible + ", display exists: " + (display != null) + ", display dead: " + (display != null ? display.isDead() : "null") + " -> result: " + result);
+        return result;
     }
     
     @Override
     public void setVisible(boolean visible) {
+        System.out.println("[DEBUG] TextDisplayButtonWidget.setVisible(" + visible + ") called");
+        System.out.println("[DEBUG] Current visible flag: " + this.visible);
+        System.out.println("[DEBUG] Display exists: " + (display != null));
+        System.out.println("[DEBUG] Display dead: " + (display != null ? display.isDead() : "null"));
+        
+        this.visible = visible;
+        
         if (display != null) {
             if (visible) {
                 if (display.isDead()) {
+                    System.out.println("[DEBUG] Display is dead, respawning...");
                     // Пересоздаем entity если он был удален
                     spawn();
+                    System.out.println("[DEBUG] Respawned. New display exists: " + (display != null));
+                } else {
+                    System.out.println("[DEBUG] Display already exists and alive");
                 }
             } else {
+                System.out.println("[DEBUG] Removing display...");
                 display.remove();
+                System.out.println("[DEBUG] Display removed");
+            }
+        } else {
+            System.out.println("[DEBUG] Display is null");
+            if (visible) {
+                System.out.println("[DEBUG] Creating new display...");
+                spawn();
+                System.out.println("[DEBUG] New display created: " + (display != null));
             }
         }
+        
+        System.out.println("[DEBUG] Final state - visible flag: " + this.visible + ", display exists: " + (display != null));
     }
     
     @Override
@@ -281,11 +314,12 @@ public class TextDisplayButtonWidget implements Widget {
     
     @Override
     public void setEnabled(boolean enabled) {
-        if (!enabled) {
-            onClick = null;
+        this.enabled = enabled;
+        if (enabled && originalOnClick != null) {
+            this.onClick = originalOnClick;
+        } else if (!enabled) {
+            this.onClick = null;
         }
-        // Включение требует восстановления оригинального onClick, что сложно
-        // Пока что просто отключаем
     }
     
     @Override
@@ -304,7 +338,9 @@ public class TextDisplayButtonWidget implements Widget {
     
     // Методы для работы с текстом
     public String getText() {
-        return text != null ? text.toString() : "";
+        return text != null 
+            ? net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer.plainText().serialize(text)
+            : "";
     }
     
     public void setText(String newText) {

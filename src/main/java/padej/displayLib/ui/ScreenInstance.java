@@ -325,7 +325,7 @@ public class ScreenInstance extends WidgetManager {
             luaContext.cleanup();
         }
         
-        UIManager.getInstance().closeScreen(viewer);
+        UIManager.getInstance().forceCloseScreen(viewer);
     }
 
     // -------------------------------------------------------------------------

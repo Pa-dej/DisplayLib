@@ -7,7 +7,9 @@ import org.bukkit.entity.Player;
 import org.luaj.vm2.Globals;
 
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Контекст выполнения Lua скрипта для конкретного экрана и игрока
@@ -27,6 +29,9 @@ public class LuaContext {
     
     // Persistent data - живет пока экран открыт
     private final Map<String, Object> persistentData = new HashMap<>();
+    
+    // Отслеживание загруженных скриптов
+    private final Set<String> loadedScripts = new HashSet<>();
     
     public LuaContext(Globals globals, ScreenInstance screen, Player player, DisplayLib plugin) {
         this.globals = globals;
@@ -73,5 +78,20 @@ public class LuaContext {
     public void cleanup() {
         timerAPI.cancelAllTimers();
         persistentData.clear();
+        loadedScripts.clear();
+    }
+    
+    /**
+     * Проверить, загружен ли скрипт в этот контекст
+     */
+    public boolean isScriptLoaded(String scriptPath) {
+        return loadedScripts.contains(scriptPath);
+    }
+    
+    /**
+     * Отметить скрипт как загруженный
+     */
+    public void markScriptLoaded(String scriptPath) {
+        loadedScripts.add(scriptPath);
     }
 }

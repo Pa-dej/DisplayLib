@@ -180,10 +180,17 @@ function btn_change_text_click()
 end
 
 function btn_toggle_visibility_click()
+    log.info("=== btn_toggle_visibility_click called ===")
     local demo_text = screen.widget("demo_text")
     if demo_text then
         local visible = demo_text.visible()
+        log.info("Current visibility: " .. tostring(visible))
+        
         demo_text.visible(not visible)
+        
+        -- Проверяем что изменение применилось
+        local new_visible = demo_text.visible()
+        log.info("New visibility: " .. tostring(new_visible))
         
         if visible then
             player.message("§7Текст скрыт")
@@ -193,7 +200,10 @@ function btn_toggle_visibility_click()
         
         player.sound("entity.enderman.teleport", 0.5, 1.5)
         log.info("Text visibility toggled: " .. tostring(not visible))
+    else
+        log.info("demo_text widget not found!")
     end
+    log.info("=== btn_toggle_visibility_click completed ===")
 end
 
 -- =============================================================================

@@ -25,6 +25,11 @@ public class WidgetAPI extends LuaTable {
                     return LuaValue.NIL;
                 }
                 
+                // Проверяем что виджет еще валиден
+                if (!textWidget.isValid()) {
+                    return LuaValue.NIL;
+                }
+                
                 if (arg.isnil()) {
                     // Геттер
                     return LuaValue.valueOf(textWidget.getText());
@@ -45,6 +50,11 @@ public class WidgetAPI extends LuaTable {
                     return LuaValue.NIL;
                 }
                 
+                // Проверяем что виджет еще валиден
+                if (!textWidget.isValid()) {
+                    return LuaValue.NIL;
+                }
+                
                 String text = arg.checkjstring();
                 textWidget.setHoveredText(text);
                 return LuaValue.NIL;
@@ -55,6 +65,11 @@ public class WidgetAPI extends LuaTable {
         set("visible", new OneArgFunction() {
             @Override
             public LuaValue call(LuaValue arg) {
+                // Проверяем что виджет еще валиден
+                if (!widget.isValid()) {
+                    return LuaValue.NIL;
+                }
+                
                 if (arg.isnil()) {
                     // Геттер
                     return LuaValue.valueOf(widget.isVisible());
@@ -105,6 +120,11 @@ public class WidgetAPI extends LuaTable {
             @Override
             public LuaValue call(LuaValue r, LuaValue g, LuaValue b) {
                 if (!(widget instanceof TextDisplayButtonWidget textWidget)) {
+                    return LuaValue.NIL;
+                }
+                
+                // Проверяем что виджет еще валиден
+                if (!textWidget.isValid()) {
                     return LuaValue.NIL;
                 }
                 

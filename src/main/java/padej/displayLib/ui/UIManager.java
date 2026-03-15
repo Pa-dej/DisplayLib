@@ -129,13 +129,18 @@ public class UIManager implements Listener {
      * Закрыть экран игрока (вызывается из кнопки / Lua).
      */
     public void closeScreen(Player player) {
-        forceCloseScreen(player);
+        ScreenInstance screen = activeScreens.get(player);
+        if (screen != null) {
+            // Вызываем tryClose для правильного порядка cleanup
+            screen.tryClose();
+        }
     }
 
     /**
      * Внутреннее закрытие — всегда удаляет entity.
+     * Используется только из tryClose() и для принудительного закрытия.
      */
-    private void forceCloseScreen(Player player) {
+    public void forceCloseScreen(Player player) {
         ScreenInstance screen = activeScreens.get(player);
         if (screen != null) {
             screen.remove();

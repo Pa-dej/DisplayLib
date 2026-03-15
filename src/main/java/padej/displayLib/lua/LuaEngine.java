@@ -82,28 +82,35 @@ public class LuaEngine {
      */
     public boolean callFunction(LuaContext context, String scriptPath, String functionName, LuaValue... args) {
         try {
-            Path fullPath = scriptsDirectory.resolve(scriptPath);
-            if (!Files.exists(fullPath)) {
-                plugin.getLogger().warning("Script file not found: " + scriptPath);
-                return false;
+            // Загружаем скрипт только если он еще не загружен в этот контекст
+            if (!context.isScriptLoaded(scriptPath)) {
+                Path fullPath = scriptsDirectory.resolve(scriptPath);
+                if (!Files.exists(fullPath)) {
+                    plugin.getLogger().warning("Script file not found: " + scriptPath);
+                    return false;
+                }
+                
+                String content = Files.readString(fullPath);
+                
+                // Загружаем скрипт в контекст пользователя (с API)
+                LuaValue script = context.getGlobals().load(content, scriptPath);
+                if (script.isnil()) {
+                    plugin.getLogger().warning("Failed to load script: " + scriptPath);
+                    return false;
+                }
+                
+                // Выполняем скрипт в контексте для загрузки функций
+                script.call();
+                
+                // Отмечаем скрипт как загруженный
+                context.markScriptLoaded(scriptPath);
+                plugin.getLogger().fine("Script loaded into context: " + scriptPath);
             }
             
-            String content = Files.readString(fullPath);
-            
-            // Загружаем скрипт в контекст пользователя (с API)
-            LuaValue script = context.getGlobals().load(content, scriptPath);
-            if (script.isnil()) {
-                plugin.getLogger().warning("Failed to load script: " + scriptPath);
-                return false;
-            }
-            
-            // Выполняем скрипт в контексте для загрузки функций
-            script.call();
-            
-            // Вызываем функцию
+            // Вызываем функцию (скрипт уже загружен)
             LuaValue function = context.getGlobals().get(functionName);
             if (function.isfunction()) {
-                plugin.getLogger().info("Calling Lua function: " + functionName + " in " + scriptPath);
+                plugin.getLogger().fine("Calling Lua function: " + functionName + " in " + scriptPath);
                 function.invoke(args);
                 return true;
             } else {
