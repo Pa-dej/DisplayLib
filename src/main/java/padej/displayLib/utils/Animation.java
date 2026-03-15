@@ -51,7 +51,8 @@ public class Animation {
             screen.setupDefaultWidgets(player);
         }, 2);
 
-        UIManager.getInstance().registerScreen(player, screen);
+        // TODO: Update for new YAML system - temporarily disabled
+        // UIManager.getInstance().registerScreen(player, screen);
     }
 
 }

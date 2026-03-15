@@ -235,6 +235,11 @@ public class ItemDisplayButtonConfig {
         this.glowOnHover = false;
         return this;
     }
+    
+    public ItemDisplayButtonConfig setGlowOnHover(boolean glowOnHover) {
+        this.glowOnHover = glowOnHover;
+        return this;
+    }
 
     public boolean isGlowOnHover() {
         return glowOnHover;

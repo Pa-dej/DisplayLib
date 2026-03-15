@@ -16,11 +16,15 @@ repositories {
 
 dependencies {
     compileOnly("io.papermc.paper:paper-api:1.21.11-R0.1-SNAPSHOT")
+
+    // Authlib для TextureCube (скины игроков)
     implementation("com.mojang:authlib:1.5.21") {
         exclude(group = "org.apache.logging.log4j", module = "log4j-core")
         exclude(group = "log4j", module = "log4j")
     }
+
     implementation("commons-io:commons-io:2.15.1")
+    implementation("org.luaj:luaj-jse:3.0.1")
 }
 
 tasks {
@@ -28,9 +32,9 @@ tasks {
         minecraftVersion("1.21")
     }
 
-    named("build") { // nyhehe
+    named("build") {
         doLast {
-            println("Сборка завершена!")
+            println("FINISH!")
             copy {
                 from(layout.buildDirectory.dir("libs"))
                 into("C:\\Users\\User\\Desktop\\servers\\paper-1.21.11\\plugins")

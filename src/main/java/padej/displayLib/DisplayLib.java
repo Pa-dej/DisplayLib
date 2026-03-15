@@ -1,5 +1,6 @@
 package padej.displayLib;
 
+import padej.displayLib.config.ScreenRegistry;
 import padej.displayLib.render.particles.DisplayParticle;
 import padej.displayLib.render.shapes.Highlight;
 import padej.displayLib.test_events.*;
@@ -14,10 +15,16 @@ import java.util.List;
 public final class DisplayLib extends JavaPlugin {
 
     public static final List<DisplayParticle> DISPLAY_PARTICLES = new ArrayList<>();
+    private ScreenRegistry screenRegistry;
 
     @Override
     public void onEnable() {
-        UIManager.getInstance();
+        // Инициализация новой системы экранов
+        screenRegistry = new ScreenRegistry(this);
+        screenRegistry.initialize();
+        
+        // Инициализация UIManager с реестром экранов
+        UIManager.getInstance().initialize(screenRegistry);
 
         getServer().getPluginManager().registerEvents(new ApplyHighlightToBlockTest(), this);
         getServer().getPluginManager().registerEvents(new CreateDisplayParticleFirstTest(), this);
@@ -33,10 +40,17 @@ public final class DisplayLib extends JavaPlugin {
         Highlight.removeAllSelections();
         Highlight.startColorUpdateTask();
         startParticleTask();
+        
+        getLogger().info("DisplayLib enabled with new YAML-based screen system!");
     }
 
     @Override
     public void onDisable() {
+        // Остановка screen registry
+        if (screenRegistry != null) {
+            screenRegistry.shutdown();
+        }
+        
         UIManager manager = UIManager.getInstance();
         if (manager.hasActiveScreens()) {
             getLogger().info("Cleaning up active UI screens...");
@@ -48,6 +62,10 @@ public final class DisplayLib extends JavaPlugin {
 
     public static JavaPlugin getInstance() {
         return JavaPlugin.getPlugin(DisplayLib.class);
+    }
+    
+    public ScreenRegistry getScreenRegistry() {
+        return screenRegistry;
     }
 
     private void startParticleTask() {

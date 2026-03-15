@@ -28,15 +28,6 @@ public abstract class Screen extends WidgetManager implements IDisplayable, IPar
     private TextDisplayButtonWidget background;
     private final Class<? extends Screen> CURRENT_SCREEN_CLASS;
 
-    private boolean isFollowing = false;
-    public static boolean isSaved = false;
-    private Vector relativePosition;
-    private static Vector savedPosition;
-
-    @AlwaysOnScreen(Screen.class)
-    private TextDisplayButtonWidget followButton;
-    @AlwaysOnScreen(Screen.class)
-    private TextDisplayButtonWidget saveButton;
     @AlwaysOnScreen(Screen.class)
     private TextDisplayButtonWidget closeButton;
 
@@ -76,13 +67,6 @@ public abstract class Screen extends WidgetManager implements IDisplayable, IPar
     
     // Принудительное удаление (например, при выходе игрока)
     public void remove(boolean force) {
-        if (!force && isSaved && !isPlayerInSavedRange()) {
-            if (viewer != null) {
-                DisplayLib.getInstance().getLogger().info("Screen removal blocked for " + viewer.getName() + " - saved and not in range");
-            }
-            return;
-        }
-
         if (viewer != null) {
             DisplayLib.getInstance().getLogger().info("Removing screen for " + viewer.getName() + " (force=" + force + ")");
         }
@@ -104,11 +88,7 @@ public abstract class Screen extends WidgetManager implements IDisplayable, IPar
     }
 
     public void removeWithAnimation() {
-        if (isSaved && !isPlayerInSavedRange()) {
-            return;
-        }
         resetVarsAndBackground();
-
         softRemoveWithAnimation();
     }
 
@@ -145,11 +125,6 @@ public abstract class Screen extends WidgetManager implements IDisplayable, IPar
     }
 
     private void resetVarsAndBackground() {
-        isFollowing = false;
-        isSaved = false;
-        relativePosition = null;
-        savedPosition = null;
-
         updateBackgroundColor(null);
     }
 
@@ -235,7 +210,7 @@ public abstract class Screen extends WidgetManager implements IDisplayable, IPar
             return;
         }
 
-        if (followButton == null || saveButton == null || closeButton == null) {
+        if (closeButton == null) {
             createTitleBarControlWidgets();
         }
 
@@ -291,18 +266,20 @@ public abstract class Screen extends WidgetManager implements IDisplayable, IPar
 
         WidgetPosition basePosition = new WidgetPosition(0.52, 0.92);
 
+        // Кнопка возврата (только если не главный экран)
         if (!this.getClass().isAnnotationPresent(Main.class)) {
             TextDisplayButtonConfig returnConfig = new TextDisplayButtonConfig(
                     Component.text("⏴").color(TextColor.fromHexString("#fafeff")),
                     Component.text("⏴").color(TextColor.fromHexString("#aaaeaf")),
                     () -> {
-                        Screen currentScreen = (Screen) UIManager.getInstance().getActiveScreen(viewer);
+                        ScreenInstance currentScreen = UIManager.getInstance().getActiveScreen(viewer);
                         if (currentScreen != null) {
-                            ChangeScreen.switchToParent(viewer, currentScreen.getCurrentScreenClass());
+                            // TODO: Implement navigation in new YAML system
+                            UIManager.getInstance().closeScreen(viewer);
                         }
                     }
             )
-                    .setPosition(basePosition.clone().addHorizontal(-0.28))
+                    .setPosition(basePosition.clone().addHorizontal(-0.14))
                     .setScale(0.75f, 0.75f, 0.75f)
                     .setTolerance(0.04)
                     .setBackgroundColor(org.bukkit.Color.fromRGB(30, 30, 30))
@@ -313,6 +290,7 @@ public abstract class Screen extends WidgetManager implements IDisplayable, IPar
             createTextWidget(returnConfig);
         }
 
+        // Кнопка закрытия
         TextDisplayButtonConfig closeConfig = new TextDisplayButtonConfig(
                 Component.text("⏺").color(TextColor.fromHexString("#ff2147")),
                 Component.text("⏺").color(TextColor.fromHexString("#af2141")),
@@ -326,111 +304,12 @@ public abstract class Screen extends WidgetManager implements IDisplayable, IPar
                 .setHoveredBackgroundAlpha(0)
                 .setHoveredBackgroundColor(org.bukkit.Color.fromRGB(60, 60, 60));
 
-        TextDisplayButtonConfig followConfig = new TextDisplayButtonConfig(
-                Component.text("⏺").color(TextColor.fromHexString("#ffc72c")),
-                Component.text("⏺").color(TextColor.fromHexString("#af802b")),
-                this::toggleFollow
-        )
-                .setPosition(basePosition.clone())
-                .setScale(0.75f, 0.75f, 0.75f)
-                .setTolerance(0.035)
-                .setBackgroundColor(org.bukkit.Color.fromRGB(30, 30, 30))
-                .setBackgroundAlpha(0)
-                .setHoveredBackgroundAlpha(0)
-                .setHoveredBackgroundColor(org.bukkit.Color.fromRGB(60, 60, 60));
-
-        TextDisplayButtonConfig saveConfig = new TextDisplayButtonConfig(
-                Component.text("⏺").color(TextColor.fromHexString("#2aff55")),
-                Component.text("⏺").color(TextColor.fromHexString("#29af48")),
-                this::toggleSave
-        )
-                .setPosition(basePosition.clone().addHorizontal(-0.14))
-                .setScale(0.75f, 0.75f, 0.75f)
-                .setTolerance(0.035)
-                .setBackgroundColor(org.bukkit.Color.fromRGB(30, 30, 30))
-                .setBackgroundAlpha(0)
-                .setHoveredBackgroundAlpha(0)
-                .setHoveredBackgroundColor(org.bukkit.Color.fromRGB(60, 60, 60));
-
         this.closeButton = createTextWidget(closeConfig);
-        this.followButton = createTextWidget(followConfig);
-        this.saveButton = createTextWidget(saveConfig);
-
-        if (followButton != null) {
-            followButton.getDisplay().setGlowing(isFollowing);
-        }
-
-        if (saveButton != null) {
-            saveButton.getDisplay().setGlowing(isSaved);
-        }
-    }
-
-    public void toggleFollow() {
-        if (isSaved) {
-            isSaved = false;
-            savedPosition = null;
-            if (saveButton != null) {
-                saveButton.getDisplay().setGlowing(false);
-            }
-        }
-
-        children.removeIf(widget -> {
-            if (widget instanceof ItemDisplayButtonWidget) {
-                return ((ItemDisplayButtonWidget) widget).getDisplay() == null ||
-                        !((ItemDisplayButtonWidget) widget).getDisplay().isValid();
-            } else if (widget instanceof TextDisplayButtonWidget) {
-                return ((TextDisplayButtonWidget) widget).getDisplay() == null ||
-                        !((TextDisplayButtonWidget) widget).getDisplay().isValid();
-            }
-            return false;
-        });
-
-        isFollowing = !isFollowing;
-        if (followButton != null) {
-            followButton.getDisplay().setGlowing(isFollowing);
-        }
-
-        if (isFollowing) {
-            Vector playerPos = viewer.getLocation().toVector();
-            Vector displayPos = location.toVector();
-            relativePosition = displayPos.subtract(playerPos);
-
-            updateBackgroundColor("#af802b");
-            viewer.playSound(viewer.getLocation(), org.bukkit.Sound.BLOCK_NOTE_BLOCK_PLING, 0.5f, 2.0f);
-        } else {
-            updateBackgroundColor("#000000");
-            viewer.playSound(viewer.getLocation(), org.bukkit.Sound.BLOCK_NOTE_BLOCK_PLING, 0.5f, 0.5f);
-        }
-    }
-
-    private void toggleSave() {
-        if (isFollowing) {
-            isFollowing = false;
-            relativePosition = null;
-            if (followButton != null) {
-                followButton.getDisplay().setGlowing(false);
-            }
-        }
-
-        isSaved = !isSaved;
-        if (saveButton != null) {
-            saveButton.getDisplay().setGlowing(isSaved);
-        }
-
-        if (isSaved) {
-            savedPosition = location.toVector();
-
-            updateBackgroundColor("#29af48");
-            viewer.playSound(viewer.getLocation(), org.bukkit.Sound.BLOCK_ANVIL_USE, 0.5f, 2.0f);
-        } else {
-            updateBackgroundColor("#000000");
-            viewer.playSound(viewer.getLocation(), org.bukkit.Sound.BLOCK_ANVIL_LAND, 0.3f, 1.5f);
-        }
     }
 
     private void updateBackgroundColor(String hexColor) {
         if (background != null && background.getDisplay() != null) {
-            int alpha = (isFollowing || isSaved) ? 100 : 160;
+            int alpha = 160; // Стандартная прозрачность
 
             if (hexColor == null) {
                 background.getDisplay().setBackgroundColor(Color.fromARGB(alpha, 0, 0, 0));
@@ -452,49 +331,11 @@ public abstract class Screen extends WidgetManager implements IDisplayable, IPar
     }
     
     private void tryCloseInternal() {
-        if (!isSaved || isPlayerInSavedRange()) {
-            viewer.playSound(viewer.getLocation(), org.bukkit.Sound.BLOCK_WOODEN_DOOR_CLOSE, 0.5f, 1.0f);
+        viewer.playSound(viewer.getLocation(), org.bukkit.Sound.BLOCK_WOODEN_DOOR_CLOSE, 0.5f, 1.0f);
 
-            this.removeWithAnimation();
+        this.removeWithAnimation();
 
-            if (onClose != null) onClose.run();
-        }
-    }
-
-    private boolean isPlayerInSavedRange() {
-        if (!isSaved || savedPosition == null) return true;
-        return viewer.getLocation().toVector().distance(savedPosition) <= 5;
-    }
-
-    public void updatePosition() {
-        if (!isFollowing) return;
-
-        children.removeIf(widget -> !widget.isValid());
-
-        Location newLoc = viewer.getLocation().clone();
-        Vector newPos = newLoc.toVector().add(relativePosition);
-        location.setX(newPos.getX());
-        location.setY(newPos.getY());
-        location.setZ(newPos.getZ());
-
-        if (background != null && background.isValid()) {
-            TextDisplay textDisplay = background.getDisplay();
-            Location displayLoc = textDisplay.getLocation();
-            displayLoc.setX(location.getX());
-            displayLoc.setY(location.getY());
-            displayLoc.setZ(location.getZ());
-            textDisplay.teleport(displayLoc);
-        }
-
-        for (Widget widget : new ArrayList<>(children)) {
-            if (widget == background) continue;
-
-            if (widget instanceof ItemDisplayButtonWidget) {
-                updateWidgetPosition((ItemDisplayButtonWidget) widget);
-            } else if (widget instanceof TextDisplayButtonWidget) {
-                updateWidgetPosition((TextDisplayButtonWidget) widget);
-            }
-        }
+        if (onClose != null) onClose.run();
     }
 
     private void updateWidgetPosition(ItemDisplayButtonWidget widget) {
@@ -605,9 +446,5 @@ public abstract class Screen extends WidgetManager implements IDisplayable, IPar
     @Override
     public void createWithAnimation(Player player) {
         Animation.createDefaultScreenWithAnimation(this, player);
-    }
-
-    public boolean isFollowing() {
-        return isFollowing;
     }
 }

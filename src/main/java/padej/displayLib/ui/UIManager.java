@@ -2,8 +2,8 @@ package padej.displayLib.ui;
 
 import padej.displayLib.DisplayLib;
 import padej.displayLib.api.events.DisplayClickEvent;
-import padej.displayLib.ui.widgets.ItemDisplayButtonWidget;
-import padej.displayLib.ui.widgets.TextDisplayButtonWidget;
+import padej.displayLib.config.ScreenDefinition;
+import padej.displayLib.config.ScreenRegistry;
 import padej.displayLib.ui.widgets.Widget;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
@@ -24,9 +24,10 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class UIManager implements Listener {
     private static UIManager instance;
-    private final Map<Player, WidgetManager> activeScreens = new ConcurrentHashMap<>();
+    private final Map<Player, ScreenInstance> activeScreens = new ConcurrentHashMap<>();
     private BukkitTask updateTask;
     private boolean isUpdateTaskRunning = false;
+    private ScreenRegistry screenRegistry;
 
     private UIManager() {
         Bukkit.getPluginManager().registerEvents(this, DisplayLib.getInstance());
@@ -39,13 +40,111 @@ public class UIManager implements Listener {
         return instance;
     }
 
-    public WidgetManager getActiveScreen(Player player) {
+    public void initialize(ScreenRegistry screenRegistry) {
+        this.screenRegistry = screenRegistry;
+    }
+
+    public ScreenInstance getActiveScreen(Player player) {
         return activeScreens.get(player);
     }
 
-    public void registerScreen(Player player, WidgetManager manager) {
-        DisplayLib.getInstance().getLogger().info("Registering UI screen for player " + player.getName());
-        activeScreens.put(player, manager);
+    // -------------------------------------------------------------------------
+    // Screen open / close
+    // -------------------------------------------------------------------------
+
+    /**
+     * Открыть экран перед игроком (позиция вычисляется автоматически).
+     */
+    public boolean openScreen(Player player, String screenId) {
+        return openScreen(player, screenId, defaultLocationFor(player));
+    }
+
+    /**
+     * Переключить экран, сохранив позицию и ориентацию текущего.
+     * Используется при SWITCH_SCREEN из ScreenInstance.
+     */
+    public boolean switchScreen(Player player, String screenId) {
+        Location existingLocation = null;
+        float[] existingOrientation = null;
+        ScreenInstance current = activeScreens.get(player);
+        if (current != null) {
+            existingLocation = current.getLocation();
+            existingOrientation = current.getScreenOrientation(); // Сохраняем ориентацию
+        }
+        
+        if (existingLocation != null && existingOrientation != null) {
+            return openScreen(player, screenId, existingLocation, existingOrientation[0], existingOrientation[1]);
+        } else {
+            return openScreen(player, screenId, defaultLocationFor(player));
+        }
+    }
+
+    /**
+     * Открыть экран в конкретной позиции.
+     */
+    public boolean openScreen(Player player, String screenId, Location location) {
+        return openScreen(player, screenId, location, null, null);
+    }
+    
+    /**
+     * Открыть экран в конкретной позиции с заданной ориентацией.
+     */
+    public boolean openScreen(Player player, String screenId, Location location, Float yaw, Float pitch) {
+        if (screenRegistry == null) {
+            DisplayLib.getInstance().getLogger().warning("ScreenRegistry not initialized!");
+            return false;
+        }
+
+        ScreenDefinition definition = screenRegistry.getScreen(screenId);
+        if (definition == null) {
+            DisplayLib.getInstance().getLogger().warning("Screen not found: " + screenId);
+            player.sendMessage("§cЭкран не найден: " + screenId);
+            return false;
+        }
+
+        // Закрываем старый экран БЕЗ потери позиции (она уже снята выше)
+        forceCloseScreen(player);
+
+        ScreenInstance instance;
+        if (yaw != null && pitch != null) {
+            // Создаем с заданной ориентацией (для переключения экранов)
+            instance = new ScreenInstance(screenId, definition, player, location, yaw, pitch);
+        } else {
+            // Создаем с автоматической ориентацией (для новых экранов)
+            instance = new ScreenInstance(screenId, definition, player, location);
+        }
+        
+        registerScreen(player, instance);
+
+        DisplayLib.getInstance().getLogger().info(
+                "Opened screen '" + screenId + "' for " + player.getName());
+        return true;
+    }
+
+    /**
+     * Закрыть экран игрока (вызывается из кнопки / Lua).
+     */
+    public void closeScreen(Player player) {
+        forceCloseScreen(player);
+    }
+
+    /**
+     * Внутреннее закрытие — всегда удаляет entity.
+     */
+    private void forceCloseScreen(Player player) {
+        ScreenInstance screen = activeScreens.get(player);
+        if (screen != null) {
+            screen.remove();
+            unregisterScreen(player);
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // Registration
+    // -------------------------------------------------------------------------
+
+    public void registerScreen(Player player, ScreenInstance screenInstance) {
+        activeScreens.put(player, screenInstance);
         startUpdateTaskIfNeeded();
     }
 
@@ -55,79 +154,76 @@ public class UIManager implements Listener {
             stopUpdateTask();
         }
     }
-    private Widget getNearestHoveredWidget(WidgetManager manager) {
-        Widget nearestWidget = null;
-        double nearestDistance = Double.MAX_VALUE;
 
-        for (Widget widget : manager.children) {
-            if (widget.isHovered()) {
-                Location widgetLoc = widget.getLocation();
-
-                if (widgetLoc != null) {
-                    double distance = manager.viewer.getEyeLocation().distance(widgetLoc);
-                    if (distance < nearestDistance) {
-                        nearestDistance = distance;
-                        nearestWidget = widget;
-                    }
-                }
-            }
-        }
-        return nearestWidget;
-    }
+    // -------------------------------------------------------------------------
+    // Input handling
+    // -------------------------------------------------------------------------
 
     @EventHandler
     public void onPlayerInteract(PlayerInteractEvent event) {
         Player player = event.getPlayer();
-        WidgetManager manager = activeScreens.get(player);
+        ScreenInstance screen = activeScreens.get(player);
+        if (screen == null) return;
 
-        if (manager != null) {
-            if (event.getAction() == Action.LEFT_CLICK_AIR || event.getAction() == Action.LEFT_CLICK_BLOCK) {
-                Widget nearestWidget = getNearestHoveredWidget(manager);
-                if (nearestWidget != null) {
-                    event.setCancelled(true);
-                    DisplayClickEvent clickEvent = new DisplayClickEvent(player, nearestWidget);
-                    Bukkit.getPluginManager().callEvent(clickEvent);
-                    if (!clickEvent.isCancelled()) {
-                        nearestWidget.handleClick();
-                    }
-                }
+        if (event.getAction() == Action.LEFT_CLICK_AIR
+                || event.getAction() == Action.LEFT_CLICK_BLOCK) {
+            Widget nearest = getNearestHovered(screen);
+            if (nearest != null) {
+                event.setCancelled(true);
+                fireClickEvent(player, nearest);
             }
         }
     }
 
     @EventHandler
     public void onEntityAttack(EntityDamageByEntityEvent event) {
-        if (!(event.getDamager() instanceof Player)) {
-            return;
-        }
-        
-        Player player = (Player) event.getDamager();
-        WidgetManager manager = activeScreens.get(player);
+        if (!(event.getDamager() instanceof Player player)) return;
+        ScreenInstance screen = activeScreens.get(player);
+        if (screen == null) return;
 
-        if (manager != null) {
-            Widget nearestWidget = getNearestHoveredWidget(manager);
-            if (nearestWidget != null) {
-                event.setCancelled(true);
-                DisplayClickEvent clickEvent = new DisplayClickEvent(player, nearestWidget);
-                Bukkit.getPluginManager().callEvent(clickEvent);
-                if (!clickEvent.isCancelled()) {
-                    nearestWidget.handleClick();
-                }
-            }
+        Widget nearest = getNearestHovered(screen);
+        if (nearest != null) {
+            event.setCancelled(true);
+            fireClickEvent(player, nearest);
         }
     }
-    private void startUpdateTaskIfNeeded() {
-        if (!isUpdateTaskRunning) {
-            updateTask = Bukkit.getScheduler().runTaskTimer(DisplayLib.getInstance(), () -> {
-                for (Map.Entry<Player, WidgetManager> entry : activeScreens.entrySet()) {
-                    WidgetManager manager = entry.getValue();
-                    if (manager != null) {
-                        manager.update();
-                    }
-                }
-            }, 0L, 5L);
-            isUpdateTaskRunning = true;
+
+    private void fireClickEvent(Player player, Widget widget) {
+        DisplayClickEvent clickEvent = new DisplayClickEvent(player, widget);
+        Bukkit.getPluginManager().callEvent(clickEvent);
+        if (!clickEvent.isCancelled()) {
+            widget.handleClick();
         }
+    }
+
+    private Widget getNearestHovered(ScreenInstance screen) {
+        Widget nearest = null;
+        double nearestDist = Double.MAX_VALUE;
+        for (Widget widget : screen.children) {
+            if (!widget.isHovered()) continue;
+            Location loc = widget.getLocation();
+            if (loc == null) continue;
+            double dist = screen.viewer.getEyeLocation().distance(loc);
+            if (dist < nearestDist) {
+                nearestDist = dist;
+                nearest = widget;
+            }
+        }
+        return nearest;
+    }
+
+    // -------------------------------------------------------------------------
+    // Update loop
+    // -------------------------------------------------------------------------
+
+    private void startUpdateTaskIfNeeded() {
+        if (isUpdateTaskRunning) return;
+        updateTask = Bukkit.getScheduler().runTaskTimer(DisplayLib.getInstance(), () -> {
+            for (ScreenInstance screen : activeScreens.values()) {
+                if (screen != null) screen.update();
+            }
+        }, 0L, 5L);
+        isUpdateTaskRunning = true;
     }
 
     private void stopUpdateTask() {
@@ -137,67 +233,39 @@ public class UIManager implements Listener {
         }
     }
 
+    // -------------------------------------------------------------------------
+    // Lifecycle events
+    // -------------------------------------------------------------------------
+
     @EventHandler(priority = EventPriority.HIGHEST)
     public void onPlayerQuit(PlayerQuitEvent event) {
-        Player player = event.getPlayer();
-        
-        // Логирование для отладки - всегда показываем, что игрок вышел
-        DisplayLib.getInstance().getLogger().info("Player " + player.getName() + " quit. Active screens: " + activeScreens.size());
-        
-        WidgetManager manager = activeScreens.get(player);
-        if (manager != null) {
-            // Логирование для отладки
-            DisplayLib.getInstance().getLogger().info("Removing UI for player " + player.getName() + " on quit");
-            
-            // Принудительное удаление при выходе игрока
-            if (manager instanceof Screen) {
-                ((Screen) manager).remove(true);
-            } else {
-                manager.remove();
-            }
-            unregisterScreen(player);
-            
-            DisplayLib.getInstance().getLogger().info("UI removed for player " + player.getName());
-        } else {
-            DisplayLib.getInstance().getLogger().info("No active UI found for player " + player.getName());
-        }
+        forceCloseScreen(event.getPlayer());
     }
 
     @EventHandler(priority = EventPriority.HIGHEST)
     public void onPlayerDeath(PlayerDeathEvent event) {
-        Player player = event.getEntity();
-        WidgetManager manager = activeScreens.get(player);
-        if (manager != null) {
-            // Принудительное удаление при смерти игрока
-            if (manager instanceof Screen) {
-                ((Screen) manager).remove(true);
-            } else {
-                manager.remove();
-            }
-            unregisterScreen(player);
-        }
+        forceCloseScreen(event.getEntity());
     }
 
     public void cleanup() {
-        Map<Player, WidgetManager> screensToRemove = new HashMap<>(activeScreens);
-
-        for (Map.Entry<Player, WidgetManager> entry : screensToRemove.entrySet()) {
-            WidgetManager manager = entry.getValue();
-            if (manager != null) {
-                // Принудительное удаление при cleanup
-                if (manager instanceof Screen) {
-                    ((Screen) manager).remove(true);
-                } else {
-                    manager.remove();
-                }
-                unregisterScreen(entry.getKey());
-            }
-        }
-
+        new HashMap<>(activeScreens).forEach((player, screen) -> {
+            if (screen != null) screen.remove();
+            unregisterScreen(player);
+        });
         stopUpdateTask();
     }
 
     public boolean hasActiveScreens() {
         return !activeScreens.isEmpty();
+    }
+
+    // -------------------------------------------------------------------------
+    // Helpers
+    // -------------------------------------------------------------------------
+
+    private Location defaultLocationFor(Player player) {
+        return player.getLocation()
+                .add(0, player.getHeight() / 2.0, 0)
+                .add(player.getLocation().getDirection().multiply(2));
     }
 }
