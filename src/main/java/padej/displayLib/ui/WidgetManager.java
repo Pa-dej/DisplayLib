@@ -16,7 +16,11 @@ public abstract class WidgetManager {
     public Player viewer;
     protected Location location;
     
+    // Dirty flag для оптимизации cleanup
     private boolean isDirty = false;
+    
+    // Throttling для проверки расстояния
+    private int rangeCheckTimer = 0;
     
     public WidgetManager(Player viewer, Location location) {
         this.viewer = viewer;
@@ -32,12 +36,29 @@ public abstract class WidgetManager {
         isDirty = true;
     }
     
+    // Абстрактный метод для проверки расстояния (реализуется в Screen)
+    protected abstract boolean isPlayerInRange();
+    
+    // Абстрактный метод для закрытия экрана (реализуется в Screen)
+    protected abstract void tryClose();
+    
     public void update() {
+        // Проверка расстояния каждые 10 тиков (2 раза в секунду)
+        if (++rangeCheckTimer >= 10) {
+            rangeCheckTimer = 0;
+            if (!isPlayerInRange()) {
+                tryClose();
+                return;
+            }
+        }
+        
+        // Удаляем недействительные виджеты только если есть изменения
         if (isDirty) {
             children.removeIf(widget -> !widget.isValid());
             isDirty = false;
         }
-
+        
+        // Обновляем оставшиеся виджеты
         for (Widget widget : children) {
             widget.update();
         }

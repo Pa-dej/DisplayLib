@@ -71,8 +71,20 @@ public abstract class Screen extends WidgetManager implements IDisplayable, IPar
 
     @Override
     public void remove() {
-        if (isSaved && !isPlayerInSavedRange()) {
+        remove(false);
+    }
+    
+    // Принудительное удаление (например, при выходе игрока)
+    public void remove(boolean force) {
+        if (!force && isSaved && !isPlayerInSavedRange()) {
+            if (viewer != null) {
+                DisplayLib.getInstance().getLogger().info("Screen removal blocked for " + viewer.getName() + " - saved and not in range");
+            }
             return;
+        }
+
+        if (viewer != null) {
+            DisplayLib.getInstance().getLogger().info("Removing screen for " + viewer.getName() + " (force=" + force + ")");
         }
 
         resetVarsAndBackground();
@@ -141,8 +153,19 @@ public abstract class Screen extends WidgetManager implements IDisplayable, IPar
         updateBackgroundColor(null);
     }
 
-    public boolean isPlayerInRange() {
-        return viewer.getLocation().distance(location) <= 5;
+    @Override
+    protected boolean isPlayerInRange() {
+        return isPlayerInRangePublic();
+    }
+    
+    // Публичный метод для внешнего использования
+    public boolean isPlayerInRangePublic() {
+        return viewer.getLocation().distanceSquared(location) <= 25; // 5² = 25, избегаем sqrt
+    }
+
+    @Override
+    protected void tryClose() {
+        tryClosePublic();
     }
 
     @Override
@@ -293,7 +316,7 @@ public abstract class Screen extends WidgetManager implements IDisplayable, IPar
         TextDisplayButtonConfig closeConfig = new TextDisplayButtonConfig(
                 Component.text("⏺").color(TextColor.fromHexString("#ff2147")),
                 Component.text("⏺").color(TextColor.fromHexString("#af2141")),
-                this::tryClose
+                this::tryClosePublic
         )
                 .setPosition(basePosition.clone().addHorizontal(0.14))
                 .setScale(0.75f, 0.75f, 0.75f)
@@ -423,7 +446,12 @@ public abstract class Screen extends WidgetManager implements IDisplayable, IPar
         }
     }
 
-    public void tryClose() {
+    // Публичный метод для внешнего использования
+    public void tryClosePublic() {
+        tryCloseInternal();
+    }
+    
+    private void tryCloseInternal() {
         if (!isSaved || isPlayerInSavedRange()) {
             viewer.playSound(viewer.getLocation(), org.bukkit.Sound.BLOCK_WOODEN_DOOR_CLOSE, 0.5f, 1.0f);
 

@@ -2,6 +2,8 @@ package padej.displayLib.test_events;
 
 import padej.displayLib.utils.ItemUtil;
 import padej.displayLib.ui.UIManager;
+import padej.displayLib.ui.WidgetManager;
+import padej.displayLib.ui.Screen;
 import padej.displayLib.ui.screens.MainScreen;
 import padej.displayLib.utils.Animation;
 import org.bukkit.Location;
@@ -21,7 +23,17 @@ public class CreateTestUI implements Listener {
                 ItemUtil.isExperimental(player.getInventory().getItemInMainHand()) &&
                 event.getAction().isRightClick()) {
 
-            UIManager.getInstance().unregisterScreen(player);
+            // Правильно удаляем существующий экран
+            UIManager uiManager = UIManager.getInstance();
+            WidgetManager existingManager = uiManager.getActiveScreen(player);
+            if (existingManager != null) {
+                if (existingManager instanceof Screen) {
+                    ((Screen) existingManager).remove(true);
+                } else {
+                    existingManager.remove();
+                }
+                uiManager.unregisterScreen(player);
+            }
 
             Location spawnLocation = player.getLocation()
                     .add(0, player.getHeight() / 2, 0)
@@ -35,9 +47,5 @@ public class CreateTestUI implements Listener {
         }
     }
 
-    @EventHandler
-    public void onPlayerQuit(org.bukkit.event.player.PlayerQuitEvent event) {
-        Player player = event.getPlayer();
-        UIManager.getInstance().unregisterScreen(player);
-    }
+    // Удален дублированный обработчик onPlayerQuit - теперь UIManager полностью отвечает за cleanup
 }

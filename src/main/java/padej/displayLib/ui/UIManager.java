@@ -44,6 +44,7 @@ public class UIManager implements Listener {
     }
 
     public void registerScreen(Player player, WidgetManager manager) {
+        DisplayLib.getInstance().getLogger().info("Registering UI screen for player " + player.getName());
         activeScreens.put(player, manager);
         startUpdateTaskIfNeeded();
     }
@@ -139,10 +140,26 @@ public class UIManager implements Listener {
     @EventHandler(priority = EventPriority.HIGHEST)
     public void onPlayerQuit(PlayerQuitEvent event) {
         Player player = event.getPlayer();
+        
+        // Логирование для отладки - всегда показываем, что игрок вышел
+        DisplayLib.getInstance().getLogger().info("Player " + player.getName() + " quit. Active screens: " + activeScreens.size());
+        
         WidgetManager manager = activeScreens.get(player);
         if (manager != null) {
-            manager.remove();
+            // Логирование для отладки
+            DisplayLib.getInstance().getLogger().info("Removing UI for player " + player.getName() + " on quit");
+            
+            // Принудительное удаление при выходе игрока
+            if (manager instanceof Screen) {
+                ((Screen) manager).remove(true);
+            } else {
+                manager.remove();
+            }
             unregisterScreen(player);
+            
+            DisplayLib.getInstance().getLogger().info("UI removed for player " + player.getName());
+        } else {
+            DisplayLib.getInstance().getLogger().info("No active UI found for player " + player.getName());
         }
     }
 
@@ -151,7 +168,12 @@ public class UIManager implements Listener {
         Player player = event.getEntity();
         WidgetManager manager = activeScreens.get(player);
         if (manager != null) {
-            manager.remove();
+            // Принудительное удаление при смерти игрока
+            if (manager instanceof Screen) {
+                ((Screen) manager).remove(true);
+            } else {
+                manager.remove();
+            }
             unregisterScreen(player);
         }
     }
@@ -162,7 +184,12 @@ public class UIManager implements Listener {
         for (Map.Entry<Player, WidgetManager> entry : screensToRemove.entrySet()) {
             WidgetManager manager = entry.getValue();
             if (manager != null) {
-                manager.remove();
+                // Принудительное удаление при cleanup
+                if (manager instanceof Screen) {
+                    ((Screen) manager).remove(true);
+                } else {
+                    manager.remove();
+                }
                 unregisterScreen(entry.getKey());
             }
         }
