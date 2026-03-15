@@ -113,11 +113,14 @@ public class ScreenInstance extends WidgetManager {
         TextDisplayButtonConfig cfg = new TextDisplayButtonConfig(
                 Component.text(bg.getText()),
                 Component.text(bg.getText()),
-                () -> {}
+                null  // Убираем onClick для фона
         )
                 .setScale(s[0], s[1], s[2])
                 .setBackgroundColor(Color.fromRGB(c[0], c[1], c[2]))
                 .setBackgroundAlpha(bg.getAlpha())
+                .setHoveredBackgroundColor(Color.fromRGB(c[0], c[1], c[2]))  // Тот же цвет для hover
+                .setHoveredBackgroundAlpha(bg.getAlpha())  // Та же прозрачность для hover
+                .setTolerance(0.0, 0.0)  // Убираем толерантность - нельзя кликнуть
                 .setPosition(new WidgetPosition(0, 0, 0))
                 .setTranslation(new Vector3f(0, 0, 0));
 
