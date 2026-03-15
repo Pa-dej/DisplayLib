@@ -32,15 +32,75 @@ tasks {
         minecraftVersion("1.21")
     }
 
+    jar {
+        from(configurations.runtimeClasspath.get().map { if (it.isDirectory) it else zipTree(it) })
+        duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    }
+
     named("build") {
         doLast {
             println("FINISH!")
+            
+            // Copy JAR to server
             copy {
                 from(layout.buildDirectory.dir("libs"))
                 into("C:\\Users\\User\\Desktop\\servers\\paper-1.21.11\\plugins")
                 include("*-${version}.jar")
                 exclude("*-sources.jar")
             }
+            
+            // Copy example files to server plugin directory
+            val serverPluginDir = "C:\\Users\\User\\Desktop\\servers\\paper-1.21.11\\plugins\\DisplayLib"
+            
+            // Create directories
+            file("${serverPluginDir}\\screens").mkdirs()
+            file("${serverPluginDir}\\scripts").mkdirs()
+            
+            // Copy example screens
+            copy {
+                from("src/main/resources/examples/screens")
+                into("${serverPluginDir}\\screens")
+                include("*.yml", "*.yaml")
+            }
+            
+            // Copy example scripts
+            copy {
+                from("src/main/resources/examples/scripts")
+                into("${serverPluginDir}\\scripts")
+                include("*.lua")
+            }
+            
+            println("Example files copied to server!")
+        }
+    }
+
+    // Task to copy only examples without rebuilding
+    register("copyExamples") {
+        group = "development"
+        description = "Copy example files to server without rebuilding"
+        
+        doLast {
+            val serverPluginDir = "C:\\Users\\User\\Desktop\\servers\\paper-1.21.11\\plugins\\DisplayLib"
+            
+            // Create directories
+            file("${serverPluginDir}\\screens").mkdirs()
+            file("${serverPluginDir}\\scripts").mkdirs()
+            
+            // Copy example screens
+            copy {
+                from("src/main/resources/examples/screens")
+                into("${serverPluginDir}\\screens")
+                include("*.yml", "*.yaml")
+            }
+            
+            // Copy example scripts
+            copy {
+                from("src/main/resources/examples/scripts")
+                into("${serverPluginDir}\\scripts")
+                include("*.lua")
+            }
+            
+            println("Example files copied to server!")
         }
     }
 

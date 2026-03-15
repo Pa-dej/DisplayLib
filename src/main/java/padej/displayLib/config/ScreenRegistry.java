@@ -192,4 +192,11 @@ public class ScreenRegistry {
         // Пока что всегда включен для разработки
         return true;
     }
+    
+    /**
+     * Получить загрузчик экранов (для команд)
+     */
+    public ScreenLoader getScreenLoader() {
+        return screenLoader;
+    }
 }

@@ -17,4 +17,14 @@ public interface Widget {
     default boolean isValid() {
         return true;
     }
+    
+    // Методы для Lua API
+    boolean isVisible();
+    void setVisible(boolean visible);
+    
+    boolean isEnabled();
+    void setEnabled(boolean enabled);
+    
+    String getTooltip();
+    void setTooltip(String tooltip);
 }

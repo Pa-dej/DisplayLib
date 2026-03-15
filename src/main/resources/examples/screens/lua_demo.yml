@@ -1,0 +1,569 @@
+id: lua_demo
+background:
+  color: [15, 15, 25]
+  alpha: 180
+  scale: [16.0, 10.0, 1.0]
+  text: " "
+
+scripts:
+  file: "lua_demo.lua"
+
+widgets:
+  # Заголовок
+  - id: title
+    type: TEXT_BUTTON
+    text: "Lua API Demo"
+    hoveredText: "Lua API Demo"
+    position: [0.0, 2.0, 0.0]
+    scale: [0.8, 0.8, 0.8]
+    tolerance: [0.15, 0.08]
+    backgroundColor: [50, 50, 80]
+    backgroundAlpha: 200
+    hoveredBackgroundColor: [60, 60, 90]
+    hoveredBackgroundAlpha: 220
+    onClick:
+      action: NONE
+
+  # Информация об игроке
+  - id: player_info
+    type: TEXT_BUTTON
+    text: "Player Info"
+    hoveredText: "Player Info"
+    position: [-4.0, 1.2, 0.0]
+    scale: [0.4, 0.4, 0.4]
+    tolerance: [0.12, 0.06]
+    backgroundColor: [40, 40, 40]
+    backgroundAlpha: 150
+    hoveredBackgroundColor: [60, 60, 60]
+    hoveredBackgroundAlpha: 180
+    onClick:
+      action: NONE
+
+  # Кнопки управления игроком
+  - id: btn_heal
+    type: ITEM_BUTTON
+    material: GOLDEN_APPLE
+    position: [-4.0, 0.3, 0.0]
+    scale: [0.2, 0.2, 0.2]
+    tolerance: [0.1, 0.1]
+    tooltip: "Восстановить здоровье"
+    glowOnHover: true
+    onClick:
+      action: RUN_SCRIPT
+      function: "btn_heal_click"
+
+  - id: btn_gamemode
+    type: ITEM_BUTTON
+    material: COMMAND_BLOCK
+    position: [-4.0, -0.3, 0.0]
+    scale: [0.2, 0.2, 0.2]
+    tolerance: [0.1, 0.1]
+    tooltip: "Переключить режим игры"
+    glowOnHover: true
+    onClick:
+      action: RUN_SCRIPT
+      function: "btn_gamemode_click"
+
+  - id: btn_sound
+    type: ITEM_BUTTON
+    material: NOTE_BLOCK
+    position: [-4.0, -0.9, 0.0]
+    scale: [0.2, 0.2, 0.2]
+    tolerance: [0.1, 0.1]
+    tooltip: "Воспроизвести звук"
+    glowOnHover: true
+    onClick:
+      action: RUN_SCRIPT
+      function: "btn_sound_click"
+
+  # Счетчик и Storage API
+  - id: counter_label
+    type: TEXT_BUTTON
+    text: "Счетчик: 0"
+    hoveredText: "Счетчик: 0"
+    position: [-1.0, 1.2, 0.0]
+    scale: [0.4, 0.4, 0.4]
+    tolerance: [0.12, 0.06]
+    backgroundColor: [40, 60, 40]
+    backgroundAlpha: 150
+    hoveredBackgroundColor: [60, 80, 60]
+    hoveredBackgroundAlpha: 180
+    onClick:
+      action: NONE
+
+  - id: btn_increment
+    type: ITEM_BUTTON
+    material: GREEN_CONCRETE
+    position: [-1.5, 0.3, 0.0]
+    scale: [0.2, 0.2, 0.2]
+    tolerance: [0.1, 0.1]
+    tooltip: "Увеличить счетчик"
+    glowOnHover: true
+    onClick:
+      action: RUN_SCRIPT
+      function: "btn_increment_click"
+
+  - id: btn_decrement
+    type: ITEM_BUTTON
+    material: RED_CONCRETE
+    position: [-0.5, 0.3, 0.0]
+    scale: [0.2, 0.2, 0.2]
+    tolerance: [0.1, 0.1]
+    tooltip: "Уменьшить счетчик"
+    glowOnHover: true
+    onClick:
+      action: RUN_SCRIPT
+      function: "btn_decrement_click"
+
+  - id: btn_reset
+    type: ITEM_BUTTON
+    material: BARRIER
+    position: [-1.0, -0.3, 0.0]
+    scale: [0.2, 0.2, 0.2]
+    tolerance: [0.1, 0.1]
+    tooltip: "Сбросить счетчик"
+    glowOnHover: true
+    onClick:
+      action: RUN_SCRIPT
+      function: "btn_reset_click"
+
+  # Widget API демонстрация
+  - id: demo_text
+    type: TEXT_BUTTON
+    text: "Изменяемый текст"
+    hoveredText: "Изменяемый текст"
+    position: [2.0, 1.2, 0.0]
+    scale: [0.35, 0.35, 0.35]
+    tolerance: [0.12, 0.06]
+    backgroundColor: [80, 80, 120]
+    backgroundAlpha: 180
+    hoveredBackgroundColor: [100, 100, 140]
+    hoveredBackgroundAlpha: 200
+    onClick:
+      action: NONE
+
+  - id: btn_change_text
+    type: ITEM_BUTTON
+    material: WRITABLE_BOOK
+    position: [1.5, 0.3, 0.0]
+    scale: [0.2, 0.2, 0.2]
+    tolerance: [0.1, 0.1]
+    tooltip: "Изменить текст"
+    glowOnHover: true
+    onClick:
+      action: RUN_SCRIPT
+      function: "btn_change_text_click"
+
+  - id: btn_toggle_visibility
+    type: ITEM_BUTTON
+    material: ENDER_EYE
+    position: [2.5, 0.3, 0.0]
+    scale: [0.2, 0.2, 0.2]
+    tolerance: [0.1, 0.1]
+    tooltip: "Показать/скрыть текст"
+    glowOnHover: true
+    onClick:
+      action: RUN_SCRIPT
+      function: "btn_toggle_visibility_click"
+
+  - id: btn_change_color
+    type: ITEM_BUTTON
+    material: PAINTING
+    position: [2.0, -0.3, 0.0]
+    scale: [0.2, 0.2, 0.2]
+    tolerance: [0.1, 0.1]
+    tooltip: "Изменить цвет фона"
+    glowOnHover: true
+    onClick:
+      action: RUN_SCRIPT
+      function: "btn_change_color_click"
+
+  # Timer API демонстрация
+  - id: timer_status
+    type: TEXT_BUTTON
+    text: "Готов к запуску"
+    hoveredText: "Статус таймеров"
+    position: [5.0, 1.2, 0.0]
+    scale: [0.35, 0.35, 0.35]
+    tolerance: [0.12, 0.06]
+    backgroundColor: [80, 80, 60]
+    backgroundAlpha: 150
+    hoveredBackgroundColor: [100, 100, 80]
+    hoveredBackgroundAlpha: 180
+    onClick:
+      action: NONE
+
+  - id: btn_timer_once
+    type: ITEM_BUTTON
+    material: CLOCK
+    position: [4.5, 0.3, 0.0]
+    scale: [0.2, 0.2, 0.2]
+    tolerance: [0.1, 0.1]
+    tooltip: "Таймер на 3 секунды"
+    glowOnHover: true
+    onClick:
+      action: RUN_SCRIPT
+      function: "btn_timer_once_click"
+
+  - id: btn_timer_repeat
+    type: ITEM_BUTTON
+    material: REPEATER
+    position: [5.5, 0.3, 0.0]
+    scale: [0.2, 0.2, 0.2]
+    tolerance: [0.1, 0.1]
+    tooltip: "Повторяющийся таймер"
+    glowOnHover: true
+    onClick:
+      action: RUN_SCRIPT
+      function: "btn_timer_repeat_click"
+
+  - id: btn_timer_animation
+    type: ITEM_BUTTON
+    material: FIREWORK_ROCKET
+    position: [5.0, -0.3, 0.0]
+    scale: [0.2, 0.2, 0.2]
+    tolerance: [0.1, 0.1]
+    tooltip: "Анимация (5 раз)"
+    glowOnHover: true
+    onClick:
+      action: RUN_SCRIPT
+      function: "btn_timer_animation_click"
+
+  # Статистика
+  - id: stats_label
+    type: TEXT_BUTTON
+    text: "Статистика"
+    hoveredText: "Статистика использования"
+    position: [0.0, -1.5, 0.0]
+    scale: [0.3, 0.3, 0.3]
+    tolerance: [0.1, 0.05]
+    backgroundColor: [60, 60, 60]
+    backgroundAlpha: 120
+    hoveredBackgroundColor: [80, 80, 80]
+    hoveredBackgroundAlpha: 150
+    onClick:
+      action: NONE
+
+  # Уведомления
+  - id: notification
+    type: TEXT_BUTTON
+    text: ""
+    hoveredText: ""
+    position: [0.0, -2.2, 0.0]
+    scale: [0.4, 0.4, 0.4]
+    tolerance: [0.15, 0.08]
+    backgroundColor: [100, 200, 100]
+    backgroundAlpha: 0
+    hoveredBackgroundAlpha: 0
+    onClick:
+      action: NONE
+
+  # Навигация
+  - id: btn_back
+    type: TEXT_BUTTON
+    text: "⏴ Назад"
+    hoveredText: "⏴ Вернуться в главное меню"
+    position: [-6.0, -2.8, 0.0]
+    scale: [0.4, 0.4, 0.4]
+    tolerance: [0.12, 0.08]
+    backgroundColor: [60, 40, 40]
+    backgroundAlpha: 150
+    hoveredBackgroundColor: [80, 60, 60]
+    hoveredBackgroundAlpha: 180
+    onClick:
+      action: SWITCH_SCREEN
+      target: main_menu
+
+  - id: btn_close
+    type: TEXT_BUTTON
+    text: "✖ Закрыть"
+    hoveredText: "✖ Закрыть экран"
+    position: [6.0, -2.8, 0.0]
+    scale: [0.4, 0.4, 0.4]
+    tolerance: [0.12, 0.08]
+    backgroundColor: [60, 40, 40]
+    backgroundAlpha: 150
+    hoveredBackgroundColor: [80, 60, 60]
+    hoveredBackgroundAlpha: 180
+    onClick:
+      action: CLOSE_SCREEN
+    glowColor: [255, 215, 0]
+    onClick:
+      action: RUN_SCRIPT
+      function: "btn_heal_click"
+
+  - id: btn_gamemode
+    type: ITEM_BUTTON
+    material: COMMAND_BLOCK
+    position: [-4.5, 0.5, 0.0]
+    scale: [0.12, 0.12, 0.000001]
+    tolerance: [0.06, 0.06]
+    tooltip: "Переключить режим игры"
+    glowOnHover: true
+    glowColor: [100, 255, 100]
+    onClick:
+      action: RUN_SCRIPT
+      function: "btn_gamemode_click"
+
+  - id: btn_sound
+    type: ITEM_BUTTON
+    material: NOTE_BLOCK
+    position: [-3.5, 0.5, 0.0]
+    scale: [0.12, 0.12, 0.000001]
+    tolerance: [0.06, 0.06]
+    tooltip: "Воспроизвести звук"
+    glowOnHover: true
+    glowColor: [255, 100, 255]
+    onClick:
+      action: RUN_SCRIPT
+      function: "btn_sound_click"
+
+  # Счетчики и storage
+  - id: counter_label
+    type: TEXT_BUTTON
+    text: "Счетчик: 0"
+    hoveredText: "Счетчик: 0"
+    position: [-1.5, 1.2, 0.0]
+    scale: [0.4, 0.4, 0.4]
+    tolerance: [0.08, 0.04]
+    backgroundColor: [40, 60, 40]
+    backgroundAlpha: 150
+    hoveredBackgroundColor: [50, 70, 50]
+    hoveredBackgroundAlpha: 180
+    onClick:
+      action: NONE
+
+  - id: btn_increment
+    type: ITEM_BUTTON
+    material: GREEN_CONCRETE
+    position: [-2.5, 0.5, 0.0]
+    scale: [0.12, 0.12, 0.000001]
+    tolerance: [0.06, 0.06]
+    tooltip: "Увеличить счетчик"
+    glowOnHover: true
+    glowColor: [0, 255, 0]
+    onClick:
+      action: RUN_SCRIPT
+      function: "btn_increment_click"
+
+  - id: btn_decrement
+    type: ITEM_BUTTON
+    material: RED_CONCRETE
+    position: [-1.5, 0.5, 0.0]
+    scale: [0.12, 0.12, 0.000001]
+    tolerance: [0.06, 0.06]
+    tooltip: "Уменьшить счетчик"
+    glowOnHover: true
+    glowColor: [255, 0, 0]
+    onClick:
+      action: RUN_SCRIPT
+      function: "btn_decrement_click"
+
+  - id: btn_reset
+    type: ITEM_BUTTON
+    material: BARRIER
+    position: [-0.5, 0.5, 0.0]
+    scale: [0.12, 0.12, 0.000001]
+    tolerance: [0.06, 0.06]
+    tooltip: "Сбросить счетчик"
+    glowOnHover: true
+    glowColor: [255, 255, 0]
+    onClick:
+      action: RUN_SCRIPT
+      function: "btn_reset_click"
+
+  # Виджет демонстрация
+  - id: widget_demo_label
+    type: TEXT_BUTTON
+    text: "Widget Demo"
+    hoveredText: "Widget Demo"
+    position: [1.5, 1.2, 0.0]
+    scale: [0.4, 0.4, 0.4]
+    tolerance: [0.08, 0.04]
+    backgroundColor: [60, 40, 60]
+    backgroundAlpha: 150
+    hoveredBackgroundColor: [70, 50, 70]
+    hoveredBackgroundAlpha: 180
+    onClick:
+      action: NONE
+
+  - id: demo_text
+    type: TEXT_BUTTON
+    text: "Изменяемый текст"
+    hoveredText: "Изменяемый текст"
+    position: [1.5, 0.8, 0.0]
+    scale: [0.35, 0.35, 0.35]
+    tolerance: [0.08, 0.04]
+    backgroundColor: [80, 80, 120]
+    backgroundAlpha: 180
+    hoveredBackgroundColor: [90, 90, 130]
+    hoveredBackgroundAlpha: 200
+    onClick:
+      action: NONE
+
+  - id: btn_change_text
+    type: ITEM_BUTTON
+    material: WRITABLE_BOOK
+    position: [0.5, 0.5, 0.0]
+    scale: [0.12, 0.12, 0.000001]
+    tolerance: [0.06, 0.06]
+    tooltip: "Изменить текст"
+    glowOnHover: true
+    glowColor: [100, 200, 255]
+    onClick:
+      action: RUN_SCRIPT
+      function: "btn_change_text_click"
+
+  - id: btn_toggle_visibility
+    type: ITEM_BUTTON
+    material: ENDER_EYE
+    position: [1.5, 0.5, 0.0]
+    scale: [0.12, 0.12, 0.000001]
+    tolerance: [0.06, 0.06]
+    tooltip: "Показать/скрыть текст"
+    glowOnHover: true
+    glowColor: [200, 100, 255]
+    onClick:
+      action: RUN_SCRIPT
+      function: "btn_toggle_visibility_click"
+
+  - id: btn_change_color
+    type: ITEM_BUTTON
+    material: PAINTING
+    position: [2.5, 0.5, 0.0]
+    scale: [0.12, 0.12, 0.000001]
+    tolerance: [0.06, 0.06]
+    tooltip: "Изменить цвет фона"
+    glowOnHover: true
+    glowColor: [255, 200, 100]
+    onClick:
+      action: RUN_SCRIPT
+      function: "btn_change_color_click"
+
+  # Таймеры и анимации
+  - id: timer_demo_label
+    type: TEXT_BUTTON
+    text: "Timer Demo"
+    hoveredText: "Timer Demo"
+    position: [4.5, 1.2, 0.0]
+    scale: [0.4, 0.4, 0.4]
+    tolerance: [0.08, 0.04]
+    backgroundColor: [60, 60, 40]
+    backgroundAlpha: 150
+    hoveredBackgroundColor: [70, 70, 50]
+    hoveredBackgroundAlpha: 180
+    onClick:
+      action: NONE
+
+  - id: timer_status
+    type: TEXT_BUTTON
+    text: "Готов к запуску"
+    hoveredText: "Готов к запуску"
+    position: [4.5, 0.8, 0.0]
+    scale: [0.3, 0.3, 0.3]
+    tolerance: [0.08, 0.04]
+    backgroundColor: [80, 80, 60]
+    backgroundAlpha: 150
+    hoveredBackgroundColor: [90, 90, 70]
+    hoveredBackgroundAlpha: 180
+    onClick:
+      action: NONE
+
+  - id: btn_timer_once
+    type: ITEM_BUTTON
+    material: CLOCK
+    position: [3.5, 0.5, 0.0]
+    scale: [0.12, 0.12, 0.000001]
+    tolerance: [0.06, 0.06]
+    tooltip: "Таймер на 3 секунды"
+    glowOnHover: true
+    glowColor: [255, 255, 100]
+    onClick:
+      action: RUN_SCRIPT
+      function: "btn_timer_once_click"
+
+  - id: btn_timer_repeat
+    type: ITEM_BUTTON
+    material: REPEATER
+    position: [4.5, 0.5, 0.0]
+    scale: [0.12, 0.12, 0.000001]
+    tolerance: [0.06, 0.06]
+    tooltip: "Повторяющийся таймер"
+    glowOnHover: true
+    glowColor: [100, 255, 255]
+    onClick:
+      action: RUN_SCRIPT
+      function: "btn_timer_repeat_click"
+
+  - id: btn_timer_animation
+    type: ITEM_BUTTON
+    material: FIREWORK_ROCKET
+    position: [5.5, 0.5, 0.0]
+    scale: [0.12, 0.12, 0.000001]
+    tolerance: [0.06, 0.06]
+    tooltip: "Анимация (5 раз)"
+    glowOnHover: true
+    glowColor: [255, 100, 100]
+    onClick:
+      action: RUN_SCRIPT
+      function: "btn_timer_animation_click"
+
+  # Уведомления
+  - id: notification
+    type: TEXT_BUTTON
+    text: ""
+    hoveredText: ""
+    position: [0.0, -0.5, 0.0]
+    scale: [0.4, 0.4, 0.4]
+    tolerance: [0.1, 0.05]
+    backgroundColor: [100, 200, 100]
+    backgroundAlpha: 0
+    hoveredBackgroundColor: [110, 210, 110]
+    hoveredBackgroundAlpha: 0
+    onClick:
+      action: NONE
+
+  # Статистика
+  - id: stats_label
+    type: TEXT_BUTTON
+    text: "Статистика"
+    hoveredText: "Статистика"
+    position: [0.0, -1.2, 0.0]
+    scale: [0.35, 0.35, 0.35]
+    tolerance: [0.08, 0.04]
+    backgroundColor: [40, 40, 60]
+    backgroundAlpha: 150
+    hoveredBackgroundColor: [50, 50, 70]
+    hoveredBackgroundAlpha: 180
+    onClick:
+      action: NONE
+
+  # Навигация
+  - id: btn_back
+    type: TEXT_BUTTON
+    text: "⏴ Назад"
+    hoveredText: "⏴ Назад"
+    position: [-5.5, -1.8, 0.0]
+    scale: [0.4, 0.4, 0.4]
+    tolerance: [0.06, 0.04]
+    backgroundColor: [60, 40, 40]
+    backgroundAlpha: 150
+    hoveredBackgroundColor: [80, 50, 50]
+    hoveredBackgroundAlpha: 200
+    onClick:
+      action: SWITCH_SCREEN
+      target: main_menu
+
+  - id: btn_close
+    type: TEXT_BUTTON
+    text: "⏺ Закрыть"
+    hoveredText: "⏺ Закрыть"
+    position: [5.5, -1.8, 0.0]
+    scale: [0.4, 0.4, 0.4]
+    tolerance: [0.06, 0.04]
+    backgroundColor: [60, 40, 40]
+    backgroundAlpha: 150
+    hoveredBackgroundColor: [80, 50, 50]
+    hoveredBackgroundAlpha: 200
+    onClick:
+      action: CLOSE_SCREEN

@@ -5,3 +5,14 @@ api-version: '1.21'
 load: STARTUP
 authors: [ Padej_ ]
 description: Display API library for working with displays
+
+commands:
+  displaylib:
+    description: Main DisplayLib command
+    usage: /displaylib <open|close|list|reload|examples>
+    aliases: [dlib, dl]
+
+permissions:
+  displaylib.admin:
+    description: Admin permissions for DisplayLib
+    default: op

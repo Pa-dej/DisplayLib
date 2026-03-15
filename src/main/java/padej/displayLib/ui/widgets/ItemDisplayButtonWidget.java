@@ -250,4 +250,52 @@ public class ItemDisplayButtonWidget implements Widget {
     public WidgetPosition getPosition() {
         return position;
     }
+    
+    // Методы для Lua API
+    @Override
+    public boolean isVisible() {
+        return display != null && !display.isDead();
+    }
+    
+    @Override
+    public void setVisible(boolean visible) {
+        if (display != null) {
+            if (visible) {
+                if (display.isDead()) {
+                    // Пересоздаем entity если он был удален
+                    spawn();
+                }
+            } else {
+                display.remove();
+            }
+        }
+    }
+    
+    @Override
+    public boolean isEnabled() {
+        return onClick != null;
+    }
+    
+    @Override
+    public void setEnabled(boolean enabled) {
+        if (!enabled) {
+            onClick = null;
+        }
+        // Включение требует восстановления оригинального onClick, что сложно
+        // Пока что просто отключаем
+    }
+    
+    @Override
+    public String getTooltip() {
+        return tooltip != null ? tooltip.toString() : null;
+    }
+    
+    @Override
+    public void setTooltip(String tooltipText) {
+        if (tooltipText != null) {
+            this.tooltip = Component.text(tooltipText);
+        } else {
+            this.tooltip = null;
+        }
+    }
 }

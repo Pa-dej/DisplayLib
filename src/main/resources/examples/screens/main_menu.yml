@@ -1,0 +1,74 @@
+id: main_menu
+background:
+  color: [0, 0, 0]
+  alpha: 160
+  scale: [8.0, 4.0, 1.0]
+  text: " "
+
+scripts:
+  file: "main_menu.lua"
+
+widgets:
+  # Заголовок
+  - id: label_title
+    type: TEXT_BUTTON
+    text: "Главное меню"
+    hoveredText: "Главное меню"
+    position: [0.0, 0.85, 0.0]
+    scale: [0.6, 0.6, 0.6]
+    tolerance: [0.15, 0.08]
+    backgroundAlpha: 0
+    hoveredBackgroundAlpha: 0
+    onClick:
+      action: NONE
+
+  # Кнопки в стиле старого плагина
+  - id: btn_demo
+    type: ITEM_BUTTON
+    material: COMMAND_BLOCK
+    position: [-0.42, 0.3, 0.0]
+    scale: [0.15, 0.15, 0.15]
+    tolerance: [0.06, 0.06]
+    tooltip: "Lua API Demo"
+    glowOnHover: true
+    glowColor: [255, 215, 0]
+    onClick:
+      action: SWITCH_SCREEN
+      target: simple_demo
+
+  - id: btn_info
+    type: ITEM_BUTTON
+    material: BOOK
+    position: [-0.42, 0.47, 0.0]
+    scale: [0.15, 0.15, 0.15]
+    tolerance: [0.06, 0.06]
+    tooltip: "Информация"
+    glowOnHover: true
+    onClick:
+      action: RUN_SCRIPT
+      function: "btn_info_click"
+
+  - id: btn_test
+    type: ITEM_BUTTON
+    material: REDSTONE
+    position: [-0.42, 0.64, 0.0]
+    scale: [0.15, 0.15, 0.15]
+    tolerance: [0.06, 0.06]
+    tooltip: "Тест функций"
+    glowOnHover: true
+    onClick:
+      action: RUN_SCRIPT
+      function: "btn_test_click"
+
+  # Кнопка закрытия
+  - id: btn_close
+    type: TEXT_BUTTON
+    text: "⏺"
+    hoveredText: "Закрыть"
+    position: [0.35, 0.8, 0.0]
+    scale: [0.75, 0.75, 0.75]
+    tolerance: [0.035, 0.035]
+    backgroundAlpha: 0
+    hoveredBackgroundAlpha: 50
+    onClick:
+      action: CLOSE_SCREEN

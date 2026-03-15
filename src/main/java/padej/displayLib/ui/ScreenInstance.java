@@ -9,7 +9,11 @@ import org.bukkit.entity.Player;
 import org.joml.Vector3f;
 import padej.displayLib.config.ScreenDefinition;
 import padej.displayLib.config.WidgetDefinition;
+import padej.displayLib.lua.LuaContext;
+import padej.displayLib.lua.LuaEngine;
+import padej.displayLib.lua.api.WidgetAPI;
 import padej.displayLib.ui.widgets.*;
+import org.luaj.vm2.LuaValue;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -22,6 +26,8 @@ import java.util.Map;
 public class ScreenInstance extends WidgetManager {
     private final String screenId;
     private final ScreenDefinition definition;
+    private final LuaEngine luaEngine;
+    private LuaContext luaContext;
     
     /** Быстрый доступ к виджетам по id из YAML */
     private final Map<String, Widget> widgetById = new HashMap<>();
@@ -34,10 +40,16 @@ public class ScreenInstance extends WidgetManager {
     private static final float WIDGET_DEPTH_OFFSET = 0.001f;
 
     public ScreenInstance(String screenId, ScreenDefinition definition,
-                          Player viewer, Location location) {
+                          Player viewer, Location location, LuaEngine luaEngine) {
         super(viewer, location);
         this.screenId = screenId;
         this.definition = definition;
+        this.luaEngine = luaEngine;
+        
+        // Создаем Lua контекст
+        if (luaEngine != null) {
+            this.luaContext = luaEngine.createContext(this, viewer);
+        }
         
         // Вычисляем единую ориентацию экрана один раз
         Location viewerLoc = viewer.getLocation().add(0, viewer.getHeight() / 2, 0);
@@ -53,16 +65,25 @@ public class ScreenInstance extends WidgetManager {
 
         spawnBackground();
         spawnWidgets();
+        
+        // Вызываем on_open после создания всех виджетов
+        callLuaFunction("on_open");
     }
     
     /**
      * Конструктор с заданной ориентацией (для переключения экранов)
      */
     public ScreenInstance(String screenId, ScreenDefinition definition,
-                          Player viewer, Location location, float yaw, float pitch) {
+                          Player viewer, Location location, float yaw, float pitch, LuaEngine luaEngine) {
         super(viewer, location);
         this.screenId = screenId;
         this.definition = definition;
+        this.luaEngine = luaEngine;
+        
+        // Создаем Lua контекст
+        if (luaEngine != null) {
+            this.luaContext = luaEngine.createContext(this, viewer);
+        }
         
         // Используем переданную ориентацию
         this.screenYaw = yaw;
@@ -70,6 +91,9 @@ public class ScreenInstance extends WidgetManager {
 
         spawnBackground();
         spawnWidgets();
+        
+        // Вызываем on_open после создания всех виджетов
+        callLuaFunction("on_open");
     }
 
     // -------------------------------------------------------------------------
@@ -229,9 +253,14 @@ public class ScreenInstance extends WidgetManager {
 
             case CLOSE_SCREEN -> UIManager.getInstance().closeScreen(viewer);
 
-            // Lua — будет в следующем шаге
-            case RUN_SCRIPT -> viewer.sendMessage(
-                    "§eScript not yet implemented: " + action.getScript());
+            // Lua скрипт
+            case RUN_SCRIPT -> {
+                if (action.getFunction() != null) {
+                    callLuaFunctionWithWidget(action.getFunction(), def);
+                } else {
+                    viewer.sendMessage("§cScript function not specified");
+                }
+            }
         }
     }
 
@@ -269,6 +298,14 @@ public class ScreenInstance extends WidgetManager {
 
     @Override
     protected void tryClose() {
+        // Вызываем on_close перед закрытием
+        callLuaFunction("on_close");
+        
+        // Очищаем Lua контекст
+        if (luaContext != null) {
+            luaContext.cleanup();
+        }
+        
         UIManager.getInstance().closeScreen(viewer);
     }
 
@@ -297,5 +334,55 @@ public class ScreenInstance extends WidgetManager {
      */
     public float[] getScreenOrientation() {
         return new float[]{screenYaw, screenPitch};
+    }
+    
+    // -------------------------------------------------------------------------
+    // Lua integration
+    // -------------------------------------------------------------------------
+    
+    /**
+     * Вызвать Lua функцию экрана
+     */
+    private void callLuaFunction(String functionName) {
+        if (luaEngine == null || luaContext == null) return;
+        
+        Map<String, String> scripts = definition.getScripts();
+        if (scripts == null) return;
+        
+        String scriptFile = scripts.get("file");
+        if (scriptFile != null) {
+            luaEngine.callFunction(luaContext, scriptFile, functionName);
+        }
+    }
+    
+    /**
+     * Вызвать Lua функцию с установленным widget контекстом
+     */
+    private void callLuaFunctionWithWidget(String functionName, WidgetDefinition widgetDef) {
+        if (luaEngine == null || luaContext == null) return;
+        
+        Map<String, String> scripts = definition.getScripts();
+        if (scripts == null) return;
+        
+        String scriptFile = scripts.get("file");
+        if (scriptFile != null) {
+            // Устанавливаем widget в глобальный контекст
+            Widget widget = widgetById.get(widgetDef.getId());
+            if (widget != null) {
+                luaContext.getGlobals().set("widget", new WidgetAPI(widget));
+            }
+            
+            luaEngine.callFunction(luaContext, scriptFile, functionName);
+            
+            // Очищаем widget из контекста
+            luaContext.getGlobals().set("widget", LuaValue.NIL);
+        }
+    }
+    
+    /**
+     * Получить Lua контекст (для внешнего использования)
+     */
+    public LuaContext getLuaContext() {
+        return luaContext;
     }
 }

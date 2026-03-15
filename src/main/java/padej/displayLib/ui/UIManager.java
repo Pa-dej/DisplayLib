@@ -4,6 +4,8 @@ import padej.displayLib.DisplayLib;
 import padej.displayLib.api.events.DisplayClickEvent;
 import padej.displayLib.config.ScreenDefinition;
 import padej.displayLib.config.ScreenRegistry;
+import padej.displayLib.lua.LuaEngine;
+import padej.displayLib.lua.api.StorageAPI;
 import padej.displayLib.ui.widgets.Widget;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
@@ -28,6 +30,7 @@ public class UIManager implements Listener {
     private BukkitTask updateTask;
     private boolean isUpdateTaskRunning = false;
     private ScreenRegistry screenRegistry;
+    private LuaEngine luaEngine;
 
     private UIManager() {
         Bukkit.getPluginManager().registerEvents(this, DisplayLib.getInstance());
@@ -40,8 +43,9 @@ public class UIManager implements Listener {
         return instance;
     }
 
-    public void initialize(ScreenRegistry screenRegistry) {
+    public void initialize(ScreenRegistry screenRegistry, LuaEngine luaEngine) {
         this.screenRegistry = screenRegistry;
+        this.luaEngine = luaEngine;
     }
 
     public ScreenInstance getActiveScreen(Player player) {
@@ -108,10 +112,10 @@ public class UIManager implements Listener {
         ScreenInstance instance;
         if (yaw != null && pitch != null) {
             // Создаем с заданной ориентацией (для переключения экранов)
-            instance = new ScreenInstance(screenId, definition, player, location, yaw, pitch);
+            instance = new ScreenInstance(screenId, definition, player, location, yaw, pitch, luaEngine);
         } else {
             // Создаем с автоматической ориентацией (для новых экранов)
-            instance = new ScreenInstance(screenId, definition, player, location);
+            instance = new ScreenInstance(screenId, definition, player, location, luaEngine);
         }
         
         registerScreen(player, instance);
@@ -239,6 +243,8 @@ public class UIManager implements Listener {
 
     @EventHandler(priority = EventPriority.HIGHEST)
     public void onPlayerQuit(PlayerQuitEvent event) {
+        // Очищаем storage данные игрока
+        StorageAPI.clearPlayerData(event.getPlayer().getUniqueId());
         forceCloseScreen(event.getPlayer());
     }
 
