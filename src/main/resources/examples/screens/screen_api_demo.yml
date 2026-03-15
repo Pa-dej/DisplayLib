@@ -1,0 +1,237 @@
+id: screen_api_demo
+background:
+  color: [20, 20, 40]
+  alpha: 180
+  scale: [8.0, 6.0, 1.0]
+  text: " "
+
+scripts:
+  file: "screen_api_demo.lua"
+
+widgets:
+  # Заголовок
+  - id: title
+    type: TEXT_BUTTON
+    text: "🖥️ Screen API Demo"
+    hoveredText: "Демонстрация функций Screen API"
+    position: [0.0, 1.0, 0.0]
+    scale: [0.5, 0.5, 0.5]
+    backgroundColor: [40, 40, 80]
+    backgroundAlpha: 200
+    onClick:
+      action: NONE
+
+  # Информация об экране
+  - id: screen_info_label
+    type: TEXT_BUTTON
+    text: "Информация об экране"
+    hoveredText: "screen.id() - получение ID экрана"
+    position: [0.0, 0.7, 0.0]
+    scale: [0.35, 0.35, 0.35]
+    backgroundColor: [30, 30, 60]
+    backgroundAlpha: 150
+    onClick:
+      action: NONE
+
+  - id: screen_id_display
+    type: TEXT_BUTTON
+    text: "ID: screen_api_demo"
+    hoveredText: "Текущий ID экрана"
+    position: [0.0, 0.5, 0.0]
+    scale: [0.3, 0.3, 0.3]
+    backgroundColor: [25, 25, 50]
+    backgroundAlpha: 150
+    onClick:
+      action: NONE
+
+  - id: btn_get_screen_info
+    type: ITEM_BUTTON
+    material: MAP
+    position: [0.0, 0.3, 0.0]
+    scale: [0.12, 0.12, 0.02]
+    tooltip: "screen.id() - Получить информацию об экране"
+    glowOnHover: true
+    onClick:
+      action: RUN_SCRIPT
+      function: "btn_get_screen_info_click"
+
+  # Управление данными экрана
+  - id: data_demo_label
+    type: TEXT_BUTTON
+    text: "Данные экрана (screen.data)"
+    hoveredText: "Persistent данные, живущие пока экран открыт"
+    position: [-0.4, 0.1, 0.0]
+    scale: [0.3, 0.3, 0.3]
+    backgroundColor: [30, 30, 60]
+    backgroundAlpha: 150
+    onClick:
+      action: NONE
+
+  - id: data_display
+    type: TEXT_BUTTON
+    text: "Данных нет"
+    hoveredText: "Сохраненные данные экрана"
+    position: [-0.4, -0.1, 0.0]
+    scale: [0.25, 0.25, 0.25]
+    backgroundColor: [25, 25, 50]
+    backgroundAlpha: 150
+    onClick:
+      action: NONE
+
+  - id: btn_save_data
+    type: ITEM_BUTTON
+    material: WRITABLE_BOOK
+    position: [-0.5, -0.3, 0.0]
+    scale: [0.1, 0.1, 0.02]
+    tooltip: "screen.data() - Сохранить данные"
+    glowOnHover: true
+    onClick:
+      action: RUN_SCRIPT
+      function: "btn_save_data_click"
+
+  - id: btn_load_data
+    type: ITEM_BUTTON
+    material: BOOK
+    position: [-0.4, -0.3, 0.0]
+    scale: [0.1, 0.1, 0.02]
+    tooltip: "screen.data() - Загрузить данные"
+    glowOnHover: true
+    onClick:
+      action: RUN_SCRIPT
+      function: "btn_load_data_click"
+
+  - id: btn_clear_data
+    type: ITEM_BUTTON
+    material: BARRIER
+    position: [-0.3, -0.3, 0.0]
+    scale: [0.1, 0.1, 0.02]
+    tooltip: "screen.data(key, nil) - Очистить данные"
+    glowOnHover: true
+    onClick:
+      action: RUN_SCRIPT
+      function: "btn_clear_data_click"
+
+  # Управление виджетами
+  - id: widget_demo_label
+    type: TEXT_BUTTON
+    text: "Управление виджетами"
+    hoveredText: "screen.widget() - получение виджетов"
+    position: [0.4, 0.1, 0.0]
+    scale: [0.3, 0.3, 0.3]
+    backgroundColor: [30, 30, 60]
+    backgroundAlpha: 150
+    onClick:
+      action: NONE
+
+  - id: widget_count_display
+    type: TEXT_BUTTON
+    text: "Виджетов: 0"
+    hoveredText: "Количество найденных виджетов"
+    position: [0.4, -0.1, 0.0]
+    scale: [0.25, 0.25, 0.25]
+    backgroundColor: [25, 25, 50]
+    backgroundAlpha: 150
+    onClick:
+      action: NONE
+
+  - id: btn_count_widgets
+    type: ITEM_BUTTON
+    material: SPYGLASS
+    position: [0.3, -0.3, 0.0]
+    scale: [0.1, 0.1, 0.02]
+    tooltip: "screen.widget() - Подсчитать виджеты"
+    glowOnHover: true
+    onClick:
+      action: RUN_SCRIPT
+      function: "btn_count_widgets_click"
+
+  - id: btn_modify_widgets
+    type: ITEM_BUTTON
+    material: ITEM_FRAME
+    position: [0.4, -0.3, 0.0]
+    scale: [0.1, 0.1, 0.02]
+    tooltip: "Изменить виджеты через screen.widget()"
+    glowOnHover: true
+    onClick:
+      action: RUN_SCRIPT
+      function: "btn_modify_widgets_click"
+
+  - id: btn_widget_demo
+    type: ITEM_BUTTON
+    material: PAINTING
+    position: [0.5, -0.3, 0.0]
+    scale: [0.1, 0.1, 0.02]
+    tooltip: "Демонстрация работы с виджетами"
+    glowOnHover: true
+    onClick:
+      action: RUN_SCRIPT
+      function: "btn_widget_demo_click"
+
+  # Навигация между экранами
+  - id: navigation_label
+    type: TEXT_BUTTON
+    text: "Навигация (screen.switch)"
+    hoveredText: "Переключение между экранами"
+    position: [0.0, -0.5, 0.0]
+    scale: [0.35, 0.35, 0.35]
+    backgroundColor: [30, 30, 60]
+    backgroundAlpha: 150
+    onClick:
+      action: NONE
+
+  - id: btn_switch_player
+    type: ITEM_BUTTON
+    material: PLAYER_HEAD
+    position: [-0.2, -0.7, 0.0]
+    scale: [0.12, 0.12, 0.02]
+    tooltip: "screen.switch() - К Player API"
+    glowOnHover: true
+    onClick:
+      action: RUN_SCRIPT
+      function: "btn_switch_player_click"
+
+  - id: btn_switch_storage
+    type: ITEM_BUTTON
+    material: CHEST
+    position: [0.0, -0.7, 0.0]
+    scale: [0.12, 0.12, 0.02]
+    tooltip: "screen.switch() - К Storage API"
+    glowOnHover: true
+    onClick:
+      action: RUN_SCRIPT
+      function: "btn_switch_storage_click"
+
+  - id: btn_switch_widget
+    type: ITEM_BUTTON
+    material: ITEM_FRAME
+    position: [0.2, -0.7, 0.0]
+    scale: [0.12, 0.12, 0.02]
+    tooltip: "screen.switch() - К Widget API"
+    glowOnHover: true
+    onClick:
+      action: RUN_SCRIPT
+      function: "btn_switch_widget_click"
+
+  # Навигация
+  - id: btn_back
+    type: TEXT_BUTTON
+    text: "← Назад"
+    hoveredText: "Вернуться в главное меню"
+    position: [-0.35, 0.95, 0.0]
+    scale: [0.4, 0.4, 0.4]
+    backgroundColor: [40, 40, 40]
+    backgroundAlpha: 150
+    onClick:
+      action: SWITCH_SCREEN
+      target: main_menu
+
+  - id: btn_close
+    type: TEXT_BUTTON
+    text: "⏺"
+    hoveredText: "Закрыть"
+    position: [0.35, 0.95, 0.0]
+    scale: [0.6, 0.6, 0.6]
+    backgroundAlpha: 0
+    hoveredBackgroundAlpha: 50
+    onClick:
+      action: CLOSE_SCREEN

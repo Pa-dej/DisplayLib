@@ -1,0 +1,229 @@
+id: widget_api_demo
+background:
+  color: [40, 20, 40]
+  alpha: 180
+  scale: [8.0, 6.0, 1.0]
+  text: " "
+
+scripts:
+  file: "widget_api_demo.lua"
+
+widgets:
+  # Заголовок
+  - id: title
+    type: TEXT_BUTTON
+    text: "🎛️ Widget API Demo"
+    hoveredText: "Демонстрация функций Widget API"
+    position: [0.0, 1.0, 0.0]
+    scale: [0.5, 0.5, 0.5]
+    backgroundColor: [80, 40, 80]
+    backgroundAlpha: 200
+    onClick:
+      action: NONE
+
+  # Демонстрационный текст
+  - id: demo_text
+    type: TEXT_BUTTON
+    text: "Демонстрационный текст"
+    hoveredText: "Этот текст можно изменять"
+    position: [0.0, 0.7, 0.0]
+    scale: [0.4, 0.4, 0.4]
+    backgroundColor: [60, 30, 60]
+    backgroundAlpha: 180
+    onClick:
+      action: NONE
+
+  # Управление текстом
+  - id: text_controls_label
+    type: TEXT_BUTTON
+    text: "Управление текстом"
+    hoveredText: "text() и hoveredText()"
+    position: [-0.4, 0.4, 0.0]
+    scale: [0.3, 0.3, 0.3]
+    backgroundColor: [50, 25, 50]
+    backgroundAlpha: 150
+    onClick:
+      action: NONE
+
+  - id: btn_change_text
+    type: ITEM_BUTTON
+    material: WRITABLE_BOOK
+    position: [-0.5, 0.2, 0.0]
+    scale: [0.12, 0.12, 0.02]
+    tooltip: "widget.text() - Изменить текст"
+    glowOnHover: true
+    onClick:
+      action: RUN_SCRIPT
+      function: "btn_change_text_click"
+
+  - id: btn_change_hover
+    type: ITEM_BUTTON
+    material: BOOK
+    position: [-0.3, 0.2, 0.0]
+    scale: [0.12, 0.12, 0.02]
+    tooltip: "widget.hoveredText() - Изменить hover текст"
+    glowOnHover: true
+    onClick:
+      action: RUN_SCRIPT
+      function: "btn_change_hover_click"
+
+  # Управление видимостью
+  - id: visibility_controls_label
+    type: TEXT_BUTTON
+    text: "Видимость"
+    hoveredText: "visible() и enabled()"
+    position: [0.0, 0.4, 0.0]
+    scale: [0.3, 0.3, 0.3]
+    backgroundColor: [50, 25, 50]
+    backgroundAlpha: 150
+    onClick:
+      action: NONE
+
+  - id: btn_toggle_visibility
+    type: ITEM_BUTTON
+    material: ENDER_EYE
+    position: [-0.1, 0.2, 0.0]
+    scale: [0.12, 0.12, 0.02]
+    tooltip: "widget.visible() - Показать/скрыть"
+    glowOnHover: true
+    onClick:
+      action: RUN_SCRIPT
+      function: "btn_toggle_visibility_click"
+
+  - id: btn_toggle_enabled
+    type: ITEM_BUTTON
+    material: LEVER
+    position: [0.1, 0.2, 0.0]
+    scale: [0.12, 0.12, 0.02]
+    tooltip: "widget.enabled() - Включить/отключить"
+    glowOnHover: true
+    onClick:
+      action: RUN_SCRIPT
+      function: "btn_toggle_enabled_click"
+
+  # Управление цветом
+  - id: color_controls_label
+    type: TEXT_BUTTON
+    text: "Цвета и стили"
+    hoveredText: "bgColor() и bgAlpha()"
+    position: [0.4, 0.4, 0.0]
+    scale: [0.3, 0.3, 0.3]
+    backgroundColor: [50, 25, 50]
+    backgroundAlpha: 150
+    onClick:
+      action: NONE
+
+  - id: btn_change_color
+    type: ITEM_BUTTON
+    material: DYE
+    position: [0.3, 0.2, 0.0]
+    scale: [0.12, 0.12, 0.02]
+    tooltip: "widget.bgColor() - Изменить цвет фона"
+    glowOnHover: true
+    onClick:
+      action: RUN_SCRIPT
+      function: "btn_change_color_click"
+
+  - id: btn_change_alpha
+    type: ITEM_BUTTON
+    material: GLASS
+    position: [0.5, 0.2, 0.0]
+    scale: [0.12, 0.12, 0.02]
+    tooltip: "widget.bgAlpha() - Изменить прозрачность"
+    glowOnHover: true
+    onClick:
+      action: RUN_SCRIPT
+      function: "btn_change_alpha_click"
+
+  # Управление tooltip
+  - id: tooltip_demo_label
+    type: TEXT_BUTTON
+    text: "Tooltip демо"
+    hoveredText: "widget.tooltip()"
+    position: [-0.4, -0.1, 0.0]
+    scale: [0.3, 0.3, 0.3]
+    backgroundColor: [50, 25, 50]
+    backgroundAlpha: 150
+    onClick:
+      action: NONE
+
+  - id: btn_change_tooltip
+    type: ITEM_BUTTON
+    material: NAME_TAG
+    position: [-0.4, -0.3, 0.0]
+    scale: [0.12, 0.12, 0.02]
+    tooltip: "Изменить мой tooltip!"
+    glowOnHover: true
+    onClick:
+      action: RUN_SCRIPT
+      function: "btn_change_tooltip_click"
+
+  # Анимации
+  - id: animation_demo_label
+    type: TEXT_BUTTON
+    text: "Анимации"
+    hoveredText: "Комбинированные эффекты"
+    position: [0.4, -0.1, 0.0]
+    scale: [0.3, 0.3, 0.3]
+    backgroundColor: [50, 25, 50]
+    backgroundAlpha: 150
+    onClick:
+      action: NONE
+
+  - id: btn_animate_color
+    type: ITEM_BUTTON
+    material: FIREWORK_ROCKET
+    position: [0.3, -0.3, 0.0]
+    scale: [0.12, 0.12, 0.02]
+    tooltip: "Цветовая анимация"
+    glowOnHover: true
+    onClick:
+      action: RUN_SCRIPT
+      function: "btn_animate_color_click"
+
+  - id: btn_animate_fade
+    type: ITEM_BUTTON
+    material: PHANTOM_MEMBRANE
+    position: [0.5, -0.3, 0.0]
+    scale: [0.12, 0.12, 0.02]
+    tooltip: "Анимация исчезновения"
+    glowOnHover: true
+    onClick:
+      action: RUN_SCRIPT
+      function: "btn_animate_fade_click"
+
+  # Комплексная демонстрация
+  - id: btn_complex_demo
+    type: ITEM_BUTTON
+    material: NETHER_STAR
+    position: [0.0, -0.5, 0.0]
+    scale: [0.15, 0.15, 0.02]
+    tooltip: "Комплексная демонстрация всех функций"
+    glowOnHover: true
+    onClick:
+      action: RUN_SCRIPT
+      function: "btn_complex_demo_click"
+
+  # Навигация
+  - id: btn_back
+    type: TEXT_BUTTON
+    text: "← Назад"
+    hoveredText: "Вернуться в главное меню"
+    position: [-0.35, 0.95, 0.0]
+    scale: [0.4, 0.4, 0.4]
+    backgroundColor: [40, 40, 40]
+    backgroundAlpha: 150
+    onClick:
+      action: SWITCH_SCREEN
+      target: main_menu
+
+  - id: btn_close
+    type: TEXT_BUTTON
+    text: "⏺"
+    hoveredText: "Закрыть"
+    position: [0.35, 0.95, 0.0]
+    scale: [0.6, 0.6, 0.6]
+    backgroundAlpha: 0
+    hoveredBackgroundAlpha: 50
+    onClick:
+      action: CLOSE_SCREEN

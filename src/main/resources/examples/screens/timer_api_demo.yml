@@ -1,0 +1,204 @@
+id: timer_api_demo
+background:
+  color: [40, 40, 20]
+  alpha: 180
+  scale: [8.0, 6.0, 1.0]
+  text: " "
+
+scripts:
+  file: "timer_api_demo.lua"
+
+widgets:
+  # Заголовок
+  - id: title
+    type: TEXT_BUTTON
+    text: "⏰ Timer API Demo"
+    hoveredText: "Демонстрация функций Timer API"
+    position: [0.0, 1.0, 0.0]
+    scale: [0.5, 0.5, 0.5]
+    backgroundColor: [80, 80, 40]
+    backgroundAlpha: 200
+    onClick:
+      action: NONE
+
+  # timer.after() демонстрация
+  - id: after_demo_label
+    type: TEXT_BUTTON
+    text: "timer.after() - Одноразовые таймеры"
+    hoveredText: "Выполнение действий с задержкой"
+    position: [-0.4, 0.7, 0.0]
+    scale: [0.3, 0.3, 0.3]
+    backgroundColor: [60, 60, 30]
+    backgroundAlpha: 150
+    onClick:
+      action: NONE
+
+  - id: after_status
+    type: TEXT_BUTTON
+    text: "Готов к запуску"
+    hoveredText: "Статус after() таймера"
+    position: [-0.4, 0.5, 0.0]
+    scale: [0.3, 0.3, 0.3]
+    backgroundColor: [50, 50, 25]
+    backgroundAlpha: 150
+    onClick:
+      action: NONE
+
+  - id: btn_after_simple
+    type: ITEM_BUTTON
+    material: CLOCK
+    position: [-0.5, 0.3, 0.0]
+    scale: [0.12, 0.12, 0.02]
+    tooltip: "timer.after(60) - Простая задержка"
+    glowOnHover: true
+    onClick:
+      action: RUN_SCRIPT
+      function: "btn_after_simple_click"
+
+  - id: btn_after_countdown
+    type: ITEM_BUTTON
+    material: TNT
+    position: [-0.3, 0.3, 0.0]
+    scale: [0.12, 0.12, 0.02]
+    tooltip: "Обратный отсчет с множественными after()"
+    glowOnHover: true
+    onClick:
+      action: RUN_SCRIPT
+      function: "btn_after_countdown_click"
+
+  # timer.repeat() демонстрация
+  - id: repeat_demo_label
+    type: TEXT_BUTTON
+    text: "timer.repeat() - Повторяющиеся таймеры"
+    hoveredText: "Циклическое выполнение действий"
+    position: [0.4, 0.7, 0.0]
+    scale: [0.3, 0.3, 0.3]
+    backgroundColor: [60, 60, 30]
+    backgroundAlpha: 150
+    onClick:
+      action: NONE
+
+  - id: repeat_status
+    type: TEXT_BUTTON
+    text: "Остановлен"
+    hoveredText: "Статус repeat() таймера"
+    position: [0.4, 0.5, 0.0]
+    scale: [0.3, 0.3, 0.3]
+    backgroundColor: [50, 25, 25]
+    backgroundAlpha: 150
+    onClick:
+      action: NONE
+
+  - id: btn_repeat_start
+    type: ITEM_BUTTON
+    material: REPEATER
+    position: [0.3, 0.3, 0.0]
+    scale: [0.12, 0.12, 0.02]
+    tooltip: "timer.repeat() - Запустить повтор"
+    glowOnHover: true
+    onClick:
+      action: RUN_SCRIPT
+      function: "btn_repeat_start_click"
+
+  - id: btn_repeat_stop
+    type: ITEM_BUTTON
+    material: REDSTONE_BLOCK
+    position: [0.5, 0.3, 0.0]
+    scale: [0.12, 0.12, 0.02]
+    tooltip: "timer.cancel() - Остановить повтор"
+    glowOnHover: true
+    onClick:
+      action: RUN_SCRIPT
+      function: "btn_repeat_stop_click"
+
+  # timer.times() демонстрация
+  - id: times_demo_label
+    type: TEXT_BUTTON
+    text: "timer.times() - Ограниченные повторения"
+    hoveredText: "Выполнение N раз с интервалом"
+    position: [0.0, 0.1, 0.0]
+    scale: [0.35, 0.35, 0.35]
+    backgroundColor: [60, 60, 30]
+    backgroundAlpha: 150
+    onClick:
+      action: NONE
+
+  - id: times_progress
+    type: TEXT_BUTTON
+    text: "Прогресс: 0/0"
+    hoveredText: "Прогресс times() таймера"
+    position: [0.0, -0.1, 0.0]
+    scale: [0.3, 0.3, 0.3]
+    backgroundColor: [50, 50, 25]
+    backgroundAlpha: 150
+    onClick:
+      action: NONE
+
+  - id: btn_times_5
+    type: ITEM_BUTTON
+    material: COMPARATOR
+    position: [-0.2, -0.3, 0.0]
+    scale: [0.12, 0.12, 0.02]
+    tooltip: "timer.times(20, 5) - 5 повторений"
+    glowOnHover: true
+    onClick:
+      action: RUN_SCRIPT
+      function: "btn_times_5_click"
+
+  - id: btn_times_10
+    type: ITEM_BUTTON
+    material: OBSERVER
+    position: [0.0, -0.3, 0.0]
+    scale: [0.12, 0.12, 0.02]
+    tooltip: "timer.times(10, 10) - 10 повторений"
+    glowOnHover: true
+    onClick:
+      action: RUN_SCRIPT
+      function: "btn_times_10_click"
+
+  - id: btn_times_animation
+    type: ITEM_BUTTON
+    material: FIREWORK_ROCKET
+    position: [0.2, -0.3, 0.0]
+    scale: [0.12, 0.12, 0.02]
+    tooltip: "Анимация с times()"
+    glowOnHover: true
+    onClick:
+      action: RUN_SCRIPT
+      function: "btn_times_animation_click"
+
+  # Комплексная демонстрация
+  - id: btn_complex_timer_demo
+    type: ITEM_BUTTON
+    material: NETHER_STAR
+    position: [0.0, -0.6, 0.0]
+    scale: [0.15, 0.15, 0.02]
+    tooltip: "Комплексная демонстрация всех Timer API"
+    glowOnHover: true
+    onClick:
+      action: RUN_SCRIPT
+      function: "btn_complex_timer_demo_click"
+
+  # Навигация
+  - id: btn_back
+    type: TEXT_BUTTON
+    text: "← Назад"
+    hoveredText: "Вернуться в главное меню"
+    position: [-0.35, 0.95, 0.0]
+    scale: [0.4, 0.4, 0.4]
+    backgroundColor: [40, 40, 40]
+    backgroundAlpha: 150
+    onClick:
+      action: SWITCH_SCREEN
+      target: main_menu
+
+  - id: btn_close
+    type: TEXT_BUTTON
+    text: "⏺"
+    hoveredText: "Закрыть"
+    position: [0.35, 0.95, 0.0]
+    scale: [0.6, 0.6, 0.6]
+    backgroundAlpha: 0
+    hoveredBackgroundAlpha: 50
+    onClick:
+      action: CLOSE_SCREEN

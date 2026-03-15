@@ -1,8 +1,8 @@
 id: main_menu
 background:
-  color: [0, 0, 0]
-  alpha: 160
-  scale: [8.0, 4.0, 1.0]
+  color: [20, 30, 50]
+  alpha: 180
+  scale: [8.0, 6.0, 1.0]
   text: " "
 
 scripts:
@@ -10,64 +10,104 @@ scripts:
 
 widgets:
   # Заголовок
-  - id: label_title
+  - id: title
     type: TEXT_BUTTON
-    text: "Главное меню"
-    hoveredText: "Главное меню"
-    position: [0.0, 0.85, 0.0]
-    scale: [0.6, 0.6, 0.6]
-    tolerance: [0.15, 0.08]
-    backgroundAlpha: 0
-    hoveredBackgroundAlpha: 0
+    text: "🎮 DisplayLib Lua API"
+    hoveredText: "Выберите API для демонстрации"
+    position: [0.0, 1.0, 0.0]
+    scale: [0.5, 0.5, 0.5]
+    backgroundColor: [60, 80, 120]
+    backgroundAlpha: 200
     onClick:
       action: NONE
 
-  # Кнопки в стиле старого плагина
-  - id: btn_demo
+  # Описание
+  - id: description
+    type: TEXT_BUTTON
+    text: "Выберите API для изучения"
+    hoveredText: "Каждый экран демонстрирует отдельный API"
+    position: [0.0, 0.7, 0.0]
+    scale: [0.35, 0.35, 0.35]
+    backgroundColor: [40, 60, 80]
+    backgroundAlpha: 150
+    onClick:
+      action: NONE
+
+  # Верхний ряд API
+  - id: btn_player_api
     type: ITEM_BUTTON
-    material: COMMAND_BLOCK
-    position: [-0.42, 0.3, 0.0]
+    material: PLAYER_HEAD
+    position: [-0.5, 0.3, 0.0]
     scale: [0.15, 0.15, 0.02]
-    tolerance: [0.06, 0.06]
-    tooltip: "Lua API Demo"
+    tooltip: "Player API - Управление игроком"
     glowOnHover: true
-    glowColor: [255, 215, 0]
+    onClick:
+      action: SWITCH_SCREEN
+      target: player_api_demo
+
+  - id: btn_storage_api
+    type: ITEM_BUTTON
+    material: CHEST
+    position: [-0.17, 0.3, 0.0]
+    scale: [0.15, 0.15, 0.02]
+    tooltip: "Storage API - Хранение данных"
+    glowOnHover: true
+    onClick:
+      action: SWITCH_SCREEN
+      target: storage_api_demo
+
+  - id: btn_widget_api
+    type: ITEM_BUTTON
+    material: ITEM_FRAME
+    position: [0.17, 0.3, 0.0]
+    scale: [0.15, 0.15, 0.02]
+    tooltip: "Widget API - Управление виджетами"
+    glowOnHover: true
+    onClick:
+      action: SWITCH_SCREEN
+      target: widget_api_demo
+
+  # Нижний ряд API
+  - id: btn_timer_api
+    type: ITEM_BUTTON
+    material: CLOCK
+    position: [-0.33, -0.1, 0.0]
+    scale: [0.15, 0.15, 0.02]
+    tooltip: "Timer API - Система таймеров"
+    glowOnHover: true
+    onClick:
+      action: SWITCH_SCREEN
+      target: timer_api_demo
+
+  - id: btn_screen_api
+    type: ITEM_BUTTON
+    material: MAP
+    position: [0.0, -0.1, 0.0]
+    scale: [0.15, 0.15, 0.02]
+    tooltip: "Screen API - Управление экранами"
+    glowOnHover: true
+    onClick:
+      action: SWITCH_SCREEN
+      target: screen_api_demo
+
+  - id: btn_comprehensive
+    type: ITEM_BUTTON
+    material: NETHER_STAR
+    position: [0.33, -0.1, 0.0]
+    scale: [0.15, 0.15, 0.02]
+    tooltip: "Comprehensive Demo - Все API вместе"
+    glowOnHover: true
     onClick:
       action: SWITCH_SCREEN
       target: simple_demo
-
-  - id: btn_info
-    type: ITEM_BUTTON
-    material: BOOK
-    position: [-0.42, 0.47, 0.0]
-    scale: [0.15, 0.15, 0.02]
-    tolerance: [0.06, 0.06]
-    tooltip: "Информация"
-    glowOnHover: true
-    onClick:
-      action: RUN_SCRIPT
-      function: "btn_info_click"
-
-  - id: btn_test
-    type: ITEM_BUTTON
-    material: REDSTONE
-    position: [-0.42, 0.64, 0.0]
-    scale: [0.15, 0.15, 0.02]
-    tolerance: [0.06, 0.06]
-    tooltip: "Тест функций"
-    glowOnHover: true
-    onClick:
-      action: RUN_SCRIPT
-      function: "btn_test_click"
 
   # Кнопка закрытия
   - id: btn_close
     type: TEXT_BUTTON
     text: "⏺"
-    hoveredText: "Закрыть"
-    position: [0.35, 0.8, 0.0]
-    scale: [0.75, 0.75, 0.75]
-    tolerance: [0.035, 0.035]
+    hoveredText: "Закрыть меню"
+    position: [0.35, 0.95, 0.0]
+    scale: [0.6, 0.6, 0.6]
     backgroundAlpha: 0
     hoveredBackgroundAlpha: 50
     onClick:

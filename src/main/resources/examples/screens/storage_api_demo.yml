@@ -1,0 +1,204 @@
+id: storage_api_demo
+background:
+  color: [20, 40, 20]
+  alpha: 180
+  scale: [8.0, 6.0, 1.0]
+  text: " "
+
+scripts:
+  file: "storage_api_demo.lua"
+
+widgets:
+  # Заголовок
+  - id: title
+    type: TEXT_BUTTON
+    text: "📦 Storage API Demo"
+    hoveredText: "Демонстрация функций Storage API"
+    position: [0.0, 1.0, 0.0]
+    scale: [0.5, 0.5, 0.5]
+    backgroundColor: [40, 80, 40]
+    backgroundAlpha: 200
+    onClick:
+      action: NONE
+
+  # Основной счетчик
+  - id: counter_label
+    type: TEXT_BUTTON
+    text: "Счетчик: 0"
+    hoveredText: "storage.get() и storage.set()"
+    position: [0.0, 0.7, 0.0]
+    scale: [0.4, 0.4, 0.4]
+    backgroundColor: [30, 60, 30]
+    backgroundAlpha: 150
+    onClick:
+      action: NONE
+
+  - id: btn_increment
+    type: ITEM_BUTTON
+    material: GREEN_CONCRETE
+    position: [-0.2, 0.5, 0.0]
+    scale: [0.12, 0.12, 0.02]
+    tooltip: "storage.set() - Увеличить счетчик"
+    glowOnHover: true
+    onClick:
+      action: RUN_SCRIPT
+      function: "btn_increment_click"
+
+  - id: btn_decrement
+    type: ITEM_BUTTON
+    material: RED_CONCRETE
+    position: [0.0, 0.5, 0.0]
+    scale: [0.12, 0.12, 0.02]
+    tooltip: "storage.set() - Уменьшить счетчик"
+    glowOnHover: true
+    onClick:
+      action: RUN_SCRIPT
+      function: "btn_decrement_click"
+
+  - id: btn_reset
+    type: ITEM_BUTTON
+    material: BARRIER
+    position: [0.2, 0.5, 0.0]
+    scale: [0.12, 0.12, 0.02]
+    tooltip: "storage.remove() - Сбросить счетчик"
+    glowOnHover: true
+    onClick:
+      action: RUN_SCRIPT
+      function: "btn_reset_click"
+
+  # Демонстрация has()
+  - id: has_demo_label
+    type: TEXT_BUTTON
+    text: "Демонстрация has()"
+    hoveredText: "storage.has() - проверка существования ключа"
+    position: [-0.4, 0.2, 0.0]
+    scale: [0.3, 0.3, 0.3]
+    backgroundColor: [25, 50, 25]
+    backgroundAlpha: 150
+    onClick:
+      action: NONE
+
+  - id: btn_check_key
+    type: ITEM_BUTTON
+    material: SPYGLASS
+    position: [-0.4, 0.0, 0.0]
+    scale: [0.12, 0.12, 0.02]
+    tooltip: "storage.has() - Проверить ключ"
+    glowOnHover: true
+    onClick:
+      action: RUN_SCRIPT
+      function: "btn_check_key_click"
+
+  - id: btn_create_key
+    type: ITEM_BUTTON
+    material: WRITABLE_BOOK
+    position: [-0.4, -0.2, 0.0]
+    scale: [0.12, 0.12, 0.02]
+    tooltip: "storage.set() - Создать ключ"
+    glowOnHover: true
+    onClick:
+      action: RUN_SCRIPT
+      function: "btn_create_key_click"
+
+  # Демонстрация разных типов данных
+  - id: types_demo_label
+    type: TEXT_BUTTON
+    text: "Типы данных"
+    hoveredText: "Сохранение разных типов данных"
+    position: [0.4, 0.2, 0.0]
+    scale: [0.3, 0.3, 0.3]
+    backgroundColor: [25, 50, 25]
+    backgroundAlpha: 150
+    onClick:
+      action: NONE
+
+  - id: btn_save_string
+    type: ITEM_BUTTON
+    material: PAPER
+    position: [0.3, 0.0, 0.0]
+    scale: [0.1, 0.1, 0.02]
+    tooltip: "Сохранить строку"
+    glowOnHover: true
+    onClick:
+      action: RUN_SCRIPT
+      function: "btn_save_string_click"
+
+  - id: btn_save_number
+    type: ITEM_BUTTON
+    material: GOLD_INGOT
+    position: [0.4, 0.0, 0.0]
+    scale: [0.1, 0.1, 0.02]
+    tooltip: "Сохранить число"
+    glowOnHover: true
+    onClick:
+      action: RUN_SCRIPT
+      function: "btn_save_number_click"
+
+  - id: btn_save_boolean
+    type: ITEM_BUTTON
+    material: LEVER
+    position: [0.5, 0.0, 0.0]
+    scale: [0.1, 0.1, 0.02]
+    tooltip: "Сохранить boolean"
+    glowOnHover: true
+    onClick:
+      action: RUN_SCRIPT
+      function: "btn_save_boolean_click"
+
+  - id: btn_load_data
+    type: ITEM_BUTTON
+    material: CHEST
+    position: [0.4, -0.2, 0.0]
+    scale: [0.12, 0.12, 0.02]
+    tooltip: "storage.get() - Загрузить все данные"
+    glowOnHover: true
+    onClick:
+      action: RUN_SCRIPT
+      function: "btn_load_data_click"
+
+  # Статистика и очистка
+  - id: stats_label
+    type: TEXT_BUTTON
+    text: "Статистика: 0 ключей"
+    hoveredText: "Количество сохраненных ключей"
+    position: [0.0, -0.4, 0.0]
+    scale: [0.35, 0.35, 0.35]
+    backgroundColor: [20, 40, 20]
+    backgroundAlpha: 150
+    onClick:
+      action: NONE
+
+  - id: btn_clear_all
+    type: ITEM_BUTTON
+    material: TNT
+    position: [0.0, -0.6, 0.0]
+    scale: [0.12, 0.12, 0.02]
+    tooltip: "storage.clear() - Очистить все данные"
+    glowOnHover: true
+    onClick:
+      action: RUN_SCRIPT
+      function: "btn_clear_all_click"
+
+  # Навигация
+  - id: btn_back
+    type: TEXT_BUTTON
+    text: "← Назад"
+    hoveredText: "Вернуться в главное меню"
+    position: [-0.35, 0.95, 0.0]
+    scale: [0.4, 0.4, 0.4]
+    backgroundColor: [40, 40, 40]
+    backgroundAlpha: 150
+    onClick:
+      action: SWITCH_SCREEN
+      target: main_menu
+
+  - id: btn_close
+    type: TEXT_BUTTON
+    text: "⏺"
+    hoveredText: "Закрыть"
+    position: [0.35, 0.95, 0.0]
+    scale: [0.6, 0.6, 0.6]
+    backgroundAlpha: 0
+    hoveredBackgroundAlpha: 50
+    onClick:
+      action: CLOSE_SCREEN

@@ -1,0 +1,174 @@
+id: player_api_demo
+background:
+  color: [40, 20, 20]
+  alpha: 180
+  scale: [8.0, 6.0, 1.0]
+  text: " "
+
+scripts:
+  file: "player_api_demo.lua"
+
+widgets:
+  # Заголовок
+  - id: title
+    type: TEXT_BUTTON
+    text: "👤 Player API Demo"
+    hoveredText: "Демонстрация функций Player API"
+    position: [0.0, 1.0, 0.0]
+    scale: [0.5, 0.5, 0.5]
+    backgroundColor: [80, 40, 40]
+    backgroundAlpha: 200
+    onClick:
+      action: NONE
+
+  # Информация об игроке
+  - id: player_info
+    type: TEXT_BUTTON
+    text: "Информация об игроке"
+    hoveredText: "name(), op(), health(), gamemode()"
+    position: [0.0, 0.7, 0.0]
+    scale: [0.4, 0.4, 0.4]
+    backgroundColor: [60, 30, 30]
+    backgroundAlpha: 150
+    onClick:
+      action: RUN_SCRIPT
+      function: "btn_player_info_click"
+
+  # Управление здоровьем
+  - id: btn_heal
+    type: ITEM_BUTTON
+    material: GOLDEN_APPLE
+    position: [-0.4, 0.4, 0.0]
+    scale: [0.15, 0.15, 0.02]
+    tooltip: "player.health(20) - Восстановить здоровье"
+    glowOnHover: true
+    onClick:
+      action: RUN_SCRIPT
+      function: "btn_heal_click"
+
+  - id: btn_damage
+    type: ITEM_BUTTON
+    material: IRON_SWORD
+    position: [-0.1, 0.4, 0.0]
+    scale: [0.15, 0.15, 0.02]
+    tooltip: "player.health(5) - Уменьшить здоровье"
+    glowOnHover: true
+    onClick:
+      action: RUN_SCRIPT
+      function: "btn_damage_click"
+
+  # Управление режимом игры
+  - id: btn_gamemode
+    type: ITEM_BUTTON
+    material: COMMAND_BLOCK
+    position: [0.2, 0.4, 0.0]
+    scale: [0.15, 0.15, 0.02]
+    tooltip: "player.gamemode() - Переключить режим"
+    glowOnHover: true
+    onClick:
+      action: RUN_SCRIPT
+      function: "btn_gamemode_click"
+
+  # Звуки
+  - id: sound_demo_label
+    type: TEXT_BUTTON
+    text: "Демонстрация звуков"
+    hoveredText: "player.sound() с разными параметрами"
+    position: [0.0, 0.1, 0.0]
+    scale: [0.35, 0.35, 0.35]
+    backgroundColor: [50, 25, 25]
+    backgroundAlpha: 150
+    onClick:
+      action: NONE
+
+  - id: btn_sound_simple
+    type: ITEM_BUTTON
+    material: NOTE_BLOCK
+    position: [-0.3, -0.2, 0.0]
+    scale: [0.12, 0.12, 0.02]
+    tooltip: "player.sound('ui.button.click')"
+    glowOnHover: true
+    onClick:
+      action: RUN_SCRIPT
+      function: "btn_sound_simple_click"
+
+  - id: btn_sound_complex
+    type: ITEM_BUTTON
+    material: JUKEBOX
+    position: [-0.1, -0.2, 0.0]
+    scale: [0.12, 0.12, 0.02]
+    tooltip: "player.sound() с volume и pitch"
+    glowOnHover: true
+    onClick:
+      action: RUN_SCRIPT
+      function: "btn_sound_complex_click"
+
+  - id: btn_sound_random
+    type: ITEM_BUTTON
+    material: MUSIC_DISC_CAT
+    position: [0.1, -0.2, 0.0]
+    scale: [0.12, 0.12, 0.02]
+    tooltip: "Случайный звук"
+    glowOnHover: true
+    onClick:
+      action: RUN_SCRIPT
+      function: "btn_sound_random_click"
+
+  # Сообщения
+  - id: btn_message_simple
+    type: ITEM_BUTTON
+    material: PAPER
+    position: [-0.2, -0.5, 0.0]
+    scale: [0.12, 0.12, 0.02]
+    tooltip: "player.message() - Простое сообщение"
+    glowOnHover: true
+    onClick:
+      action: RUN_SCRIPT
+      function: "btn_message_simple_click"
+
+  - id: btn_message_colored
+    type: ITEM_BUTTON
+    material: DYE
+    position: [0.0, -0.5, 0.0]
+    scale: [0.12, 0.12, 0.02]
+    tooltip: "player.message() с цветом"
+    glowOnHover: true
+    onClick:
+      action: RUN_SCRIPT
+      function: "btn_message_colored_click"
+
+  # Команды (только для OP)
+  - id: btn_command
+    type: ITEM_BUTTON
+    material: REDSTONE_BLOCK
+    position: [0.2, -0.5, 0.0]
+    scale: [0.12, 0.12, 0.02]
+    tooltip: "player.command() - Выполнить команду (OP)"
+    glowOnHover: true
+    onClick:
+      action: RUN_SCRIPT
+      function: "btn_command_click"
+
+  # Навигация
+  - id: btn_back
+    type: TEXT_BUTTON
+    text: "← Назад"
+    hoveredText: "Вернуться в главное меню"
+    position: [-0.35, 0.95, 0.0]
+    scale: [0.4, 0.4, 0.4]
+    backgroundColor: [40, 40, 40]
+    backgroundAlpha: 150
+    onClick:
+      action: SWITCH_SCREEN
+      target: main_menu
+
+  - id: btn_close
+    type: TEXT_BUTTON
+    text: "⏺"
+    hoveredText: "Закрыть"
+    position: [0.35, 0.95, 0.0]
+    scale: [0.6, 0.6, 0.6]
+    backgroundAlpha: 0
+    hoveredBackgroundAlpha: 50
+    onClick:
+      action: CLOSE_SCREEN

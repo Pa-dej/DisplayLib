@@ -2,7 +2,7 @@ id: simple_demo
 background:
   color: [20, 30, 50]
   alpha: 180
-  scale: [8.0, 5.0, 1.0]
+  scale: [10.0, 7.0, 1.0]
   text: " "
 
 scripts:
@@ -12,24 +12,33 @@ widgets:
   # Заголовок
   - id: title
     type: TEXT_BUTTON
-    text: "Lua API Demo"
-    hoveredText: "Демонстрация Lua API"
-    position: [0.0, 0.85, 0.0]
-    scale: [0.6, 0.6, 0.6]
-    tolerance: [0.15, 0.08]
+    text: "Comprehensive Lua API Demo"
+    hoveredText: "Полная демонстрация всех возможностей Lua API"
+    position: [0.0, 1.2, 0.0]
+    scale: [0.5, 0.5, 0.5]
     backgroundColor: [60, 80, 120]
     backgroundAlpha: 200
     onClick:
       action: NONE
 
-  # Кнопки в стиле старого плагина (левая колонка)
+  # ========== ЛЕВАЯ КОЛОНКА - Player API ==========
+  - id: player_api_label
+    type: TEXT_BUTTON
+    text: "Player API"
+    hoveredText: "Демонстрация Player API функций"
+    position: [-0.6, 0.9, 0.0]
+    scale: [0.3, 0.3, 0.3]
+    backgroundColor: [80, 60, 40]
+    backgroundAlpha: 150
+    onClick:
+      action: NONE
+
   - id: btn_heal
     type: ITEM_BUTTON
     material: GOLDEN_APPLE
-    position: [-0.42, 0.3, 0.0]
-    scale: [0.15, 0.15, 0.02]
-    tolerance: [0.06, 0.06]
-    tooltip: "Восстановить здоровье"
+    position: [-0.6, 0.7, 0.0]
+    scale: [0.12, 0.12, 0.02]
+    tooltip: "health() - Восстановить здоровье"
     glowOnHover: true
     onClick:
       action: RUN_SCRIPT
@@ -38,10 +47,9 @@ widgets:
   - id: btn_gamemode
     type: ITEM_BUTTON
     material: COMMAND_BLOCK
-    position: [-0.42, 0.47, 0.0]
-    scale: [0.15, 0.15, 0.02]
-    tolerance: [0.06, 0.06]
-    tooltip: "Переключить режим игры"
+    position: [-0.6, 0.5, 0.0]
+    scale: [0.12, 0.12, 0.02]
+    tooltip: "gamemode() - Переключить режим игры"
     glowOnHover: true
     onClick:
       action: RUN_SCRIPT
@@ -50,23 +58,43 @@ widgets:
   - id: btn_sound
     type: ITEM_BUTTON
     material: NOTE_BLOCK
-    position: [-0.42, 0.64, 0.0]
-    scale: [0.15, 0.15, 0.02]
-    tolerance: [0.06, 0.06]
-    tooltip: "Воспроизвести звук"
+    position: [-0.6, 0.3, 0.0]
+    scale: [0.12, 0.12, 0.02]
+    tooltip: "sound() - Воспроизвести звук"
     glowOnHover: true
     onClick:
       action: RUN_SCRIPT
       function: "btn_sound_click"
 
-  # Счетчик (центр)
+  - id: btn_command
+    type: ITEM_BUTTON
+    material: REDSTONE_BLOCK
+    position: [-0.6, 0.1, 0.0]
+    scale: [0.12, 0.12, 0.02]
+    tooltip: "command() - Выполнить команду (только OP)"
+    glowOnHover: true
+    onClick:
+      action: RUN_SCRIPT
+      function: "btn_command_click"
+
+  # ========== ЦЕНТРАЛЬНАЯ ЛЕВАЯ КОЛОНКА - Storage API ==========
+  - id: storage_api_label
+    type: TEXT_BUTTON
+    text: "Storage API"
+    hoveredText: "Демонстрация Storage API функций"
+    position: [-0.2, 0.9, 0.0]
+    scale: [0.3, 0.3, 0.3]
+    backgroundColor: [40, 80, 60]
+    backgroundAlpha: 150
+    onClick:
+      action: NONE
+
   - id: counter_label
     type: TEXT_BUTTON
     text: "Счетчик: 0"
     hoveredText: "Счетчик: 0"
-    position: [0.0, 0.3, 0.0]
-    scale: [0.4, 0.4, 0.4]
-    tolerance: [0.12, 0.06]
+    position: [-0.2, 0.7, 0.0]
+    scale: [0.35, 0.35, 0.35]
     backgroundColor: [40, 80, 40]
     backgroundAlpha: 150
     onClick:
@@ -75,10 +103,9 @@ widgets:
   - id: btn_increment
     type: ITEM_BUTTON
     material: GREEN_CONCRETE
-    position: [-0.15, 0.1, 0.0]
-    scale: [0.12, 0.12, 0.02]
-    tolerance: [0.06, 0.06]
-    tooltip: "Увеличить"
+    position: [-0.32, 0.5, 0.0]
+    scale: [0.1, 0.1, 0.02]
+    tooltip: "get()/set() - Увеличить счетчик"
     glowOnHover: true
     onClick:
       action: RUN_SCRIPT
@@ -87,23 +114,54 @@ widgets:
   - id: btn_decrement
     type: ITEM_BUTTON
     material: RED_CONCRETE
-    position: [0.15, 0.1, 0.0]
-    scale: [0.12, 0.12, 0.02]
-    tolerance: [0.06, 0.06]
-    tooltip: "Уменьшить"
+    position: [-0.08, 0.5, 0.0]
+    scale: [0.1, 0.1, 0.02]
+    tooltip: "get()/set() - Уменьшить счетчик"
     glowOnHover: true
     onClick:
       action: RUN_SCRIPT
       function: "btn_decrement_click"
 
-  # Демо текст (правая сторона)
+  - id: btn_storage_demo
+    type: ITEM_BUTTON
+    material: CHEST
+    position: [-0.2, 0.3, 0.0]
+    scale: [0.12, 0.12, 0.02]
+    tooltip: "has()/remove() - Демо Storage API"
+    glowOnHover: true
+    onClick:
+      action: RUN_SCRIPT
+      function: "btn_storage_demo_click"
+
+  - id: visit_counter
+    type: TEXT_BUTTON
+    text: "Посещений: 0"
+    hoveredText: "Всего открытий экрана"
+    position: [-0.2, 0.1, 0.0]
+    scale: [0.3, 0.3, 0.3]
+    backgroundColor: [60, 60, 100]
+    backgroundAlpha: 150
+    onClick:
+      action: NONE
+
+  # ========== ЦЕНТРАЛЬНАЯ ПРАВАЯ КОЛОНКА - Widget API ==========
+  - id: widget_api_label
+    type: TEXT_BUTTON
+    text: "Widget API"
+    hoveredText: "Демонстрация Widget API функций"
+    position: [0.2, 0.9, 0.0]
+    scale: [0.3, 0.3, 0.3]
+    backgroundColor: [80, 40, 80]
+    backgroundAlpha: 150
+    onClick:
+      action: NONE
+
   - id: demo_text
     type: TEXT_BUTTON
     text: "Изменяемый текст"
     hoveredText: "Изменяемый текст"
-    position: [0.42, 0.3, 0.0]
+    position: [0.2, 0.7, 0.0]
     scale: [0.35, 0.35, 0.35]
-    tolerance: [0.1, 0.05]
     backgroundColor: [80, 60, 120]
     backgroundAlpha: 180
     onClick:
@@ -112,10 +170,9 @@ widgets:
   - id: btn_change_text
     type: ITEM_BUTTON
     material: WRITABLE_BOOK
-    position: [0.42, 0.47, 0.0]
-    scale: [0.12, 0.12, 0.02]
-    tolerance: [0.06, 0.06]
-    tooltip: "Изменить текст"
+    position: [0.08, 0.5, 0.0]
+    scale: [0.1, 0.1, 0.02]
+    tooltip: "text() - Изменить текст"
     glowOnHover: true
     onClick:
       action: RUN_SCRIPT
@@ -124,23 +181,43 @@ widgets:
   - id: btn_toggle_visibility
     type: ITEM_BUTTON
     material: ENDER_EYE
-    position: [0.42, 0.64, 0.0]
-    scale: [0.12, 0.12, 0.02]
-    tolerance: [0.06, 0.06]
-    tooltip: "Показать/скрыть"
+    position: [0.32, 0.5, 0.0]
+    scale: [0.1, 0.1, 0.02]
+    tooltip: "visible() - Показать/скрыть"
     glowOnHover: true
     onClick:
       action: RUN_SCRIPT
       function: "btn_toggle_visibility_click"
 
-  # Таймер демо (низ)
+  - id: btn_widget_demo
+    type: ITEM_BUTTON
+    material: ITEM_FRAME
+    position: [0.2, 0.3, 0.0]
+    scale: [0.12, 0.12, 0.02]
+    tooltip: "enabled()/tooltip() - Демо Widget API"
+    glowOnHover: true
+    onClick:
+      action: RUN_SCRIPT
+      function: "btn_widget_demo_click"
+
+  # ========== ПРАВАЯ КОЛОНКА - Timer API ==========
+  - id: timer_api_label
+    type: TEXT_BUTTON
+    text: "Timer API"
+    hoveredText: "Демонстрация Timer API функций"
+    position: [0.6, 0.9, 0.0]
+    scale: [0.3, 0.3, 0.3]
+    backgroundColor: [60, 80, 80]
+    backgroundAlpha: 150
+    onClick:
+      action: NONE
+
   - id: timer_status
     type: TEXT_BUTTON
     text: "Готов к запуску"
-    hoveredText: "Статус таймера"
-    position: [0.0, -0.1, 0.0]
-    scale: [0.35, 0.35, 0.35]
-    tolerance: [0.1, 0.05]
+    hoveredText: "Статус after() таймера"
+    position: [0.6, 0.7, 0.0]
+    scale: [0.3, 0.3, 0.3]
     backgroundColor: [80, 80, 60]
     backgroundAlpha: 150
     onClick:
@@ -149,23 +226,133 @@ widgets:
   - id: btn_timer
     type: ITEM_BUTTON
     material: CLOCK
-    position: [0.0, -0.3, 0.0]
+    position: [0.6, 0.5, 0.0]
     scale: [0.12, 0.12, 0.02]
-    tolerance: [0.06, 0.06]
-    tooltip: "Запустить таймер"
+    tooltip: "after() - Запустить таймер"
     glowOnHover: true
     onClick:
       action: RUN_SCRIPT
       function: "btn_timer_click"
 
-  # Кнопка закрытия (как в старом стиле)
+  - id: animation_status
+    type: TEXT_BUTTON
+    text: "Анимация остановлена"
+    hoveredText: "Статус repeat() таймера"
+    position: [0.6, 0.3, 0.0]
+    scale: [0.28, 0.28, 0.28]
+    backgroundColor: [80, 60, 60]
+    backgroundAlpha: 150
+    onClick:
+      action: NONE
+
+  - id: btn_repeat_timer
+    type: ITEM_BUTTON
+    material: REPEATER
+    position: [0.6, 0.1, 0.0]
+    scale: [0.12, 0.12, 0.02]
+    tooltip: "repeat() - Повторяющийся таймер"
+    glowOnHover: true
+    onClick:
+      action: RUN_SCRIPT
+      function: "btn_repeat_timer_click"
+
+  # ========== НИЖНЯЯ СЕКЦИЯ - Screen API и дополнительные функции ==========
+  - id: screen_api_label
+    type: TEXT_BUTTON
+    text: "Screen API & Advanced"
+    hoveredText: "Демонстрация Screen API и дополнительных функций"
+    position: [0.0, -0.1, 0.0]
+    scale: [0.4, 0.4, 0.4]
+    backgroundColor: [100, 80, 60]
+    backgroundAlpha: 150
+    onClick:
+      action: NONE
+
+  - id: progress_bar
+    type: TEXT_BUTTON
+    text: "Готов к запуску"
+    hoveredText: "Прогресс times() таймера"
+    position: [-0.4, -0.3, 0.0]
+    scale: [0.3, 0.3, 0.3]
+    backgroundColor: [80, 80, 60]
+    backgroundAlpha: 150
+    onClick:
+      action: NONE
+
+  - id: btn_times_timer
+    type: ITEM_BUTTON
+    material: COMPARATOR
+    position: [-0.4, -0.5, 0.0]
+    scale: [0.12, 0.12, 0.02]
+    tooltip: "times() - Ограниченные повторения"
+    glowOnHover: true
+    onClick:
+      action: RUN_SCRIPT
+      function: "btn_times_timer_click"
+
+  - id: btn_screen_demo
+    type: ITEM_BUTTON
+    material: MAP
+    position: [-0.15, -0.3, 0.0]
+    scale: [0.12, 0.12, 0.02]
+    tooltip: "id()/data() - Демо Screen API"
+    glowOnHover: true
+    onClick:
+      action: RUN_SCRIPT
+      function: "btn_screen_demo_click"
+
+  - id: btn_switch_demo
+    type: ITEM_BUTTON
+    material: ENDER_PEARL
+    position: [0.15, -0.3, 0.0]
+    scale: [0.12, 0.12, 0.02]
+    tooltip: "switch() - Переключить экран"
+    glowOnHover: true
+    onClick:
+      action: RUN_SCRIPT
+      function: "btn_switch_demo_click"
+
+  - id: btn_notification_demo
+    type: ITEM_BUTTON
+    material: BELL
+    position: [0.4, -0.3, 0.0]
+    scale: [0.12, 0.12, 0.02]
+    tooltip: "Демонстрация уведомлений"
+    glowOnHover: true
+    onClick:
+      action: RUN_SCRIPT
+      function: "btn_notification_demo_click"
+
+  - id: notification
+    type: TEXT_BUTTON
+    text: "Уведомление"
+    hoveredText: "Системное уведомление"
+    position: [0.0, -0.7, 0.0]
+    scale: [0.4, 0.4, 0.4]
+    backgroundColor: [100, 100, 40]
+    backgroundAlpha: 0
+    visible: false
+    onClick:
+      action: NONE
+
+  - id: btn_comprehensive_test
+    type: ITEM_BUTTON
+    material: NETHER_STAR
+    position: [0.0, -0.9, 0.0]
+    scale: [0.15, 0.15, 0.02]
+    tooltip: "🧪 Комплексный тест всех API"
+    glowOnHover: true
+    onClick:
+      action: RUN_SCRIPT
+      function: "btn_comprehensive_test_click"
+
+  # Кнопка закрытия
   - id: btn_close
     type: TEXT_BUTTON
     text: "⏺"
-    hoveredText: "Закрыть"
-    position: [0.35, 0.8, 0.0]
-    scale: [0.75, 0.75, 0.75]
-    tolerance: [0.035, 0.035]
+    hoveredText: "Закрыть демо"
+    position: [0.45, 1.15, 0.0]
+    scale: [0.6, 0.6, 0.6]
     backgroundAlpha: 0
     hoveredBackgroundAlpha: 50
     onClick:
