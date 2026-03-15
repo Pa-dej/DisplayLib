@@ -50,9 +50,6 @@ public class Animation {
             screen.setOnClose(() -> UIManager.getInstance().unregisterScreen(player));
             screen.setupDefaultWidgets(player);
         }, 2);
-
-        // TODO: Update for new YAML system - temporarily disabled
-        // UIManager.getInstance().registerScreen(player, screen);
     }
 
 }

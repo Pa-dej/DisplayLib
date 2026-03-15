@@ -274,7 +274,6 @@ public abstract class Screen extends WidgetManager implements IDisplayable, IPar
                     () -> {
                         ScreenInstance currentScreen = UIManager.getInstance().getActiveScreen(viewer);
                         if (currentScreen != null) {
-                            // TODO: Implement navigation in new YAML system
                             UIManager.getInstance().closeScreen(viewer);
                         }
                     }

@@ -100,9 +100,6 @@ public class ChangeScreen {
                 
                 if (newManager instanceof Animatable) {
                     ((Animatable) newManager).createWithAnimation(player);
-                } else {
-                    // TODO: Update for new YAML system - temporarily disabled
-                // UIManager.getInstance().registerScreen(player, newManager);
                 }
             } catch (Exception e) {
                 LOGGER.error("Ошибка при переключении с {} на {}", from.getSimpleName(), to.getSimpleName(), e);
