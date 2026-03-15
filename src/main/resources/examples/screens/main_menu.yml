@@ -27,7 +27,7 @@ widgets:
     type: ITEM_BUTTON
     material: COMMAND_BLOCK
     position: [-0.42, 0.3, 0.0]
-    scale: [0.15, 0.15, 0.15]
+    scale: [0.15, 0.15, 0.02]
     tolerance: [0.06, 0.06]
     tooltip: "Lua API Demo"
     glowOnHover: true
@@ -40,7 +40,7 @@ widgets:
     type: ITEM_BUTTON
     material: BOOK
     position: [-0.42, 0.47, 0.0]
-    scale: [0.15, 0.15, 0.15]
+    scale: [0.15, 0.15, 0.02]
     tolerance: [0.06, 0.06]
     tooltip: "Информация"
     glowOnHover: true
@@ -52,7 +52,7 @@ widgets:
     type: ITEM_BUTTON
     material: REDSTONE
     position: [-0.42, 0.64, 0.0]
-    scale: [0.15, 0.15, 0.15]
+    scale: [0.15, 0.15, 0.02]
     tolerance: [0.06, 0.06]
     tooltip: "Тест функций"
     glowOnHover: true

@@ -48,6 +48,11 @@ public class TextDisplayButtonWidget implements Widget {
     private Transformation hoveredTransformation;
     private int hoveredTransformationDuration;
     
+    // Сохранение ориентации для восстановления после пересоздания
+    private float savedYaw = 0.0f;
+    private float savedPitch = 0.0f;
+    private boolean hasRotation = false;
+    
     private Vector cachedPosition;
     private boolean positionCached = false;
 
@@ -99,6 +104,12 @@ public class TextDisplayButtonWidget implements Widget {
 
         display.setInterpolationDuration(1);
         display.setTeleportDuration(1);
+        
+        // Восстанавливаем ориентацию если она была сохранена
+        if (hasRotation) {
+            display.setRotation(savedYaw, savedPitch);
+            display.setBillboard(org.bukkit.entity.Display.Billboard.FIXED);
+        }
     }
 
     @Override
@@ -322,6 +333,21 @@ public class TextDisplayButtonWidget implements Widget {
         this.backgroundAlpha = alpha;
         if (display != null && !isHovered) {
             display.setBackgroundColor(Color.fromARGB(alpha, backgroundColor.getRed(), backgroundColor.getGreen(), backgroundColor.getBlue()));
+        }
+    }
+    
+    /**
+     * Сохранить ориентацию для восстановления после пересоздания
+     */
+    public void saveRotation(float yaw, float pitch) {
+        this.savedYaw = yaw;
+        this.savedPitch = pitch;
+        this.hasRotation = true;
+        
+        // Применяем ориентацию если display уже существует
+        if (display != null) {
+            display.setRotation(yaw, pitch);
+            display.setBillboard(org.bukkit.entity.Display.Billboard.FIXED);
         }
     }
 }

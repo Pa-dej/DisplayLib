@@ -41,12 +41,13 @@ tasks {
         doLast {
             println("FINISH!")
             
-            // Copy JAR to server
+            // Copy JAR to server (with overwrite)
             copy {
                 from(layout.buildDirectory.dir("libs"))
                 into("C:\\Users\\User\\Desktop\\servers\\paper-1.21.11\\plugins")
                 include("*-${version}.jar")
                 exclude("*-sources.jar")
+                duplicatesStrategy = DuplicatesStrategy.INCLUDE
             }
             
             // Copy example files to server plugin directory
@@ -56,18 +57,20 @@ tasks {
             file("${serverPluginDir}\\screens").mkdirs()
             file("${serverPluginDir}\\scripts").mkdirs()
             
-            // Copy example screens
+            // Copy example screens (with overwrite)
             copy {
                 from("src/main/resources/examples/screens")
                 into("${serverPluginDir}\\screens")
                 include("*.yml", "*.yaml")
+                duplicatesStrategy = DuplicatesStrategy.INCLUDE
             }
             
-            // Copy example scripts
+            // Copy example scripts (with overwrite)
             copy {
                 from("src/main/resources/examples/scripts")
                 into("${serverPluginDir}\\scripts")
                 include("*.lua")
+                duplicatesStrategy = DuplicatesStrategy.INCLUDE
             }
             
             println("Example files copied to server!")
@@ -86,18 +89,20 @@ tasks {
             file("${serverPluginDir}\\screens").mkdirs()
             file("${serverPluginDir}\\scripts").mkdirs()
             
-            // Copy example screens
+            // Copy example screens (with overwrite)
             copy {
                 from("src/main/resources/examples/screens")
                 into("${serverPluginDir}\\screens")
                 include("*.yml", "*.yaml")
+                duplicatesStrategy = DuplicatesStrategy.INCLUDE
             }
             
-            // Copy example scripts
+            // Copy example scripts (with overwrite)
             copy {
                 from("src/main/resources/examples/scripts")
                 into("${serverPluginDir}\\scripts")
                 include("*.lua")
+                duplicatesStrategy = DuplicatesStrategy.INCLUDE
             }
             
             println("Example files copied to server!")

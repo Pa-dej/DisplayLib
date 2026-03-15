@@ -27,7 +27,7 @@ widgets:
     type: ITEM_BUTTON
     material: GOLDEN_APPLE
     position: [-0.42, 0.3, 0.0]
-    scale: [0.15, 0.15, 0.15]
+    scale: [0.15, 0.15, 0.02]
     tolerance: [0.06, 0.06]
     tooltip: "Восстановить здоровье"
     glowOnHover: true
@@ -39,7 +39,7 @@ widgets:
     type: ITEM_BUTTON
     material: COMMAND_BLOCK
     position: [-0.42, 0.47, 0.0]
-    scale: [0.15, 0.15, 0.15]
+    scale: [0.15, 0.15, 0.02]
     tolerance: [0.06, 0.06]
     tooltip: "Переключить режим игры"
     glowOnHover: true
@@ -51,7 +51,7 @@ widgets:
     type: ITEM_BUTTON
     material: NOTE_BLOCK
     position: [-0.42, 0.64, 0.0]
-    scale: [0.15, 0.15, 0.15]
+    scale: [0.15, 0.15, 0.02]
     tolerance: [0.06, 0.06]
     tooltip: "Воспроизвести звук"
     glowOnHover: true
@@ -76,7 +76,7 @@ widgets:
     type: ITEM_BUTTON
     material: GREEN_CONCRETE
     position: [-0.15, 0.1, 0.0]
-    scale: [0.12, 0.12, 0.12]
+    scale: [0.12, 0.12, 0.02]
     tolerance: [0.06, 0.06]
     tooltip: "Увеличить"
     glowOnHover: true
@@ -88,7 +88,7 @@ widgets:
     type: ITEM_BUTTON
     material: RED_CONCRETE
     position: [0.15, 0.1, 0.0]
-    scale: [0.12, 0.12, 0.12]
+    scale: [0.12, 0.12, 0.02]
     tolerance: [0.06, 0.06]
     tooltip: "Уменьшить"
     glowOnHover: true
@@ -113,7 +113,7 @@ widgets:
     type: ITEM_BUTTON
     material: WRITABLE_BOOK
     position: [0.42, 0.47, 0.0]
-    scale: [0.12, 0.12, 0.12]
+    scale: [0.12, 0.12, 0.02]
     tolerance: [0.06, 0.06]
     tooltip: "Изменить текст"
     glowOnHover: true
@@ -125,7 +125,7 @@ widgets:
     type: ITEM_BUTTON
     material: ENDER_EYE
     position: [0.42, 0.64, 0.0]
-    scale: [0.12, 0.12, 0.12]
+    scale: [0.12, 0.12, 0.02]
     tolerance: [0.06, 0.06]
     tooltip: "Показать/скрыть"
     glowOnHover: true
@@ -150,7 +150,7 @@ widgets:
     type: ITEM_BUTTON
     material: CLOCK
     position: [0.0, -0.3, 0.0]
-    scale: [0.12, 0.12, 0.12]
+    scale: [0.12, 0.12, 0.02]
     tolerance: [0.06, 0.06]
     tooltip: "Запустить таймер"
     glowOnHover: true

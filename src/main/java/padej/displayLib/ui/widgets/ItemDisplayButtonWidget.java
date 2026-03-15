@@ -52,6 +52,11 @@ public class ItemDisplayButtonWidget implements Widget {
     private boolean glowOnHover = true;
     private org.bukkit.Color glowColor;
     
+    // Сохранение ориентации для восстановления после пересоздания
+    private float savedYaw = 0.0f;
+    private float savedPitch = 0.0f;
+    private boolean hasRotation = false;
+    
     private Vector cachedPosition;
     private boolean positionCached = false;
 
@@ -111,6 +116,12 @@ public class ItemDisplayButtonWidget implements Widget {
 
         display.setInterpolationDuration(1);
         display.setTeleportDuration(1);
+        
+        // Восстанавливаем ориентацию если она была сохранена
+        if (hasRotation) {
+            display.setRotation(savedYaw, savedPitch);
+            display.setBillboard(org.bukkit.entity.Display.Billboard.FIXED);
+        }
     }
 
     @Override
@@ -296,6 +307,21 @@ public class ItemDisplayButtonWidget implements Widget {
             this.tooltip = Component.text(tooltipText);
         } else {
             this.tooltip = null;
+        }
+    }
+    
+    /**
+     * Сохранить ориентацию для восстановления после пересоздания
+     */
+    public void saveRotation(float yaw, float pitch) {
+        this.savedYaw = yaw;
+        this.savedPitch = pitch;
+        this.hasRotation = true;
+        
+        // Применяем ориентацию если display уже существует
+        if (display != null) {
+            display.setRotation(yaw, pitch);
+            display.setBillboard(org.bukkit.entity.Display.Billboard.FIXED);
         }
     }
 }

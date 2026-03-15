@@ -86,8 +86,9 @@ end
 
 function btn_increment_click()
     log.info("=== btn_increment_click called ===")
-    local counter = storage.get("counter", 0) + 1
-    storage.set("counter", counter)
+    local counter = tonumber(storage.get("counter", "0")) or 0
+    counter = counter + 1
+    storage.set("counter", tostring(counter))
     
     update_counter()
     player.sound("block.note_block.harp", 1.0, 1.0 + counter * 0.05)
@@ -107,11 +108,12 @@ function btn_increment_click()
 end
 
 function btn_decrement_click()
-    local counter = storage.get("counter", 0)
+    log.info("=== btn_decrement_click called ===")
+    local counter = tonumber(storage.get("counter", "0")) or 0
     
     if counter > 0 then
         counter = counter - 1
-        storage.set("counter", counter)
+        storage.set("counter", tostring(counter))
         
         update_counter()
         player.sound("block.note_block.bass", 1.0, 0.8)
@@ -122,14 +124,17 @@ function btn_decrement_click()
         player.message("§cСчетчик уже равен нулю!")
         player.sound("block.anvil.hit", 0.5, 0.5)
     end
+    log.info("=== btn_decrement_click completed ===")
 end
 
 function update_counter()
-    local counter = storage.get("counter", 0)
+    local counter = tonumber(storage.get("counter", "0")) or 0
     local label = screen.widget("counter_label")
     
     if label then
-        label.text("Счетчик: " .. counter)
+        local counter_text = "Счетчик: " .. counter
+        label.text(counter_text)
+        label.hoveredText(counter_text)  -- Устанавливаем тот же текст для hover
         
         -- Меняем цвет в зависимости от значения
         if counter == 0 then

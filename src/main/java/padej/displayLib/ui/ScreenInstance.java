@@ -38,6 +38,9 @@ public class ScreenInstance extends WidgetManager {
     
     /** Смещение виджетов по глубине относительно фона для избежания Z-fighting */
     private static final float WIDGET_DEPTH_OFFSET = 0.001f;
+    
+    /** Увеличенное смещение для ItemDisplay виджетов */
+    private static final float ITEM_WIDGET_DEPTH_OFFSET = 0.01f;
 
     public ScreenInstance(String screenId, ScreenDefinition definition,
                           Player viewer, Location location, LuaEngine luaEngine) {
@@ -121,9 +124,9 @@ public class ScreenInstance extends WidgetManager {
         // Фон создается на базовой позиции (без смещения по глубине)
         TextDisplayButtonWidget backgroundWidget = TextDisplayButtonWidget.create(location, viewer, cfg);
         
-        // Устанавливаем единую ориентацию экрана
-        if (backgroundWidget.getDisplay() != null) {
-            backgroundWidget.getDisplay().setRotation(screenYaw, screenPitch);
+        // Сохраняем единую ориентацию экрана
+        if (backgroundWidget != null) {
+            backgroundWidget.saveRotation(screenYaw, screenPitch);
         }
         
         addDrawableChild(backgroundWidget);
@@ -147,7 +150,7 @@ public class ScreenInstance extends WidgetManager {
         Location widgetLoc = resolveLocation(def.getPosition());
         return switch (def.getType()) {
             case TEXT_BUTTON -> buildTextWidget(def, widgetLoc);
-            case ITEM_BUTTON -> buildItemWidget(def, widgetLoc);
+            case ITEM_BUTTON -> buildItemWidget(def, null); // Позиция вычисляется внутри buildItemWidget
         };
     }
 
@@ -161,10 +164,16 @@ public class ScreenInstance extends WidgetManager {
         float[] s = def.getScale();
         float[] t = def.getTolerance();
 
+        // Определяем onClick только если действие не NONE
+        Runnable onClickAction = null;
+        if (def.getOnClick() != null && def.getOnClick().getAction() != WidgetDefinition.ClickAction.ActionType.NONE) {
+            onClickAction = () -> handleClick(def);
+        }
+
         TextDisplayButtonConfig cfg = new TextDisplayButtonConfig(
                 Component.text(def.getText() != null ? def.getText() : ""),
                 Component.text(def.getHoveredText() != null ? def.getHoveredText() : def.getText() != null ? def.getText() : ""),
-                () -> handleClick(def)
+                onClickAction
         )
                 .setScale(s[0], s[1], s[2])
                 .setTolerance(t[0], t[1])
@@ -183,10 +192,9 @@ public class ScreenInstance extends WidgetManager {
 
         TextDisplayButtonWidget widget = TextDisplayButtonWidget.create(loc, viewer, cfg);
         
-        // Устанавливаем единую ориентацию экрана (как у фона)
-        if (widget.getDisplay() != null) {
-            widget.getDisplay().setRotation(screenYaw, screenPitch);
-            widget.getDisplay().setBillboard(org.bukkit.entity.Display.Billboard.FIXED);
+        // Сохраняем единую ориентацию экрана (как у фона)
+        if (widget != null) {
+            widget.saveRotation(screenYaw, screenPitch);
         }
         
         return widget;
@@ -203,7 +211,16 @@ public class ScreenInstance extends WidgetManager {
         float[] s = def.getScale();
         float[] t = def.getTolerance();
 
-        ItemDisplayButtonConfig cfg = new ItemDisplayButtonConfig(material, () -> handleClick(def))
+        // Определяем onClick только если действие не NONE
+        Runnable onClickAction = null;
+        if (def.getOnClick() != null && def.getOnClick().getAction() != WidgetDefinition.ClickAction.ActionType.NONE) {
+            onClickAction = () -> handleClick(def);
+        }
+
+        // Используем увеличенное смещение для ItemDisplay виджетов
+        Location itemLoc = resolveLocation(def.getPosition(), ITEM_WIDGET_DEPTH_OFFSET);
+
+        ItemDisplayButtonConfig cfg = new ItemDisplayButtonConfig(material, onClickAction)
                 .setScale(s[0], s[1], s[2])
                 .setTolerance(t[0], t[1])
                 .setGlowOnHover(def.isGlowOnHover())
@@ -222,12 +239,11 @@ public class ScreenInstance extends WidgetManager {
                     .setTooltipDelay(def.getTooltipDelay());
         }
 
-        ItemDisplayButtonWidget widget = ItemDisplayButtonWidget.create(loc, viewer, cfg);
+        ItemDisplayButtonWidget widget = ItemDisplayButtonWidget.create(itemLoc, viewer, cfg);
         
-        // Устанавливаем единую ориентацию экрана (как у фона)
-        if (widget.getDisplay() != null) {
-            widget.getDisplay().setRotation(screenYaw, screenPitch);
-            widget.getDisplay().setBillboard(org.bukkit.entity.Display.Billboard.FIXED);
+        // Сохраняем единую ориентацию экрана (как у фона)
+        if (widget != null) {
+            widget.saveRotation(screenYaw, screenPitch);
         }
         
         return widget;
