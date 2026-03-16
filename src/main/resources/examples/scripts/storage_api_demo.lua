@@ -36,7 +36,7 @@ function btn_increment_click()
     log.info("=== btn_increment_click called ===")
     
     -- Демонстрация storage.get() с дефолтным значением
-    local counter = tonumber(storage.get("counter", "0")) or 0
+    local counter = storage.get("counter", 0)
     counter = counter + 1
     
     -- Демонстрация storage.set()
@@ -64,7 +64,7 @@ end
 function btn_decrement_click()
     log.info("=== btn_decrement_click called ===")
     
-    local counter = tonumber(storage.get("counter", "0")) or 0
+    local counter = storage.get("counter", 0)
     
     if counter > 0 then
         counter = counter - 1
@@ -111,7 +111,7 @@ function btn_reset_click()
 end
 
 function update_counter()
-    local counter = tonumber(storage.get("counter", "0")) or 0
+    local counter = storage.get("counter", 0)
     local label = screen.widget("counter_label")
     
     if label then

@@ -25,7 +25,6 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class UIManager implements Listener {
-    private static UIManager instance;
     private final Map<Player, ScreenInstance> activeScreens = new ConcurrentHashMap<>();
     private BukkitTask updateTask;
     private boolean isUpdateTaskRunning = false;
@@ -36,11 +35,12 @@ public class UIManager implements Listener {
         Bukkit.getPluginManager().registerEvents(this, DisplayLib.getInstance());
     }
 
+    private static class Holder {
+        static final UIManager INSTANCE = new UIManager();
+    }
+    
     public static UIManager getInstance() {
-        if (instance == null) {
-            instance = new UIManager();
-        }
-        return instance;
+        return Holder.INSTANCE;
     }
 
     public void initialize(ScreenRegistry screenRegistry, LuaEngine luaEngine) {

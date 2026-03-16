@@ -84,9 +84,9 @@ function btn_save_data_click()
     
     -- Демонстрация screen.data() setter
     local timestamp = math.random(1000, 9999)
-    screen.data("demo_string", "Сохранено в " .. timestamp)
-    screen.data("demo_number", math.random(1, 100))
-    screen.data("demo_boolean", (timestamp % 2 == 0))
+    screen.data("demo_string", "Сохранено в " .. timestamp);
+    screen.data("demo_number", math.random(1, 100));
+    screen.data("demo_boolean", (timestamp % 2 == 0));
     local current_save_count = screen.data("save_count") or 0
     screen.data("save_count", current_save_count + 1)
     
@@ -127,8 +127,8 @@ function btn_clear_data_click()
     log.info("=== btn_clear_data_click called ===")
     
     -- Демонстрация screen.data() с nil для удаления
-    screen.data("demo_string", nil)
-    screen.data("demo_number", nil)
+    screen.data("demo_string", nil);
+    screen.data("demo_number", nil);
     screen.data("demo_boolean", nil)
     
     player.message("§c🗑️ Демонстрационные данные очищены")
@@ -316,7 +316,7 @@ function btn_switch_player_click()
     player.sound("entity.enderman.teleport", 1.0, 1.0)
     
     -- Сохраняем данные перед переключением
-    screen.data("switched_from", "screen_api_demo")
+    screen.data("switched_from", "screen_api_demo");
     screen.data("switch_time", math.random(1000, 9999))
     
     -- Демонстрация screen.switch()
@@ -334,7 +334,7 @@ function btn_switch_storage_click()
     player.message("§b🔄 Демонстрация screen.switch('storage_api_demo')")
     player.sound("entity.enderman.teleport", 1.0, 1.0)
     
-    screen.data("switched_from", "screen_api_demo")
+    screen.data("switched_from", "screen_api_demo");
     screen.data("switch_time", math.random(1000, 9999))
     
     timer.after(20, function()
@@ -351,7 +351,7 @@ function btn_switch_widget_click()
     player.message("§b🔄 Демонстрация screen.switch('widget_api_demo')")
     player.sound("entity.enderman.teleport", 1.0, 1.0)
     
-    screen.data("switched_from", "screen_api_demo")
+    screen.data("switched_from", "screen_api_demo");
     screen.data("switch_time", math.random(1000, 9999))
     
     timer.after(20, function()

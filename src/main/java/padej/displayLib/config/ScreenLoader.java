@@ -17,12 +17,24 @@ import java.util.logging.Level;
 public class ScreenLoader {
     private final JavaPlugin plugin;
     private final Path screensDirectory;
+    private final Path scriptsDirectory;
 
     public ScreenLoader(DisplayLib plugin) {
         this.plugin = (JavaPlugin) plugin;
         this.screensDirectory = plugin.getDataFolder().toPath().resolve("screens");
+        this.scriptsDirectory = plugin.getDataFolder().toPath().resolve("scripts");
 
         plugin.getLogger().info("ScreenLoader: Initializing with data folder: " + plugin.getDataFolder().getAbsolutePath());
+        plugin.getLogger().info("ScreenLoader: Scripts directory: " + scriptsDirectory.toString());
+        
+        // Создаем директории при инициализации
+        try {
+            Files.createDirectories(screensDirectory);
+            Files.createDirectories(scriptsDirectory);
+            plugin.getLogger().info("ScreenLoader: Directories created/verified");
+        } catch (IOException e) {
+            plugin.getLogger().log(Level.SEVERE, "ScreenLoader: Failed to create directories", e);
+        }
         plugin.getLogger().info("ScreenLoader: Screens directory: " + screensDirectory.toString());
 
         try {
@@ -543,15 +555,6 @@ public class ScreenLoader {
     }
 
     private Path getScriptsDirectory() {
-        Path scriptsDir = plugin.getDataFolder().toPath().resolve("scripts");
-        plugin.getLogger().info("ScreenLoader: Scripts directory: " + scriptsDir.toString());
-        
-        try {
-            Files.createDirectories(scriptsDir);
-            plugin.getLogger().info("ScreenLoader: Scripts directory created/verified");
-        } catch (IOException e) {
-            plugin.getLogger().log(Level.SEVERE, "ScreenLoader: Failed to create scripts directory", e);
-        }
-        return scriptsDir;
+        return scriptsDirectory;
     }
 }

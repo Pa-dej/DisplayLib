@@ -4,6 +4,7 @@ import padej.displayLib.lua.LuaContext;
 import padej.displayLib.ui.ScreenInstance;
 import padej.displayLib.ui.UIManager;
 import padej.displayLib.ui.widgets.Widget;
+import padej.displayLib.lua.api.WidgetAPI;
 import org.luaj.vm2.*;
 import org.luaj.vm2.lib.OneArgFunction;
 import org.luaj.vm2.lib.TwoArgFunction;
@@ -60,22 +61,35 @@ public class ScreenAPI extends LuaTable {
             }
         });
         
-        // Persistent data - геттер/сеттер
-        set("data", new TwoArgFunction() {
+        // Persistent data - геттер/сеттер/удаление
+        set("data", new LuaFunction() {
+            @Override
+            public LuaValue call() {
+                throw new LuaError("screen.data() requires at least one argument");
+            }
+            
+            @Override
+            public LuaValue call(LuaValue key) {
+                // Геттер с одним аргументом
+                String keyStr = key.checkjstring();
+                Object data = context.getPersistentData(keyStr);
+                return toLuaValue(data);
+            }
+            
             @Override
             public LuaValue call(LuaValue key, LuaValue value) {
+                // Сеттер/удаление с двумя аргументами
                 String keyStr = key.checkjstring();
                 
                 if (value.isnil()) {
-                    // Геттер
-                    Object data = context.getPersistentData(keyStr);
-                    return toLuaValue(data);
+                    // Удаление при явной передаче nil
+                    context.setPersistentData(keyStr, null);
                 } else {
                     // Сеттер
                     Object javaValue = toJavaValue(value);
                     context.setPersistentData(keyStr, javaValue);
-                    return LuaValue.NIL;
                 }
+                return LuaValue.NIL;
             }
         });
     }
