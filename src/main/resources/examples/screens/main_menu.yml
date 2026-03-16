@@ -101,6 +101,18 @@ widgets:
       action: SWITCH_SCREEN
       target: simple_demo
 
+  # Тест translation
+  - id: btn_translation_test
+    type: ITEM_BUTTON
+    material: COMPASS
+    position: [0.5, 0.3, 0.0]
+    scale: [0.15, 0.15, 0.02]
+    tooltip: "Translation Test - Тест позиционирования"
+    glowOnHover: true
+    onClick:
+      action: SWITCH_SCREEN
+      target: translation_test
+
   # Кнопка закрытия
   - id: btn_close
     type: TEXT_BUTTON

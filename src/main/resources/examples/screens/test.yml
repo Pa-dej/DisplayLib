@@ -1,0 +1,16 @@
+id: test
+background:
+  color: [0, 0, 0]
+  alpha: 160
+  scale: [8, 4, 1]
+  position: [10, 0, 0]
+  translation: [10, 0, 0]
+  text: " "
+widgets:
+  - id: btn
+    type: ITEM_BUTTON
+    material: RED_STAINED_GLASS_PANE
+    position: [0, 0, 0]
+    scale: [1, 1, 1]
+    onClick:
+      action: CLOSE_SCREEN

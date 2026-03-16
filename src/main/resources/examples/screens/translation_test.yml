@@ -1,0 +1,157 @@
+id: translation_test
+background:
+  color: [20, 30, 50]
+  alpha: 180
+  scale: [8.0, 4.0, 1.0]
+  text: " "
+  translation: [0.0, 0.0, 0.0]  # Фон тоже поддерживает translation
+
+scripts:
+  file: "translation_test.lua"
+
+widgets:
+  # Кнопка без translation (по умолчанию [0, 0, 0])
+  - id: btn_no_translation
+    type: ITEM_BUTTON
+    material: GREEN_STAINED_GLASS_PANE
+    position: [-0.3, 0.0, 0.0]
+    scale: [1.0, 1.0, 0.02]
+    tolerance: [0.1, 0.1]
+    glowOnHover: true
+    tooltip: "Без translation (по умолчанию)"
+    onClick:
+      action: NONE
+
+  # Кнопка с отрицательным Y translation (старое поведение)
+  - id: btn_negative_y
+    type: ITEM_BUTTON
+    material: YELLOW_STAINED_GLASS_PANE
+    position: [0.0, 0.0, 0.0]
+    scale: [1.0, 1.0, 0.02]
+    translation: [0.0, -0.125, 0.0]  # Примерно как -scaleY/8 для scale=1.0
+    tolerance: [0.1, 0.1]
+    glowOnHover: true
+    tooltip: "С отрицательным Y translation"
+    onClick:
+      action: NONE
+
+  # Кнопка с положительным Y translation
+  - id: btn_positive_y
+    type: ITEM_BUTTON
+    material: RED_STAINED_GLASS_PANE
+    position: [0.3, 0.0, 0.0]
+    scale: [1.0, 1.0, 0.02]
+    translation: [0.0, 0.125, 0.0]
+    tolerance: [0.1, 0.1]
+    glowOnHover: true
+    tooltip: "С положительным Y translation"
+    onClick:
+      action: NONE
+
+  # Текстовая кнопка для сравнения
+  - id: btn_text_test
+    type: TEXT_BUTTON
+    text: "TEXT"
+    position: [0.0, -0.4, 0.0]
+    scale: [0.5, 0.5, 0.5]
+    translation: [0.0, 0.0, 0.0]
+    backgroundColor: [40, 40, 40]
+    backgroundAlpha: 150
+    tooltip: "Текстовая кнопка без смещения"
+    onClick:
+      action: NONE
+
+  # Кнопка тестирования фона
+  - id: btn_background_test
+    type: TEXT_BUTTON
+    text: "BG Test"
+    hoveredText: "Тест translation фона"
+    position: [-0.2, -0.7, 0.0]
+    scale: [0.35, 0.35, 0.35]
+    translation: [0.0, 0.0, 0.0]
+    backgroundColor: [80, 40, 120]
+    backgroundAlpha: 150
+    hoveredBackgroundColor: [100, 50, 140]
+    hoveredBackgroundAlpha: 180
+    onClick:
+      action: SWITCH_SCREEN
+      target: background_translation_test
+
+  # Кнопка тестирования position фона
+  - id: btn_position_test
+    type: TEXT_BUTTON
+    text: "Pos Test"
+    hoveredText: "Тест position фона"
+    position: [0.2, -0.7, 0.0]
+    scale: [0.35, 0.35, 0.35]
+    translation: [0.0, 0.0, 0.0]
+    backgroundColor: [0, 100, 200]
+    backgroundAlpha: 150
+    hoveredBackgroundColor: [20, 120, 220]
+    hoveredBackgroundAlpha: 180
+    onClick:
+      action: SWITCH_SCREEN
+      target: background_position_test
+
+  # Кнопка демо position vs translation
+  - id: btn_demo
+    type: TEXT_BUTTON
+    text: "Demo"
+    hoveredText: "Position vs Translation Demo"
+    position: [-0.2, -0.9, 0.0]
+    scale: [0.35, 0.35, 0.35]
+    translation: [0.0, 0.0, 0.0]
+    backgroundColor: [60, 120, 60]
+    backgroundAlpha: 150
+    hoveredBackgroundColor: [80, 140, 80]
+    hoveredBackgroundAlpha: 180
+    onClick:
+      action: SWITCH_SCREEN
+      target: position_vs_translation_demo
+
+  # Кнопка тестирования магического числа
+  - id: btn_magic
+    type: TEXT_BUTTON
+    text: "Magic"
+    hoveredText: "Тест магического числа -scale_x/80"
+    position: [0.2, -0.9, 0.0]
+    scale: [0.35, 0.35, 0.35]
+    translation: [0.0, 0.0, 0.0]
+    backgroundColor: [120, 60, 120]
+    backgroundAlpha: 150
+    hoveredBackgroundColor: [140, 80, 140]
+    hoveredBackgroundAlpha: 180
+    onClick:
+      action: SWITCH_SCREEN
+      target: magic_number_test
+
+  # Кнопка тестирования автовыравнивания
+  - id: btn_auto
+    type: TEXT_BUTTON
+    text: "Auto"
+    hoveredText: "Тест автоматического выравнивания"
+    position: [0.0, -1.1, 0.0]
+    scale: [0.4, 0.4, 0.4]
+    translation: [0.0, 0.0, 0.0]
+    backgroundColor: [40, 120, 120]
+    backgroundAlpha: 150
+    hoveredBackgroundColor: [60, 140, 140]
+    hoveredBackgroundAlpha: 180
+    onClick:
+      action: SWITCH_SCREEN
+      target: auto_alignment_test
+
+  # Кнопка закрытия
+  - id: btn_close
+    type: TEXT_BUTTON
+    text: "⏺"
+    hoveredText: "Закрыть"
+    position: [0.35, 0.8, 0.0]
+    scale: [0.75, 0.75, 0.75]
+    tolerance: [0.035, 0.035]
+    backgroundColor: [80, 20, 20]
+    backgroundAlpha: 150
+    hoveredBackgroundColor: [120, 30, 30]
+    hoveredBackgroundAlpha: 180
+    onClick:
+      action: CLOSE_SCREEN

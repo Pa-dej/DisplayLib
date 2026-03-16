@@ -103,8 +103,11 @@ public class TextDisplayButtonWidget implements Widget {
         display.text(text);
         display.setBackgroundColor(Color.fromARGB(backgroundAlpha, backgroundColor.getRed(), backgroundColor.getGreen(), backgroundColor.getBlue()));
 
+        // Проверяем translation на null и используем значение по умолчанию
+        Vector3f finalTranslation = translation != null ? translation : new Vector3f(0, 0, 0);
+
         display.setTransformation(new Transformation(
-                translation,
+                finalTranslation,
                 new AxisAngle4f(),
                 new Vector3f(scaleX, scaleY, scaleZ),
                 new AxisAngle4f()

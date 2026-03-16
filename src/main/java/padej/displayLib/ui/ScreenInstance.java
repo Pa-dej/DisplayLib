@@ -112,6 +112,11 @@ public class ScreenInstance extends WidgetManager {
 
         int[] c = bg.getColor();
         float[] s = bg.getScale();
+        float[] p = bg.getPosition() != null ? bg.getPosition() : new float[]{0.0f, 0.0f, 0.0f};
+        float[] tr = bg.getTranslation() != null ? bg.getTranslation() : new float[]{0.0f, 0.0f, 0.0f};
+
+        // Вычисляем финальную позицию
+        Location backgroundLocation = resolveLocation(p);
 
         TextDisplayButtonConfig cfg = new TextDisplayButtonConfig(
                 Component.text(bg.getText()),
@@ -125,10 +130,10 @@ public class ScreenInstance extends WidgetManager {
                 .setHoveredBackgroundAlpha(bg.getAlpha())  // Та же прозрачность для hover
                 .setTolerance(0.0, 0.0)  // Убираем толерантность - нельзя кликнуть
                 .setPosition(new WidgetPosition(0, 0, 0))
-                .setTranslation(new Vector3f(0, 0, 0));
+                .setTranslation(padej.displayLib.utils.TransformationUtil.createAlignedTranslation(s[0], tr));
 
-        // Фон создается на базовой позиции (без смещения по глубине)
-        TextDisplayButtonWidget backgroundWidget = TextDisplayButtonWidget.create(location, viewer, cfg);
+        // Фон создается с учетом position из YAML (используем уже вычисленную позицию)
+        TextDisplayButtonWidget backgroundWidget = TextDisplayButtonWidget.create(backgroundLocation, viewer, cfg);
         
         // Сохраняем единую ориентацию экрана
         if (backgroundWidget != null) {
@@ -169,6 +174,7 @@ public class ScreenInstance extends WidgetManager {
         int[] hbg = def.getHoveredBackgroundColor();
         float[] s = def.getScale();
         float[] t = def.getTolerance();
+        float[] tr = def.getTranslation();
 
         // Определяем onClick только если действие не NONE
         Runnable onClickAction = null;
@@ -183,6 +189,7 @@ public class ScreenInstance extends WidgetManager {
         )
                 .setScale(s[0], s[1], s[2])
                 .setTolerance(t[0], t[1])
+                .setTranslation(new Vector3f(tr[0], tr[1], tr[2]))
                 .setBackgroundColor(Color.fromRGB(bg[0], bg[1], bg[2]))
                 .setBackgroundAlpha(def.getBackgroundAlpha())
                 .setHoveredBackgroundColor(Color.fromRGB(hbg[0], hbg[1], hbg[2]))
@@ -216,6 +223,7 @@ public class ScreenInstance extends WidgetManager {
 
         float[] s = def.getScale();
         float[] t = def.getTolerance();
+        float[] tr = def.getTranslation();
 
         // Определяем onClick только если действие не NONE
         Runnable onClickAction = null;
@@ -229,6 +237,7 @@ public class ScreenInstance extends WidgetManager {
         ItemDisplayButtonConfig cfg = new ItemDisplayButtonConfig(material, onClickAction)
                 .setScale(s[0], s[1], s[2])
                 .setTolerance(t[0], t[1])
+                .setTranslation(new Vector3f(tr[0], tr[1], tr[2]))
                 .setGlowOnHover(def.isGlowOnHover())
                 .setDisplayTransform(org.bukkit.entity.ItemDisplay.ItemDisplayTransform.GUI) // Используем GUI transform
                 .setPosition(new WidgetPosition(0, 0, 0)); // Позиция уже вычислена в resolveLocation()

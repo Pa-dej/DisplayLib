@@ -1,0 +1,138 @@
+id: auto_alignment_test
+background:
+  color: [40, 80, 120]
+  alpha: 180
+  scale: [10, 5, 1]
+  position: [0, 0, 0]
+  translation: [0, 0, 0]  # Автоматическое выравнивание применится
+  text: " "
+
+scripts:
+  file: "auto_alignment_test.lua"
+
+widgets:
+  # Заголовок
+  - id: title
+    type: TEXT_BUTTON
+    text: "Автоматическое выравнивание"
+    position: [0, 1.5, 0]
+    scale: [0.5, 0.5, 0.5]
+    translation: [0, 0, 0]  # Автоматическое выравнивание
+    backgroundColor: [60, 100, 140]
+    backgroundAlpha: 200
+    onClick:
+      action: NONE
+
+  # Разные размеры виджетов - все автоматически выровнены
+  - id: widget_large
+    type: TEXT_BUTTON
+    text: "Большой виджет (6×3)"
+    position: [-1.2, 0.5, 0]
+    scale: [6, 3, 1]
+    translation: [0, 0, 0]  # Автоматическое выравнивание
+    backgroundColor: [120, 60, 60]
+    backgroundAlpha: 150
+    tooltip: "scale: [6, 3, 1] - автовыравнивание"
+    onClick:
+      action: NONE
+
+  - id: widget_medium
+    type: TEXT_BUTTON
+    text: "Средний (4×2)"
+    position: [0, 0.5, 0]
+    scale: [4, 2, 1]
+    translation: [0, 0, 0]  # Автоматическое выравнивание
+    backgroundColor: [60, 120, 60]
+    backgroundAlpha: 150
+    tooltip: "scale: [4, 2, 1] - автовыравнивание"
+    onClick:
+      action: NONE
+
+  - id: widget_small
+    type: TEXT_BUTTON
+    text: "Маленький (2×1)"
+    position: [1.2, 0.5, 0]
+    scale: [2, 1, 1]
+    translation: [0, 0, 0]  # Автоматическое выравнивание
+    backgroundColor: [60, 60, 120]
+    backgroundAlpha: 150
+    tooltip: "scale: [2, 1, 1] - автовыравнивание"
+    onClick:
+      action: NONE
+
+  # ITEM виджеты тоже автоматически выравниваются
+  - id: item_large
+    type: ITEM_BUTTON
+    material: DIAMOND_BLOCK
+    position: [-1.2, -0.5, 0]
+    scale: [3, 3, 0.1]
+    translation: [0, 0, 0]  # Автоматическое выравнивание
+    tooltip: "ITEM: scale [3, 3, 0.1] - автовыравнивание"
+    glowOnHover: true
+    onClick:
+      action: NONE
+
+  - id: item_medium
+    type: ITEM_BUTTON
+    material: GOLD_BLOCK
+    position: [0, -0.5, 0]
+    scale: [2, 2, 0.1]
+    translation: [0, 0, 0]  # Автоматическое выравнивание
+    tooltip: "ITEM: scale [2, 2, 0.1] - автовыравнивание"
+    glowOnHover: true
+    onClick:
+      action: NONE
+
+  - id: item_small
+    type: ITEM_BUTTON
+    material: IRON_BLOCK
+    position: [1.2, -0.5, 0]
+    scale: [1, 1, 0.1]
+    translation: [0, 0, 0]  # Автоматическое выравнивание
+    tooltip: "ITEM: scale [1, 1, 0.1] - автовыравнивание"
+    glowOnHover: true
+    onClick:
+      action: NONE
+
+  # Пример с дополнительным смещением
+  - id: widget_custom
+    type: TEXT_BUTTON
+    text: "С доп. смещением"
+    position: [0, -1.2, 0]
+    scale: [5, 2, 1]
+    translation: [0.2, 0.1, 0]  # Автовыравнивание + пользовательское смещение
+    backgroundColor: [100, 100, 60]
+    backgroundAlpha: 150
+    tooltip: "Автовыравнивание + translation: [0.2, 0.1, 0]"
+    onClick:
+      action: NONE
+
+  # Кнопка возврата
+  - id: btn_back
+    type: TEXT_BUTTON
+    text: "← Назад"
+    position: [-1.5, -1.8, 0]
+    scale: [0.8, 0.4, 0.4]
+    translation: [0, 0, 0]
+    backgroundColor: [60, 40, 40]
+    backgroundAlpha: 150
+    hoveredBackgroundColor: [80, 50, 50]
+    hoveredBackgroundAlpha: 180
+    onClick:
+      action: SWITCH_SCREEN
+      target: translation_test
+
+  # Кнопка закрытия
+  - id: btn_close
+    type: TEXT_BUTTON
+    text: "⏺"
+    hoveredText: "Закрыть"
+    position: [1.5, 1.8, 0]
+    scale: [0.6, 0.6, 0.6]
+    translation: [0, 0, 0]
+    backgroundColor: [80, 20, 20]
+    backgroundAlpha: 150
+    hoveredBackgroundColor: [120, 30, 30]
+    hoveredBackgroundAlpha: 180
+    onClick:
+      action: CLOSE_SCREEN

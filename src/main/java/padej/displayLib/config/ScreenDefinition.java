@@ -42,7 +42,9 @@ public class ScreenDefinition {
         private int[] color = {0, 0, 0}; // RGB
         private int alpha = 160;
         private float[] scale = {10.0f, 4.0f, 1.0f}; // width, height, depth
+        private float[] position = {0.0f, 0.0f, 0.0f}; // x, y, z offset from screen location
         private String text = " "; // текст фона
+        private float[] translation = {0.0f, 0.0f, 0.0f}; // translation offset for fine-tuning
         
         public BackgroundDefinition() {}
         
@@ -56,7 +58,13 @@ public class ScreenDefinition {
         public float[] getScale() { return scale; }
         public void setScale(float[] scale) { this.scale = scale; }
         
+        public float[] getPosition() { return position; }
+        public void setPosition(float[] position) { this.position = position; }
+        
         public String getText() { return text; }
         public void setText(String text) { this.text = text; }
+        
+        public float[] getTranslation() { return translation; }
+        public void setTranslation(float[] translation) { this.translation = translation; }
     }
 }

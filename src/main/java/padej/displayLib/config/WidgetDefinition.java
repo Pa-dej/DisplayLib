@@ -11,6 +11,7 @@ public class WidgetDefinition {
     private float[] position = {0.0f, 0.0f, 0.0f}; // x, y, z offset
     private float[] scale = {0.15f, 0.15f, 0.15f}; // scaleX, scaleY, scaleZ
     private float[] tolerance = {0.06f, 0.06f}; // horizontal, vertical
+    private float[] translation = {0.0f, 0.0f, 0.0f}; // translation offset for fine-tuning
     
     // Для text_button
     private String text;
@@ -50,6 +51,9 @@ public class WidgetDefinition {
     
     public float[] getTolerance() { return tolerance; }
     public void setTolerance(float[] tolerance) { this.tolerance = tolerance; }
+    
+    public float[] getTranslation() { return translation; }
+    public void setTranslation(float[] translation) { this.translation = translation; }
     
     public String getText() { return text; }
     public void setText(String text) { this.text = text; }

@@ -93,7 +93,7 @@ public abstract class DefaultSquare extends DefaultDisplay {
         textDisplay.setBillboard(billboard);
         textDisplay.setSeeThrough(ignoreCull);
         textDisplay.setTransformation(new Transformation(
-                new Vector3f(-scale / 80f, -scale / 16f, 0),
+                new Vector3f(0, 0, 0),  // Убираем автоматическое смещение
                 new AxisAngle4f(),
                 new Vector3f(getScale(), getScale() / 2, 1),
                 new AxisAngle4f()

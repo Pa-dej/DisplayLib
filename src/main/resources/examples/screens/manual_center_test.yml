@@ -1,0 +1,41 @@
+id: manual_center_test
+background:
+  color: [100, 150, 200]
+  alpha: 180
+  scale: [8, 4, 1]
+  translation: [0, -2, 0]  # Ручное центрирование: -scale_y/2 = -4/2 = -2
+  text: " "
+
+widgets:
+  - id: center_point
+    type: ITEM_BUTTON
+    material: REDSTONE_BLOCK
+    position: [0, 0, 0]
+    scale: [0.2, 0.2, 0.02]
+    translation: [0, 0, 0]
+    tooltip: "Центр экрана"
+    glowOnHover: true
+    onClick:
+      action: NONE
+
+  - id: info_text
+    type: TEXT_BUTTON
+    text: "Ручное центрирование фона"
+    position: [0, 1.5, 0]
+    scale: [0.4, 0.4, 0.4]
+    translation: [0, 0, 0]
+    backgroundColor: [60, 100, 140]
+    backgroundAlpha: 200
+    onClick:
+      action: NONE
+
+  - id: btn_close
+    type: TEXT_BUTTON
+    text: "Закрыть"
+    position: [0, -1.5, 0]
+    scale: [0.5, 0.5, 0.5]
+    translation: [0, 0, 0]
+    backgroundColor: [80, 20, 20]
+    backgroundAlpha: 150
+    onClick:
+      action: CLOSE_SCREEN

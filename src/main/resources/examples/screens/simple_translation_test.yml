@@ -1,0 +1,17 @@
+id: simple_translation_test
+background:
+  color: [255, 0, 0]
+  alpha: 200
+  scale: [4, 2, 1]
+  translation: [2.0, 0, 0]
+  text: " "
+
+widgets:
+  - id: btn_close
+    type: TEXT_BUTTON
+    text: "Закрыть"
+    position: [0, 0, 0]
+    scale: [0.5, 0.5, 0.5]
+    translation: [0, 0, 0]
+    onClick:
+      action: CLOSE_SCREEN

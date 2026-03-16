@@ -1,0 +1,19 @@
+id: simple_center_test
+background:
+  color: [200, 100, 50]
+  alpha: 200
+  scale: [6, 3, 1]
+  translation: [0, 0, 0]  # Центр должен быть в середине
+  text: " "
+
+widgets:
+  - id: test_button
+    type: TEXT_BUTTON
+    text: "Центр фона в середине!"
+    position: [0, 0, 0]
+    scale: [0.5, 0.5, 0.5]
+    translation: [0, 0, 0]
+    backgroundColor: [60, 80, 120]
+    backgroundAlpha: 180
+    onClick:
+      action: CLOSE_SCREEN

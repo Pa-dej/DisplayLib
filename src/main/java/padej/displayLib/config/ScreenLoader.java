@@ -137,6 +137,13 @@ public class ScreenLoader {
             List<?> scale = bgSec.getList("scale", List.of(10.0, 4.0, 1.0));
             bg.setScale(toFloatArray(scale, new float[]{10f, 4f, 1f}));
 
+            // Добавляем поддержку position и translation для фона
+            List<?> position = bgSec.getList("position", List.of(0.0, 0.0, 0.0));
+            bg.setPosition(toFloatArray(position, new float[]{0f, 0f, 0f}));
+
+            List<?> translation = bgSec.getList("translation", List.of(0.0, 0.0, 0.0));
+            bg.setTranslation(toFloatArray(translation, new float[]{0f, 0f, 0f}));
+
             screen.setBackground(bg);
         }
 
@@ -183,6 +190,7 @@ public class ScreenLoader {
         w.setPosition(toFloatArray(raw.get("position"), new float[]{0f, 0f, 0f}));
         w.setScale(toFloatArray(raw.get("scale"), new float[]{0.15f, 0.15f, 0.15f}));
         w.setTolerance(toFloatArray(raw.get("tolerance"), new float[]{0.06f, 0.06f}));
+        w.setTranslation(toFloatArray(raw.get("translation"), new float[]{0f, 0f, 0f}));
         w.setBackgroundColor(toIntArray(raw.get("backgroundColor"), new int[]{40, 40, 40}));
         w.setBackgroundAlpha(toInt(raw.get("backgroundAlpha"), 150));
         w.setHoveredBackgroundColor(toIntArray(raw.get("hoveredBackgroundColor"), new int[]{60, 60, 60}));

@@ -134,7 +134,7 @@ public class ItemDisplayButtonConfig {
     }
 
     public Vector3f getTranslation() {
-        return translation != null ? translation : new Vector3f(0, -scaleY / 8, 0);
+        return translation != null ? translation : new Vector3f(0, 0, 0);
     }
 
     public Material getMaterial() {

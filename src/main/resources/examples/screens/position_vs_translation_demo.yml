@@ -1,0 +1,140 @@
+id: position_vs_translation_demo
+background:
+  color: [50, 50, 50]
+  alpha: 100
+  scale: [10, 6, 1]
+  position: [0, 0, 0]      # Фон по центру
+  translation: [0, 0, 0]   # Без дополнительного смещения
+  text: " "
+
+scripts:
+  file: "position_vs_translation_demo.lua"
+
+widgets:
+  # Заголовок
+  - id: title
+    type: TEXT_BUTTON
+    text: "Position vs Translation Demo"
+    position: [0.0, 1.2, 0.0]
+    scale: [0.4, 0.4, 0.4]
+    translation: [0.0, 0.0, 0.0]
+    backgroundColor: [60, 80, 120]
+    backgroundAlpha: 200
+    onClick:
+      action: NONE
+
+  # Виджет с position
+  - id: widget_position
+    type: ITEM_BUTTON
+    material: GOLD_BLOCK
+    position: [-1.0, 0.5, 0.0]    # Базовое смещение влево и вверх
+    scale: [0.8, 0.8, 0.02]
+    translation: [0.0, 0.0, 0.0]  # Без дополнительного смещения
+    tolerance: [0.1, 0.1]
+    glowOnHover: true
+    tooltip: "position: [-1.0, 0.5, 0.0]"
+    onClick:
+      action: NONE
+
+  # Виджет с translation
+  - id: widget_translation
+    type: ITEM_BUTTON
+    material: DIAMOND_BLOCK
+    position: [0.0, 0.0, 0.0]     # Базовая позиция по центру
+    scale: [0.8, 0.8, 0.02]
+    translation: [1.0, -0.5, 0.0] # Смещение вправо и вниз через translation
+    tolerance: [0.1, 0.1]
+    glowOnHover: true
+    tooltip: "translation: [1.0, -0.5, 0.0]"
+    onClick:
+      action: NONE
+
+  # Виджет с комбинацией
+  - id: widget_combined
+    type: ITEM_BUTTON
+    material: EMERALD_BLOCK
+    position: [-0.5, -0.3, 0.0]   # Базовое смещение
+    scale: [0.8, 0.8, 0.02]
+    translation: [0.3, 0.1, 0.0]  # Дополнительная точная настройка
+    tolerance: [0.1, 0.1]
+    glowOnHover: true
+    tooltip: "position + translation"
+    onClick:
+      action: NONE
+
+  # Центральная точка для ориентира
+  - id: center_point
+    type: ITEM_BUTTON
+    material: REDSTONE_BLOCK
+    position: [0.0, 0.0, 0.0]
+    scale: [0.3, 0.3, 0.02]
+    translation: [0.0, 0.0, 0.0]
+    tolerance: [0.05, 0.05]
+    glowOnHover: true
+    tooltip: "Центр экрана (0, 0, 0)"
+    onClick:
+      action: NONE
+
+  # Описания
+  - id: desc_position
+    type: TEXT_BUTTON
+    text: "Position: базовое смещение"
+    position: [-1.0, 0.0, 0.0]
+    scale: [0.25, 0.25, 0.25]
+    translation: [0.0, 0.0, 0.0]
+    backgroundColor: [100, 80, 40]
+    backgroundAlpha: 150
+    onClick:
+      action: NONE
+
+  - id: desc_translation
+    type: TEXT_BUTTON
+    text: "Translation: точная настройка"
+    position: [1.0, 0.0, 0.0]
+    scale: [0.25, 0.25, 0.25]
+    translation: [0.0, 0.0, 0.0]
+    backgroundColor: [40, 80, 100]
+    backgroundAlpha: 150
+    onClick:
+      action: NONE
+
+  - id: desc_combined
+    type: TEXT_BUTTON
+    text: "Комбинация обоих"
+    position: [-0.2, -0.7, 0.0]
+    scale: [0.25, 0.25, 0.25]
+    translation: [0.0, 0.0, 0.0]
+    backgroundColor: [40, 100, 80]
+    backgroundAlpha: 150
+    onClick:
+      action: NONE
+
+  # Кнопка возврата
+  - id: btn_back
+    type: TEXT_BUTTON
+    text: "← Назад"
+    position: [-1.5, -1.2, 0.0]
+    scale: [0.4, 0.4, 0.4]
+    translation: [0.0, 0.0, 0.0]
+    backgroundColor: [60, 40, 40]
+    backgroundAlpha: 150
+    hoveredBackgroundColor: [80, 50, 50]
+    hoveredBackgroundAlpha: 180
+    onClick:
+      action: SWITCH_SCREEN
+      target: translation_test
+
+  # Кнопка закрытия
+  - id: btn_close
+    type: TEXT_BUTTON
+    text: "⏺"
+    hoveredText: "Закрыть"
+    position: [1.5, 1.2, 0.0]
+    scale: [0.6, 0.6, 0.6]
+    translation: [0.0, 0.0, 0.0]
+    backgroundColor: [80, 20, 20]
+    backgroundAlpha: 150
+    hoveredBackgroundColor: [120, 30, 30]
+    hoveredBackgroundAlpha: 180
+    onClick:
+      action: CLOSE_SCREEN
