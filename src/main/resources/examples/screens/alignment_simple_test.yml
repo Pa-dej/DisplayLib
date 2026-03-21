@@ -1,0 +1,56 @@
+id: alignment_simple_test
+background:
+  color: [50, 50, 50]
+  alpha: 150
+  scale: [6, 4, 1]
+  translation: [0, -0.5, 0]
+  text: " "
+
+widgets:
+  # Тест LEFT alignment
+  - id: left_text
+    type: TEXT_BUTTON
+    text: "LEFT"
+    position: [-1, 0.5, 0]
+    scale: [0.3, 0.3, 0.3]
+    alignment: LEFT
+    backgroundColor: [100, 50, 50]
+    backgroundAlpha: 150
+    onClick:
+      action: NONE
+
+  # Тест CENTERED alignment (по умолчанию)
+  - id: center_text
+    type: TEXT_BUTTON
+    text: "CENTERED"
+    position: [0, 0.5, 0]
+    scale: [0.3, 0.3, 0.3]
+    alignment: CENTERED
+    backgroundColor: [50, 100, 50]
+    backgroundAlpha: 150
+    onClick:
+      action: NONE
+
+  # Тест RIGHT alignment
+  - id: right_text
+    type: TEXT_BUTTON
+    text: "RIGHT"
+    position: [1, 0.5, 0]
+    scale: [0.3, 0.3, 0.3]
+    alignment: RIGHT
+    backgroundColor: [50, 50, 100]
+    backgroundAlpha: 150
+    onClick:
+      action: NONE
+
+  # Кнопка закрытия
+  - id: btn_close
+    type: TEXT_BUTTON
+    text: "Закрыть"
+    position: [0, -0.8, 0]
+    scale: [0.4, 0.4, 0.4]
+    alignment: CENTERED
+    backgroundColor: [80, 80, 80]
+    backgroundAlpha: 150
+    onClick:
+      action: CLOSE_SCREEN

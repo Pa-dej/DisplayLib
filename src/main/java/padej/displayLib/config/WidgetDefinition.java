@@ -16,6 +16,7 @@ public class WidgetDefinition {
     // Для text_button
     private String text;
     private String hoveredText;
+    private TextAlignment alignment = TextAlignment.CENTERED; // По умолчанию центрированный
     private int[] backgroundColor = {0, 0, 0};
     private int backgroundAlpha = 0;
     private int[] hoveredBackgroundColor = {60, 60, 60};
@@ -61,6 +62,9 @@ public class WidgetDefinition {
     public String getHoveredText() { return hoveredText; }
     public void setHoveredText(String hoveredText) { this.hoveredText = hoveredText; }
     
+    public TextAlignment getAlignment() { return alignment; }
+    public void setAlignment(TextAlignment alignment) { this.alignment = alignment; }
+    
     public int[] getBackgroundColor() { return backgroundColor; }
     public void setBackgroundColor(int[] backgroundColor) { this.backgroundColor = backgroundColor; }
     
@@ -100,6 +104,15 @@ public class WidgetDefinition {
     public enum WidgetType {
         TEXT_BUTTON,
         ITEM_BUTTON
+    }
+    
+    /**
+     * Выравнивание текста в TEXT_BUTTON
+     */
+    public enum TextAlignment {
+        LEFT,
+        CENTERED, 
+        RIGHT
     }
     
     /**

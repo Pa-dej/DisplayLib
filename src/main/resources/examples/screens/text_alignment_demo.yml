@@ -1,0 +1,168 @@
+id: text_alignment_demo
+background:
+  color: [30, 30, 50]
+  alpha: 180
+  scale: [12, 8, 1]
+  translation: [0, -1, 0]
+  text: " "
+
+scripts:
+  file: "text_alignment_demo.lua"
+
+widgets:
+  # Заголовок
+  - id: title
+    type: TEXT_BUTTON
+    text: "Text Alignment Demo"
+    position: [0, 2.5, 0]
+    scale: [0.5, 0.5, 0.5]
+    translation: [0, 0, 0]
+    alignment: CENTERED
+    backgroundColor: [60, 80, 120]
+    backgroundAlpha: 200
+    onClick:
+      action: NONE
+
+  # LEFT alignment
+  - id: text_left
+    type: TEXT_BUTTON
+    text: "Left Aligned Text"
+    position: [-2, 1, 0]
+    scale: [0.4, 0.4, 0.4]
+    translation: [0, 0, 0]
+    alignment: LEFT
+    backgroundColor: [80, 40, 40]
+    backgroundAlpha: 150
+    onClick:
+      action: NONE
+
+  - id: label_left
+    type: TEXT_BUTTON
+    text: "alignment: LEFT"
+    position: [-2, 0.5, 0]
+    scale: [0.25, 0.25, 0.25]
+    translation: [0, 0, 0]
+    alignment: LEFT
+    backgroundColor: [60, 30, 30]
+    backgroundAlpha: 120
+    onClick:
+      action: NONE
+
+  # CENTERED alignment
+  - id: text_center
+    type: TEXT_BUTTON
+    text: "Centered Text"
+    position: [0, 1, 0]
+    scale: [0.4, 0.4, 0.4]
+    translation: [0, 0, 0]
+    alignment: CENTERED
+    backgroundColor: [40, 80, 40]
+    backgroundAlpha: 150
+    onClick:
+      action: NONE
+
+  - id: label_center
+    type: TEXT_BUTTON
+    text: "alignment: CENTERED"
+    position: [0, 0.5, 0]
+    scale: [0.25, 0.25, 0.25]
+    translation: [0, 0, 0]
+    alignment: CENTERED
+    backgroundColor: [30, 60, 30]
+    backgroundAlpha: 120
+    onClick:
+      action: NONE
+
+  # RIGHT alignment
+  - id: text_right
+    type: TEXT_BUTTON
+    text: "Right Aligned Text"
+    position: [2, 1, 0]
+    scale: [0.4, 0.4, 0.4]
+    translation: [0, 0, 0]
+    alignment: RIGHT
+    backgroundColor: [40, 40, 80]
+    backgroundAlpha: 150
+    onClick:
+      action: NONE
+
+  - id: label_right
+    type: TEXT_BUTTON
+    text: "alignment: RIGHT"
+    position: [2, 0.5, 0]
+    scale: [0.25, 0.25, 0.25]
+    translation: [0, 0, 0]
+    alignment: RIGHT
+    backgroundColor: [30, 30, 60]
+    backgroundAlpha: 120
+    onClick:
+      action: NONE
+
+  # Многострочный текст для демонстрации
+  - id: multiline_left
+    type: TEXT_BUTTON
+    text: "Multi-line\nLeft Aligned\nText Example"
+    position: [-2, -0.5, 0]
+    scale: [0.3, 0.3, 0.3]
+    translation: [0, 0, 0]
+    alignment: LEFT
+    backgroundColor: [80, 60, 40]
+    backgroundAlpha: 150
+    onClick:
+      action: NONE
+
+  - id: multiline_center
+    type: TEXT_BUTTON
+    text: "Multi-line\nCentered\nText Example"
+    position: [0, -0.5, 0]
+    scale: [0.3, 0.3, 0.3]
+    translation: [0, 0, 0]
+    alignment: CENTERED
+    backgroundColor: [60, 80, 40]
+    backgroundAlpha: 150
+    onClick:
+      action: NONE
+
+  - id: multiline_right
+    type: TEXT_BUTTON
+    text: "Multi-line\nRight Aligned\nText Example"
+    position: [2, -0.5, 0]
+    scale: [0.3, 0.3, 0.3]
+    translation: [0, 0, 0]
+    alignment: RIGHT
+    backgroundColor: [40, 60, 80]
+    backgroundAlpha: 150
+    onClick:
+      action: NONE
+
+  # Кнопка возврата
+  - id: btn_back
+    type: TEXT_BUTTON
+    text: "← Назад"
+    position: [-2.5, -2, 0]
+    scale: [0.4, 0.4, 0.4]
+    translation: [0, 0, 0]
+    alignment: CENTERED
+    backgroundColor: [60, 40, 40]
+    backgroundAlpha: 150
+    hoveredBackgroundColor: [80, 50, 50]
+    hoveredBackgroundAlpha: 180
+    onClick:
+      action: SWITCH_SCREEN
+      target: main_menu
+
+  # Кнопка закрытия
+  - id: btn_close
+    type: TEXT_BUTTON
+    text: "⏺"
+    hoveredText: "Закрыть"
+    position: [2.5, 2, 0]
+    scale: [0.6, 0.6, 0.6]
+    translation: [0, 0, 0]
+    alignment: CENTERED
+    backgroundColor: [80, 20, 20]
+    backgroundAlpha: 150
+    hoveredBackgroundColor: [120, 30, 30]
+    hoveredBackgroundAlpha: 180
+    onClick:
+      action: CLOSE_SCREEN

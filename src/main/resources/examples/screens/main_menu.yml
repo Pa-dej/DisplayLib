@@ -113,6 +113,18 @@ widgets:
       action: SWITCH_SCREEN
       target: translation_test
 
+  # Тест выравнивания текста
+  - id: btn_text_alignment
+    type: ITEM_BUTTON
+    material: WRITABLE_BOOK
+    position: [-0.5, -0.5, 0.0]
+    scale: [0.15, 0.15, 0.02]
+    tooltip: "Text Alignment - Выравнивание текста"
+    glowOnHover: true
+    onClick:
+      action: SWITCH_SCREEN
+      target: text_alignment_demo
+
   # Кнопка закрытия
   - id: btn_close
     type: TEXT_BUTTON

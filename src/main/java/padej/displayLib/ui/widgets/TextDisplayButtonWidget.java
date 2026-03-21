@@ -47,6 +47,7 @@ public class TextDisplayButtonWidget implements Widget {
     private Vector3f translation;
     private Transformation hoveredTransformation;
     private int hoveredTransformationDuration;
+    private org.bukkit.entity.TextDisplay.TextAlignment textAlignment = org.bukkit.entity.TextDisplay.TextAlignment.CENTER;
     
     // Сохранение ориентации для восстановления после пересоздания
     private float savedYaw = 0.0f;
@@ -88,6 +89,7 @@ public class TextDisplayButtonWidget implements Widget {
         widget.translation = config.getTranslation();
         widget.hoveredTransformation = config.getHoveredTransformation();
         widget.hoveredTransformationDuration = config.getHoveredTransformationDuration();
+        widget.textAlignment = config.getTextAlignment();
         
         if (config.getTooltip() != null) {
             widget.tooltip = config.getTooltip().color(config.getTooltipColor());
@@ -102,6 +104,9 @@ public class TextDisplayButtonWidget implements Widget {
         display = (TextDisplay) location.getWorld().spawnEntity(location, EntityType.TEXT_DISPLAY);
         display.text(text);
         display.setBackgroundColor(Color.fromARGB(backgroundAlpha, backgroundColor.getRed(), backgroundColor.getGreen(), backgroundColor.getBlue()));
+        
+        // Применяем выравнивание текста
+        display.setAlignment(textAlignment);
 
         // Проверяем translation на null и используем значение по умолчанию
         Vector3f finalTranslation = translation != null ? translation : new Vector3f(0, 0, 0);

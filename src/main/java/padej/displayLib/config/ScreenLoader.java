@@ -187,6 +187,14 @@ public class ScreenLoader {
         w.setHoveredText((String) raw.getOrDefault("hoveredText", w.getText()));
         w.setTooltip((String) raw.get("tooltip"));
 
+        // Парсинг alignment для TEXT_BUTTON
+        String alignmentStr = (String) raw.getOrDefault("alignment", "CENTERED");
+        try {
+            w.setAlignment(WidgetDefinition.TextAlignment.valueOf(alignmentStr.toUpperCase()));
+        } catch (IllegalArgumentException e) {
+            w.setAlignment(WidgetDefinition.TextAlignment.CENTERED);
+        }
+
         w.setPosition(toFloatArray(raw.get("position"), new float[]{0f, 0f, 0f}));
         w.setScale(toFloatArray(raw.get("scale"), new float[]{0.15f, 0.15f, 0.15f}));
         w.setTolerance(toFloatArray(raw.get("tolerance"), new float[]{0.06f, 0.06f}));

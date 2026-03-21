@@ -194,6 +194,7 @@ public class ScreenInstance extends WidgetManager {
                 .setBackgroundAlpha(def.getBackgroundAlpha())
                 .setHoveredBackgroundColor(Color.fromRGB(hbg[0], hbg[1], hbg[2]))
                 .setHoveredBackgroundAlpha(def.getHoveredBackgroundAlpha())
+                .setTextAlignment(convertAlignment(def.getAlignment()))
                 .setPosition(new WidgetPosition(0, 0, 0)); // Позиция уже вычислена в resolveLocation()
 
         if (def.getTooltip() != null) {
@@ -418,5 +419,20 @@ public class ScreenInstance extends WidgetManager {
      */
     public LuaContext getLuaContext() {
         return luaContext;
+    }
+    
+    /**
+     * Конвертирует наш TextAlignment в Bukkit TextDisplay.TextAlignment
+     */
+    private org.bukkit.entity.TextDisplay.TextAlignment convertAlignment(WidgetDefinition.TextAlignment alignment) {
+        if (alignment == null) {
+            return org.bukkit.entity.TextDisplay.TextAlignment.CENTER;
+        }
+        
+        return switch (alignment) {
+            case LEFT -> org.bukkit.entity.TextDisplay.TextAlignment.LEFT;
+            case CENTERED -> org.bukkit.entity.TextDisplay.TextAlignment.CENTER;
+            case RIGHT -> org.bukkit.entity.TextDisplay.TextAlignment.RIGHT;
+        };
     }
 }
