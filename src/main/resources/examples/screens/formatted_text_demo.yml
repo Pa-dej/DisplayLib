@@ -1,0 +1,150 @@
+id: formatted_text_demo
+tick_rate: 4
+background:
+  color: [20, 25, 35]
+  alpha: 180
+  scale: [14, 10, 1]
+  translation: [0, -1.5, 0]
+  text: " "
+
+widgets:
+  # Заголовок
+  - id: title
+    type: TEXT_BUTTON
+    text: [{text: "Formatted Text Demo", color: "gold", bold: true}]
+    position: [0, 3, 0]
+    scale: [0.6, 0.6, 0.6]
+    alignment: CENTERED
+    backgroundColor: [40, 50, 70]
+    backgroundAlpha: 200
+    onClick:
+      action: NONE
+
+  # Пример с разными цветами
+  - id: colors_example
+    type: TEXT_BUTTON
+    text: [{text: "red", color: "red"}, {text: " "}, {text: "green", color: "green"}, {text: " "}, {text: "blue", color: "blue"}]
+    position: [0, 2, 0]
+    scale: [0.4, 0.4, 0.4]
+    alignment: CENTERED
+    backgroundColor: [50, 50, 50]
+    backgroundAlpha: 150
+    onClick:
+      action: NONE
+
+  # Пример с hex цветами
+  - id: hex_colors_example
+    type: TEXT_BUTTON
+    text: [{text: "Custom ", color: "#FF6B6B"}, {text: "Hex ", color: "#4ECDC4"}, {text: "Colors", color: "#45B7D1"}]
+    position: [0, 1.3, 0]
+    scale: [0.35, 0.35, 0.35]
+    alignment: CENTERED
+    backgroundColor: [40, 40, 40]
+    backgroundAlpha: 150
+    onClick:
+      action: NONE
+
+  # Пример со стилями
+  - id: styles_example
+    type: TEXT_BUTTON
+    text: [{text: "Bold", bold: true}, {text: " "}, {text: "Italic", italic: true}, {text: " "}, {text: "Underlined", underlined: true}]
+    position: [0, 0.6, 0]
+    scale: [0.35, 0.35, 0.35]
+    alignment: CENTERED
+    backgroundColor: [60, 40, 60]
+    backgroundAlpha: 150
+    onClick:
+      action: NONE
+
+  # Пример с комбинированным форматированием
+  - id: combined_example
+    type: TEXT_BUTTON
+    text: [{text: "ERROR: ", color: "red", bold: true}, {text: "File not found!", color: "yellow", italic: true}]
+    position: [0, -0.1, 0]
+    scale: [0.35, 0.35, 0.35]
+    alignment: CENTERED
+    backgroundColor: [80, 40, 40]
+    backgroundAlpha: 150
+    onClick:
+      action: NONE
+
+  # Пример с strikethrough и obfuscated
+  - id: special_styles_example
+    type: TEXT_BUTTON
+    text: [{text: "Strikethrough", strikethrough: true}, {text: " "}, {text: "Obfuscated", obfuscated: true}]
+    position: [0, -0.8, 0]
+    scale: [0.35, 0.35, 0.35]
+    alignment: CENTERED
+    backgroundColor: [40, 60, 40]
+    backgroundAlpha: 150
+    onClick:
+      action: NONE
+
+  # Пример с hoveredText
+  - id: hover_example
+    type: TEXT_BUTTON
+    text: [{text: "Hover me!", color: "aqua", bold: true}]
+    hoveredText: [{text: "Hovered!", color: "gold", italic: true}]
+    position: [0, -1.5, 0]
+    scale: [0.4, 0.4, 0.4]
+    alignment: CENTERED
+    backgroundColor: [40, 80, 80]
+    backgroundAlpha: 150
+    hoveredBackgroundColor: [60, 100, 100]
+    hoveredBackgroundAlpha: 180
+    onClick:
+      action: NONE
+
+  # Пример с выравниванием LEFT
+  - id: left_aligned_example
+    type: TEXT_BUTTON
+    text: [{text: "Left ", color: "white"}, {text: "Aligned", color: "lime", bold: true}]
+    position: [-2.5, -2.5, 0]
+    scale: [0.35, 0.35, 0.35]
+    alignment: LEFT
+    backgroundColor: [50, 70, 50]
+    backgroundAlpha: 150
+    onClick:
+      action: NONE
+
+  # Пример с выравниванием RIGHT
+  - id: right_aligned_example
+    type: TEXT_BUTTON
+    text: [{text: "Right ", color: "white"}, {text: "Aligned", color: "orange", bold: true}]
+    position: [2.5, -2.5, 0]
+    scale: [0.35, 0.35, 0.35]
+    alignment: RIGHT
+    backgroundColor: [70, 50, 50]
+    backgroundAlpha: 150
+    onClick:
+      action: NONE
+
+  # Кнопка возврата
+  - id: btn_back
+    type: TEXT_BUTTON
+    text: "← Back to Menu"
+    position: [-3, -3.5, 0]
+    scale: [0.4, 0.4, 0.4]
+    alignment: CENTERED
+    backgroundColor: [60, 40, 40]
+    backgroundAlpha: 150
+    hoveredBackgroundColor: [80, 50, 50]
+    hoveredBackgroundAlpha: 180
+    onClick:
+      action: SWITCH_SCREEN
+      target: main_menu
+
+  # Кнопка закрытия
+  - id: btn_close
+    type: TEXT_BUTTON
+    text: "⏺"
+    hoveredText: "Close"
+    position: [3, 3, 0]
+    scale: [0.6, 0.6, 0.6]
+    alignment: CENTERED
+    backgroundColor: [80, 20, 20]
+    backgroundAlpha: 150
+    hoveredBackgroundColor: [120, 30, 30]
+    hoveredBackgroundAlpha: 180
+    onClick:
+      action: CLOSE_SCREEN

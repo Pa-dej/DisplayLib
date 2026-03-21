@@ -137,6 +137,18 @@ widgets:
       action: SWITCH_SCREEN
       target: tick_rate_demo
 
+  # Тест форматированного текста
+  - id: btn_formatted_text
+    type: ITEM_BUTTON
+    material: ENCHANTED_BOOK
+    position: [0.5, -0.5, 0.0]
+    scale: [0.15, 0.15, 0.02]
+    tooltip: "Formatted Text - Форматированный текст"
+    glowOnHover: true
+    onClick:
+      action: SWITCH_SCREEN
+      target: formatted_text_demo
+
   # Кнопка закрытия
   - id: btn_close
     type: TEXT_BUTTON

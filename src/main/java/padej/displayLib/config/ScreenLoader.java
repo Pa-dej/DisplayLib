@@ -186,8 +186,30 @@ public class ScreenLoader {
         }
 
         w.setMaterial((String) raw.getOrDefault("material", "STONE"));
-        w.setText((String) raw.getOrDefault("text", ""));
-        w.setHoveredText((String) raw.getOrDefault("hoveredText", w.getText()));
+        
+        // Парсинг text - может быть строкой или JSON массивом
+        Object textValue = raw.get("text");
+        if (textValue instanceof String) {
+            w.setText((String) textValue);
+        } else if (textValue instanceof java.util.List) {
+            w.setFormattedText(textValue);
+            w.setText(""); // Устанавливаем пустую строку как fallback
+        } else {
+            w.setText("");
+        }
+        
+        // Парсинг hoveredText - может быть строкой или JSON массивом
+        Object hoveredTextValue = raw.get("hoveredText");
+        if (hoveredTextValue instanceof String) {
+            w.setHoveredText((String) hoveredTextValue);
+        } else if (hoveredTextValue instanceof java.util.List) {
+            w.setFormattedHoveredText(hoveredTextValue);
+            w.setHoveredText(""); // Устанавливаем пустую строку как fallback
+        } else {
+            // Если hoveredText не указан, используем обычный text
+            w.setHoveredText(w.getText());
+        }
+        
         w.setTooltip((String) raw.get("tooltip"));
 
         // Парсинг alignment для TEXT_BUTTON
@@ -575,5 +597,86 @@ public class ScreenLoader {
 
     private Path getScriptsDirectory() {
         return scriptsDirectory;
+    }
+    
+    /**
+     * Конвертирует JSON массив форматированного текста в Adventure Component
+     */
+    @SuppressWarnings("unchecked")
+    private net.kyori.adventure.text.Component parseFormattedText(Object formattedText) {
+        if (formattedText == null) {
+            return net.kyori.adventure.text.Component.empty();
+        }
+        
+        if (formattedText instanceof String) {
+            return net.kyori.adventure.text.Component.text((String) formattedText);
+        }
+        
+        if (!(formattedText instanceof java.util.List)) {
+            return net.kyori.adventure.text.Component.text(formattedText.toString());
+        }
+        
+        java.util.List<Object> textParts = (java.util.List<Object>) formattedText;
+        net.kyori.adventure.text.TextComponent.Builder builder = net.kyori.adventure.text.Component.text();
+        
+        for (Object part : textParts) {
+            if (part instanceof String) {
+                // Простая строка без форматирования
+                builder.append(net.kyori.adventure.text.Component.text((String) part));
+            } else if (part instanceof Map) {
+                // Объект с форматированием
+                Map<String, Object> partMap = (Map<String, Object>) part;
+                String text = (String) partMap.getOrDefault("text", "");
+                
+                net.kyori.adventure.text.TextComponent.Builder partBuilder = 
+                    net.kyori.adventure.text.Component.text().content(text);
+                
+                // Применяем цвет
+                String color = (String) partMap.get("color");
+                if (color != null) {
+                    try {
+                        if (color.startsWith("#")) {
+                            // Hex цвет
+                            partBuilder.color(net.kyori.adventure.text.format.TextColor.fromHexString(color));
+                        } else {
+                            // Именованный цвет
+                            partBuilder.color(net.kyori.adventure.text.format.NamedTextColor.NAMES.value(color.toLowerCase()));
+                        }
+                    } catch (Exception e) {
+                        // Если цвет не распознан, игнорируем
+                    }
+                }
+                
+                // Применяем стили
+                Boolean bold = (Boolean) partMap.get("bold");
+                if (bold != null && bold) {
+                    partBuilder.decoration(net.kyori.adventure.text.format.TextDecoration.BOLD, true);
+                }
+                
+                Boolean italic = (Boolean) partMap.get("italic");
+                if (italic != null && italic) {
+                    partBuilder.decoration(net.kyori.adventure.text.format.TextDecoration.ITALIC, true);
+                }
+                
+                Boolean underlined = (Boolean) partMap.get("underlined");
+                if (underlined != null && underlined) {
+                    partBuilder.decoration(net.kyori.adventure.text.format.TextDecoration.UNDERLINED, true);
+                }
+                
+                Boolean strikethrough = (Boolean) partMap.get("strikethrough");
+                if (strikethrough != null && strikethrough) {
+                    partBuilder.decoration(net.kyori.adventure.text.format.TextDecoration.STRIKETHROUGH, true);
+                }
+                
+                Boolean obfuscated = (Boolean) partMap.get("obfuscated");
+                if (obfuscated != null && obfuscated) {
+                    partBuilder.decoration(net.kyori.adventure.text.format.TextDecoration.OBFUSCATED, true);
+                }
+                
+                builder.append(partBuilder.build());
+            }
+        }
+        
+        return builder.build();
     }
 }

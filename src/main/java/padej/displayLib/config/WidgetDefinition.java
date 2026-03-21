@@ -16,6 +16,8 @@ public class WidgetDefinition {
     // Для text_button
     private String text;
     private String hoveredText;
+    private Object formattedText; // Для хранения JSON массива форматированного текста
+    private Object formattedHoveredText; // Для хранения JSON массива форматированного hoveredText
     private TextAlignment alignment = TextAlignment.CENTERED; // По умолчанию центрированный
     private int[] backgroundColor = {0, 0, 0};
     private int backgroundAlpha = 0;
@@ -61,6 +63,12 @@ public class WidgetDefinition {
     
     public String getHoveredText() { return hoveredText; }
     public void setHoveredText(String hoveredText) { this.hoveredText = hoveredText; }
+    
+    public Object getFormattedText() { return formattedText; }
+    public void setFormattedText(Object formattedText) { this.formattedText = formattedText; }
+    
+    public Object getFormattedHoveredText() { return formattedHoveredText; }
+    public void setFormattedHoveredText(Object formattedHoveredText) { this.formattedHoveredText = formattedHoveredText; }
     
     public TextAlignment getAlignment() { return alignment; }
     public void setAlignment(TextAlignment alignment) { this.alignment = alignment; }
