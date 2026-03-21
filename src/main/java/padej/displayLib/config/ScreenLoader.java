@@ -123,6 +123,9 @@ public class ScreenLoader {
             throw new IllegalArgumentException("Screen id is missing in " + filePath);
         }
 
+        // tick_rate (по умолчанию 4 тика)
+        screen.setTickRate(config.getInt("tick_rate", 4));
+
         // background
         if (config.isConfigurationSection("background")) {
             var bgSec = config.getConfigurationSection("background");

@@ -1,0 +1,20 @@
+id: test_tick_rate
+tick_rate: 1  # Быстрое обновление для тестирования
+background:
+  color: [50, 50, 50]
+  alpha: 150
+  scale: [6, 4, 1]
+  translation: [0, -0.5, 0]
+  text: " "
+
+widgets:
+  - id: test_text
+    type: TEXT_BUTTON
+    text: "Fast Update Test"
+    position: [0, 0, 0]
+    scale: [0.4, 0.4, 0.4]
+    alignment: CENTERED
+    backgroundColor: [100, 100, 100]
+    backgroundAlpha: 150
+    onClick:
+      action: CLOSE_SCREEN

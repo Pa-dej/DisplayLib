@@ -8,15 +8,17 @@ import java.util.Map;
  */
 public class ScreenDefinition {
     private String id;
+    private int tickRate = 4; // По умолчанию обновление каждые 4 тика (5 раз в секунду)
     private BackgroundDefinition background;
     private Map<String, String> scripts; // on_open, on_close -> путь к скрипту
     private List<WidgetDefinition> widgets;
     
     public ScreenDefinition() {}
     
-    public ScreenDefinition(String id, BackgroundDefinition background, 
+    public ScreenDefinition(String id, int tickRate, BackgroundDefinition background, 
                            Map<String, String> scripts, List<WidgetDefinition> widgets) {
         this.id = id;
+        this.tickRate = tickRate;
         this.background = background;
         this.scripts = scripts;
         this.widgets = widgets;
@@ -25,6 +27,12 @@ public class ScreenDefinition {
     // Getters and setters
     public String getId() { return id; }
     public void setId(String id) { this.id = id; }
+    
+    public int getTickRate() { return tickRate; }
+    public void setTickRate(int tickRate) { 
+        // Ограничиваем значение от 1 до 20
+        this.tickRate = Math.max(1, Math.min(20, tickRate)); 
+    }
     
     public BackgroundDefinition getBackground() { return background; }
     public void setBackground(BackgroundDefinition background) { this.background = background; }

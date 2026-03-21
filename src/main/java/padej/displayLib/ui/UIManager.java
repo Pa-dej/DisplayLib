@@ -26,8 +26,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class UIManager implements Listener {
     private final Map<Player, ScreenInstance> activeScreens = new ConcurrentHashMap<>();
-    private BukkitTask updateTask;
-    private boolean isUpdateTaskRunning = false;
+    private final Map<Player, BukkitTask> screenUpdateTasks = new ConcurrentHashMap<>();
     private ScreenRegistry screenRegistry;
     private LuaEngine luaEngine;
 
@@ -154,14 +153,12 @@ public class UIManager implements Listener {
 
     public void registerScreen(Player player, ScreenInstance screenInstance) {
         activeScreens.put(player, screenInstance);
-        startUpdateTaskIfNeeded();
+        startUpdateTaskForScreen(player, screenInstance);
     }
 
     public void unregisterScreen(Player player) {
         activeScreens.remove(player);
-        if (activeScreens.isEmpty()) {
-            stopUpdateTask();
-        }
+        stopUpdateTaskForScreen(player);
     }
 
     // -------------------------------------------------------------------------
@@ -225,20 +222,28 @@ public class UIManager implements Listener {
     // Update loop
     // -------------------------------------------------------------------------
 
-    private void startUpdateTaskIfNeeded() {
-        if (isUpdateTaskRunning) return;
-        updateTask = Bukkit.getScheduler().runTaskTimer(DisplayLib.getInstance(), () -> {
-            for (ScreenInstance screen : activeScreens.values()) {
-                if (screen != null) screen.update();
+    private void startUpdateTaskForScreen(Player player, ScreenInstance screenInstance) {
+        // Останавливаем предыдущую задачу если есть
+        stopUpdateTaskForScreen(player);
+        
+        // Получаем tick_rate из определения экрана
+        int tickRate = screenInstance.getDefinition().getTickRate();
+        
+        // Создаем новую задачу обновления для этого экрана
+        BukkitTask task = Bukkit.getScheduler().runTaskTimer(DisplayLib.getInstance(), () -> {
+            ScreenInstance screen = activeScreens.get(player);
+            if (screen != null) {
+                screen.update();
             }
-        }, 0L, 5L);
-        isUpdateTaskRunning = true;
+        }, 0L, tickRate);
+        
+        screenUpdateTasks.put(player, task);
     }
 
-    private void stopUpdateTask() {
-        if (isUpdateTaskRunning && updateTask != null) {
-            updateTask.cancel();
-            isUpdateTaskRunning = false;
+    private void stopUpdateTaskForScreen(Player player) {
+        BukkitTask task = screenUpdateTasks.remove(player);
+        if (task != null && !task.isCancelled()) {
+            task.cancel();
         }
     }
 
@@ -263,7 +268,14 @@ public class UIManager implements Listener {
             if (screen != null) screen.remove();
             unregisterScreen(player);
         });
-        stopUpdateTask();
+        
+        // Останавливаем все оставшиеся задачи обновления
+        screenUpdateTasks.values().forEach(task -> {
+            if (task != null && !task.isCancelled()) {
+                task.cancel();
+            }
+        });
+        screenUpdateTasks.clear();
     }
 
     public boolean hasActiveScreens() {

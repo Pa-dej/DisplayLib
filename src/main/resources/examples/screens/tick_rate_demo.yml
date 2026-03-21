@@ -1,0 +1,121 @@
+id: tick_rate_demo
+tick_rate: 4  # По умолчанию - обновление каждые 4 тика (5 раз в секунду)
+background:
+  color: [30, 50, 70]
+  alpha: 180
+  scale: [10, 6, 1]
+  translation: [0, -1, 0]
+  text: " "
+
+widgets:
+  # Заголовок
+  - id: title
+    type: TEXT_BUTTON
+    text: "Tick Rate Demo"
+    position: [0, 2, 0]
+    scale: [0.5, 0.5, 0.5]
+    alignment: CENTERED
+    backgroundColor: [60, 80, 120]
+    backgroundAlpha: 200
+    onClick:
+      action: NONE
+
+  # Описание текущего tick_rate
+  - id: current_rate
+    type: TEXT_BUTTON
+    text: "Current: 4 ticks (5 updates/sec)"
+    position: [0, 1.5, 0]
+    scale: [0.35, 0.35, 0.35]
+    alignment: CENTERED
+    backgroundColor: [50, 70, 90]
+    backgroundAlpha: 150
+    onClick:
+      action: NONE
+
+  # Кнопки для тестирования разных tick_rate
+  - id: btn_fast
+    type: TEXT_BUTTON
+    text: "Fast (1 tick)"
+    position: [-1.5, 0.5, 0]
+    scale: [0.4, 0.4, 0.4]
+    alignment: CENTERED
+    backgroundColor: [80, 40, 40]
+    backgroundAlpha: 150
+    hoveredBackgroundColor: [100, 50, 50]
+    hoveredBackgroundAlpha: 180
+    tooltip: "20 updates per second"
+    onClick:
+      action: SWITCH_SCREEN
+      target: tick_rate_fast
+
+  - id: btn_normal
+    type: TEXT_BUTTON
+    text: "Normal (4 ticks)"
+    position: [0, 0.5, 0]
+    scale: [0.4, 0.4, 0.4]
+    alignment: CENTERED
+    backgroundColor: [40, 80, 40]
+    backgroundAlpha: 150
+    hoveredBackgroundColor: [50, 100, 50]
+    hoveredBackgroundAlpha: 180
+    tooltip: "5 updates per second (default)"
+    onClick:
+      action: SWITCH_SCREEN
+      target: tick_rate_demo
+
+  - id: btn_slow
+    type: TEXT_BUTTON
+    text: "Slow (20 ticks)"
+    position: [1.5, 0.5, 0]
+    scale: [0.4, 0.4, 0.4]
+    alignment: CENTERED
+    backgroundColor: [40, 40, 80]
+    backgroundAlpha: 150
+    hoveredBackgroundColor: [50, 50, 100]
+    hoveredBackgroundAlpha: 180
+    tooltip: "1 update per second"
+    onClick:
+      action: SWITCH_SCREEN
+      target: tick_rate_slow
+
+  # Информация
+  - id: info
+    type: TEXT_BUTTON
+    text: "Hover over buttons to see update frequency.\nLower tick_rate = more frequent updates."
+    position: [0, -0.5, 0]
+    scale: [0.3, 0.3, 0.3]
+    alignment: CENTERED
+    backgroundColor: [60, 60, 60]
+    backgroundAlpha: 120
+    onClick:
+      action: NONE
+
+  # Кнопка возврата
+  - id: btn_back
+    type: TEXT_BUTTON
+    text: "← Back to Menu"
+    position: [-2, -1.5, 0]
+    scale: [0.4, 0.4, 0.4]
+    alignment: CENTERED
+    backgroundColor: [60, 40, 40]
+    backgroundAlpha: 150
+    hoveredBackgroundColor: [80, 50, 50]
+    hoveredBackgroundAlpha: 180
+    onClick:
+      action: SWITCH_SCREEN
+      target: main_menu
+
+  # Кнопка закрытия
+  - id: btn_close
+    type: TEXT_BUTTON
+    text: "⏺"
+    hoveredText: "Close"
+    position: [2, 2, 0]
+    scale: [0.6, 0.6, 0.6]
+    alignment: CENTERED
+    backgroundColor: [80, 20, 20]
+    backgroundAlpha: 150
+    hoveredBackgroundColor: [120, 30, 30]
+    hoveredBackgroundAlpha: 180
+    onClick:
+      action: CLOSE_SCREEN
