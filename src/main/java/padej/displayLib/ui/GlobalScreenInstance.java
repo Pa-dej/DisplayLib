@@ -18,13 +18,16 @@ import padej.displayLib.lua.api.WidgetAPI;
 import padej.displayLib.lua.api.PlayerAPI;
 import padej.displayLib.ui.widgets.*;
 import padej.displayLib.utils.PointDetection;
+
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import org.luaj.vm2.LuaValue;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * Глобальный экран без владельца, фиксированный в мире.
+ * Публичный экран без владельца, фиксированный в мире.
  * Любой игрок поблизости может взаимодействовать.
  * Hover визуалы отключены, работают только tooltips.
  */
@@ -55,8 +58,8 @@ public class GlobalScreenInstance {
     /** Игроки поблизости (обновляется каждые rangeCheckInterval тиков) */
     private final List<Player> nearbyPlayers = new ArrayList<>();
     
-    /** Какой игрок наводится на какой виджет */
-    private final Map<Widget, Player> widgetHoveredBy = new ConcurrentHashMap<>();
+    /** Какие игроки наводятся на какой виджет */
+    private final Map<Widget, Set<Player>> widgetHoveredBy = new ConcurrentHashMap<>();
     
     /** Смещение виджетов по глубине относительно фона */
     private static final float WIDGET_DEPTH_OFFSET = 0.001f;
@@ -71,7 +74,7 @@ public class GlobalScreenInstance {
         this.screenPitch = pitch;
         this.luaEngine = luaEngine;
         
-        // Для глобальных экранов создаем постоянный контекст без игрока
+        // Для публичных экранов создаем постоянный контекст без игрока
         // Игрок будет устанавливаться временно при каждом вызове функции
         this.luaContext = luaEngine.createGlobalContext(this, null);
         
@@ -126,10 +129,26 @@ public class GlobalScreenInstance {
     }
 
     public void handleClickBy(Player player) {
+        // Для публичных экранов проверяем все виджеты, а не только тот на который наведен игрок
+        Widget clickedWidget = null;
+        
+        // Сначала проверяем hover (для совместимости и точности)
         Widget hoveredWidget = getHoveredWidgetFor(player);
         if (hoveredWidget != null) {
+            clickedWidget = hoveredWidget;
+        } else {
+            // Если игрок не наведен ни на что, проверяем геометрически все виджеты
+            for (Widget widget : children) {
+                if (isPlayerLookingAtWidget(player, widget)) {
+                    clickedWidget = widget;
+                    break; // Берем первый найденный виджет
+                }
+            }
+        }
+        
+        if (clickedWidget != null) {
             // Находим определение виджета для получения onClick действия
-            WidgetDefinition widgetDef = findWidgetDefinition(hoveredWidget);
+            WidgetDefinition widgetDef = findWidgetDefinition(clickedWidget);
             if (widgetDef != null && widgetDef.getOnClick() != null) {
                 handleClick(widgetDef, player);
             }
@@ -162,11 +181,11 @@ public class GlobalScreenInstance {
         switch (action.getAction()) {
             case NONE -> {}
             case SWITCH_SCREEN -> {
-                // Для глобальных экранов SWITCH_SCREEN не имеет смысла
+                // Для публичных экранов SWITCH_SCREEN не имеет смысла
                 // Можно логировать предупреждение
             }
             case CLOSE_SCREEN -> {
-                // Глобальные экраны не закрываются по клику
+                // Публичные экраны не закрываются по клику
                 // Можно логировать предупреждение
             }
             case RUN_SCRIPT -> {
@@ -194,8 +213,8 @@ public class GlobalScreenInstance {
     }
 
     public Widget getHoveredWidgetFor(Player player) {
-        for (Map.Entry<Widget, Player> entry : widgetHoveredBy.entrySet()) {
-            if (entry.getValue().equals(player)) {
+        for (Map.Entry<Widget, Set<Player>> entry : widgetHoveredBy.entrySet()) {
+            if (entry.getValue().contains(player)) {
                 return entry.getKey();
             }
         }
@@ -274,7 +293,7 @@ public class GlobalScreenInstance {
         float[] t = def.getTolerance();
         float[] tr = def.getTranslation();
 
-        // Для глобальных экранов НЕ создаем onClick действие в виджете
+        // Для публичных экранов НЕ создаем onClick действие в виджете
         // Обработка будет через handleClickBy
         Runnable onClickAction = null;
 
@@ -482,16 +501,18 @@ public class GlobalScreenInstance {
         
         // Очищаем hover состояния для игроков, которые больше не рядом
         Set<Player> playersToRemove = new HashSet<>();
-        for (Player player : widgetHoveredBy.values()) {
-            if (player.getLocation().distanceSquared(location) > radiusSq) {
-                playersToRemove.add(player);
+        for (Map.Entry<Widget, Set<Player>> entry : widgetHoveredBy.entrySet()) {
+            for (Player player : entry.getValue()) {
+                if (player.getLocation().distanceSquared(location) > radiusSq) {
+                    playersToRemove.add(player);
+                }
             }
         }
         
         for (Player player : playersToRemove) {
             // Очищаем tooltip и hover состояния
             player.clearTitle();
-            widgetHoveredBy.entrySet().removeIf(entry -> entry.getValue().equals(player));
+            clearPlayerHover(player);
         }
         
         // Находим новых игроков поблизости
@@ -549,8 +570,8 @@ public class GlobalScreenInstance {
     private void updatePlayerHover(Player player, Widget newHoveredWidget) {
         // Находим виджет, на который игрок наводился ранее
         Widget previousWidget = null;
-        for (Map.Entry<Widget, Player> entry : widgetHoveredBy.entrySet()) {
-            if (entry.getValue().equals(player)) {
+        for (Map.Entry<Widget, Set<Player>> entry : widgetHoveredBy.entrySet()) {
+            if (entry.getValue().contains(player)) {
                 previousWidget = entry.getKey();
                 break;
             }
@@ -564,20 +585,26 @@ public class GlobalScreenInstance {
         // Убираем tooltip с предыдущего виджета
         if (previousWidget != null) {
             hideTooltipFromWidget(previousWidget, player);
-            widgetHoveredBy.remove(previousWidget);
+            Set<Player> playersOnPrevious = widgetHoveredBy.get(previousWidget);
+            if (playersOnPrevious != null) {
+                playersOnPrevious.remove(player);
+                if (playersOnPrevious.isEmpty()) {
+                    widgetHoveredBy.remove(previousWidget);
+                }
+            }
         }
 
         // Показываем tooltip на новом виджете
         if (newHoveredWidget != null) {
-            widgetHoveredBy.put(newHoveredWidget, player);
+            widgetHoveredBy.computeIfAbsent(newHoveredWidget, k -> ConcurrentHashMap.newKeySet()).add(player);
             showTooltipFromWidget(newHoveredWidget, player);
         }
     }
 
     private void clearPlayerHover(Player player) {
         Widget hoveredWidget = null;
-        for (Map.Entry<Widget, Player> entry : widgetHoveredBy.entrySet()) {
-            if (entry.getValue().equals(player)) {
+        for (Map.Entry<Widget, Set<Player>> entry : widgetHoveredBy.entrySet()) {
+            if (entry.getValue().contains(player)) {
                 hoveredWidget = entry.getKey();
                 break;
             }
@@ -585,7 +612,13 @@ public class GlobalScreenInstance {
         
         if (hoveredWidget != null) {
             hideTooltipFromWidget(hoveredWidget, player);
-            widgetHoveredBy.remove(hoveredWidget);
+            Set<Player> playersOnWidget = widgetHoveredBy.get(hoveredWidget);
+            if (playersOnWidget != null) {
+                playersOnWidget.remove(player);
+                if (playersOnWidget.isEmpty()) {
+                    widgetHoveredBy.remove(hoveredWidget);
+                }
+            }
         }
     }
 

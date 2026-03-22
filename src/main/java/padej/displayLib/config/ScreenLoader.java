@@ -1,820 +1,456 @@
 package padej.displayLib.config;
 
 import padej.displayLib.DisplayLib;
-import org.bukkit.plugin.java.JavaPlugin;
+import org.yaml.snakeyaml.Yaml;
 
-import java.io.*;
+import java.io.IOException;
+import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.*;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.logging.Level;
 
 /**
- * Загрузчик экранов из YAML файлов.
- * Использует Bukkit ConfigurationSection вместо прямого SnakeYAML,
- * чтобы избежать конфликтов classloader с Paper.
+ * Загрузчик экранов из YAML файлов
  */
 public class ScreenLoader {
-    private final JavaPlugin plugin;
+    private final DisplayLib plugin;
     private final Path screensDirectory;
-    private final Path scriptsDirectory;
+    private final Yaml yaml;
 
     public ScreenLoader(DisplayLib plugin) {
-        this.plugin = (JavaPlugin) plugin;
+        this.plugin = plugin;
         this.screensDirectory = plugin.getDataFolder().toPath().resolve("screens");
-        this.scriptsDirectory = plugin.getDataFolder().toPath().resolve("scripts");
-
-        plugin.getLogger().info("ScreenLoader: Initializing with data folder: " + plugin.getDataFolder().getAbsolutePath());
-        plugin.getLogger().info("ScreenLoader: Scripts directory: " + scriptsDirectory.toString());
+        this.yaml = new Yaml();
         
-        // Создаем директории при инициализации
         try {
             Files.createDirectories(screensDirectory);
-            Files.createDirectories(scriptsDirectory);
-            plugin.getLogger().info("ScreenLoader: Directories created/verified");
         } catch (IOException e) {
-            plugin.getLogger().log(Level.SEVERE, "ScreenLoader: Failed to create directories", e);
-        }
-        plugin.getLogger().info("ScreenLoader: Screens directory: " + screensDirectory.toString());
-
-        try {
-            Files.createDirectories(screensDirectory);
-            plugin.getLogger().info("ScreenLoader: Screens directory created/verified");
-        } catch (IOException e) {
-            plugin.getLogger().log(Level.SEVERE, "ScreenLoader: Failed to create screens directory", e);
+            plugin.getLogger().log(Level.SEVERE, "Failed to create screens directory", e);
         }
     }
 
-    // -------------------------------------------------------------------------
-    // Public API
-    // -------------------------------------------------------------------------
-
+    /**
+     * Загрузить все экраны из папки screens
+     */
     public Map<String, ScreenDefinition> loadAllScreens() {
         Map<String, ScreenDefinition> screens = new HashMap<>();
-
-        plugin.getLogger().info("ScreenLoader: Starting to load screens from " + screensDirectory.toString());
         
-        // Ensure directories exist
         try {
-            Files.createDirectories(screensDirectory);
-            Files.createDirectories(getScriptsDirectory());
-            plugin.getLogger().info("ScreenLoader: Directories created/verified");
-        } catch (IOException e) {
-            plugin.getLogger().log(Level.SEVERE, "Failed to create directories", e);
-        }
-
-        // Load existing screens (no automatic fallback creation)
-        try {
+            if (!Files.exists(screensDirectory)) {
+                return screens;
+            }
+            
             Files.walk(screensDirectory)
-                    .filter(p -> p.toString().endsWith(".yml") || p.toString().endsWith(".yaml"))
+                    .filter(path -> path.toString().endsWith(".yml") || path.toString().endsWith(".yaml"))
                     .forEach(path -> {
                         try {
-                            ScreenDefinition screen = loadScreen(path);
-                            if (screen != null && screen.getId() != null) {
+                            ScreenDefinition screen = loadScreenFromFile(path);
+                            if (screen != null) {
                                 screens.put(screen.getId(), screen);
-                                plugin.getLogger().info("Loaded screen: " + screen.getId());
                             }
                         } catch (Exception e) {
-                            plugin.getLogger().log(Level.WARNING, "Failed to load screen from " + path, e);
+                            plugin.getLogger().log(Level.WARNING, "Failed to load screen: " + path, e);
                         }
                     });
         } catch (IOException e) {
             plugin.getLogger().log(Level.SEVERE, "Failed to load screens", e);
         }
-
-        plugin.getLogger().info("Finished loading screens. Total loaded: " + screens.size());
-        if (screens.isEmpty()) {
-            plugin.getLogger().info("No screens found. Use '/displaylib examples' to create demo screens.");
-        }
+        
         return screens;
     }
-    public ScreenDefinition loadScreen(String screenId) {
-        Path file = screensDirectory.resolve(screenId + ".yml");
-        if (!Files.exists(file)) file = screensDirectory.resolve(screenId + ".yaml");
-        if (!Files.exists(file)) {
-            plugin.getLogger().warning("Screen file not found: " + screenId);
-            return null;
-        }
-        try {
-            return loadScreen(file);
-        } catch (Exception e) {
-            plugin.getLogger().log(Level.WARNING, "Failed to load screen: " + screenId, e);
-            return null;
-        }
-    }
-
-    // -------------------------------------------------------------------------
-    // Internal: parse YAML manually from Map<String,Object>
-    // (avoids ClassCastException from bare new Yaml().load())
-    // -------------------------------------------------------------------------
-
-    @SuppressWarnings("unchecked")
-    public ScreenDefinition loadScreen(Path filePath) throws IOException {
-        // Используем Bukkit YamlConfiguration — он уже в classpath Paper,
-        // возвращает нормальные Java типы и не конфликтует с Paper's SnakeYAML.
-        org.bukkit.configuration.file.YamlConfiguration config =
-                org.bukkit.configuration.file.YamlConfiguration.loadConfiguration(filePath.toFile());
-
-        ScreenDefinition screen = new ScreenDefinition();
-
-        // id
-        screen.setId(config.getString("id"));
-        if (screen.getId() == null || screen.getId().isBlank()) {
-            throw new IllegalArgumentException("Screen id is missing in " + filePath);
-        }
-
-        // tick_rate (по умолчанию 4 тика)
-        screen.setTickRate(config.getInt("tick_rate", 4));
-        
-        // screen_type (по умолчанию PERSONAL)
-        String typeStr = config.getString("screen_type", "PERSONAL");
-        try {
-            screen.setScreenType(ScreenDefinition.ScreenType.valueOf(typeStr.toUpperCase()));
-        } catch (IllegalArgumentException e) {
-            screen.setScreenType(ScreenDefinition.ScreenType.PERSONAL);
-        }
-        
-        // interaction_radius (по умолчанию 8.0)
-        screen.setInteractionRadius(config.getDouble("interaction_radius", 8.0));
-        
-        // range_check_interval (по умолчанию 10)
-        screen.setRangeCheckInterval(config.getInt("range_check_interval", 10));
-
-        // background
-        if (config.isConfigurationSection("background")) {
-            var bgSec = config.getConfigurationSection("background");
-            ScreenDefinition.BackgroundDefinition bg = new ScreenDefinition.BackgroundDefinition();
-
-            bg.setText(bgSec.getString("text", " "));
-            bg.setAlpha(bgSec.getInt("alpha", 160));
-
-            List<?> color = bgSec.getList("color", List.of(0, 0, 0));
-            bg.setColor(toIntArray(color, new int[]{0, 0, 0}));
-
-            List<?> scale = bgSec.getList("scale", List.of(10.0, 4.0, 1.0));
-            bg.setScale(toFloatArray(scale, new float[]{10f, 4f, 1f}));
-
-            // Добавляем поддержку position и translation для фона
-            List<?> position = bgSec.getList("position", List.of(0.0, 0.0, 0.0));
-            bg.setPosition(toFloatArray(position, new float[]{0f, 0f, 0f}));
-
-            List<?> translation = bgSec.getList("translation", List.of(0.0, 0.0, 0.0));
-            bg.setTranslation(toFloatArray(translation, new float[]{0f, 0f, 0f}));
-
-            screen.setBackground(bg);
-        }
-
-        // scripts
-        if (config.isConfigurationSection("scripts")) {
-            var scriptSec = config.getConfigurationSection("scripts");
-            Map<String, String> scripts = new HashMap<>();
-            scripts.put("file", scriptSec.getString("file"));
-            screen.setScripts(scripts);
-        }
-
-        // widgets
-        var rawWidgets = config.getMapList("widgets");
-        List<WidgetDefinition> widgets = new ArrayList<>();
-        for (Map<?, ?> raw : rawWidgets) {
-            try {
-                widgets.add(parseWidget((Map<String, Object>) raw));
-            } catch (Exception e) {
-                plugin.getLogger().warning("Skipping bad widget in " + filePath + ": " + e.getMessage());
-            }
-        }
-        screen.setWidgets(widgets);
-
-        return screen;
-    }
-    @SuppressWarnings("unchecked")
-    private WidgetDefinition parseWidget(Map<String, Object> raw) {
-        WidgetDefinition w = new WidgetDefinition();
-
-        w.setId((String) raw.get("id"));
-
-        String typeStr = (String) raw.getOrDefault("type", "ITEM_BUTTON");
-        try {
-            w.setType(WidgetDefinition.WidgetType.valueOf(typeStr.toUpperCase()));
-        } catch (IllegalArgumentException e) {
-            w.setType(WidgetDefinition.WidgetType.ITEM_BUTTON);
-        }
-
-        w.setMaterial((String) raw.getOrDefault("material", "STONE"));
-        
-        // Парсинг text - может быть строкой или JSON массивом
-        Object textValue = raw.get("text");
-        if (textValue instanceof String) {
-            w.setText((String) textValue);
-        } else if (textValue instanceof java.util.List) {
-            w.setFormattedText(textValue);
-            w.setText(""); // Устанавливаем пустую строку как fallback
-        } else {
-            w.setText("");
-        }
-        
-        // Парсинг hoveredText - может быть строкой или JSON массивом
-        Object hoveredTextValue = raw.get("hoveredText");
-        if (hoveredTextValue instanceof String) {
-            w.setHoveredText((String) hoveredTextValue);
-        } else if (hoveredTextValue instanceof java.util.List) {
-            w.setFormattedHoveredText(hoveredTextValue);
-            w.setHoveredText(""); // Устанавливаем пустую строку как fallback
-        } else {
-            // Если hoveredText не указан, используем обычный text
-            w.setHoveredText(w.getText());
-        }
-        
-        w.setTooltip((String) raw.get("tooltip"));
-
-        // Парсинг alignment для TEXT_BUTTON
-        String alignmentStr = (String) raw.getOrDefault("alignment", "CENTERED");
-        try {
-            w.setAlignment(WidgetDefinition.TextAlignment.valueOf(alignmentStr.toUpperCase()));
-        } catch (IllegalArgumentException e) {
-            w.setAlignment(WidgetDefinition.TextAlignment.CENTERED);
-        }
-
-        w.setPosition(toFloatArray(raw.get("position"), new float[]{0f, 0f, 0f}));
-        w.setScale(toFloatArray(raw.get("scale"), new float[]{0.15f, 0.15f, 0.15f}));
-        w.setTolerance(toFloatArray(raw.get("tolerance"), new float[]{0.06f, 0.06f}));
-        w.setTranslation(toFloatArray(raw.get("translation"), new float[]{0f, 0f, 0f}));
-        w.setBackgroundColor(toIntArray(raw.get("backgroundColor"), new int[]{40, 40, 40}));
-        w.setBackgroundAlpha(toInt(raw.get("backgroundAlpha"), 150));
-        w.setHoveredBackgroundColor(toIntArray(raw.get("hoveredBackgroundColor"), new int[]{60, 60, 60}));
-        w.setHoveredBackgroundAlpha(toInt(raw.get("hoveredBackgroundAlpha"), 180));
-        w.setTooltipColor(toIntArray(raw.get("tooltipColor"), new int[]{252, 215, 32}));
-        w.setTooltipDelay(toInt(raw.get("tooltipDelay"), 30));
-        w.setGlowOnHover(toBool(raw.get("glowOnHover"), true));
-
-        if (raw.get("glowColor") != null) {
-            w.setGlowColor(toIntArray(raw.get("glowColor"), null));
-        }
-
-        // onClick
-        if (raw.get("onClick") instanceof Map<?, ?> onClickRaw) {
-            Map<String, Object> onClickMap = (Map<String, Object>) onClickRaw;
-            WidgetDefinition.ClickAction action = new WidgetDefinition.ClickAction();
-
-            String actionStr = (String) onClickMap.getOrDefault("action", "NONE");
-            try {
-                action.setAction(WidgetDefinition.ClickAction.ActionType.valueOf(actionStr.toUpperCase()));
-            } catch (IllegalArgumentException e) {
-                action.setAction(WidgetDefinition.ClickAction.ActionType.NONE);
-            }
-
-            action.setTarget((String) onClickMap.get("target"));
-            action.setScript((String) onClickMap.get("script"));
-            action.setFunction((String) onClickMap.get("function"));
-            w.setOnClick(action);
-        }
-
-        return w;
-    }
-
-    // -------------------------------------------------------------------------
-    // Type coercions
-    // -------------------------------------------------------------------------
-
-    private float[] toFloatArray(Object raw, float[] fallback) {
-        if (raw instanceof List<?> list) {
-            float[] arr = new float[list.size()];
-            for (int i = 0; i < list.size(); i++) {
-                arr[i] = toFloat(list.get(i), fallback != null && i < fallback.length ? fallback[i] : 0f);
-            }
-            return arr;
-        }
-        return fallback;
-    }
-
-    private int[] toIntArray(Object raw, int[] fallback) {
-        if (raw instanceof List<?> list) {
-            int[] arr = new int[list.size()];
-            for (int i = 0; i < list.size(); i++) {
-                arr[i] = toInt(list.get(i), fallback != null && i < fallback.length ? fallback[i] : 0);
-            }
-            return arr;
-        }
-        return fallback;
-    }
-
-    private float toFloat(Object v, float fallback) {
-        if (v instanceof Number n) return n.floatValue();
-        if (v instanceof String s) { try { return Float.parseFloat(s); } catch (Exception ignored) {} }
-        return fallback;
-    }
-
-    private int toInt(Object v, int fallback) {
-        if (v instanceof Number n) return n.intValue();
-        if (v instanceof String s) { try { return Integer.parseInt(s); } catch (Exception ignored) {} }
-        return fallback;
-    }
-
-    private boolean toBool(Object v, boolean fallback) {
-        if (v instanceof Boolean b) return b;
-        if (v instanceof String s) return Boolean.parseBoolean(s);
-        return fallback;
-    }
-    // -------------------------------------------------------------------------
-    // Example files
-    // -------------------------------------------------------------------------
 
     /**
-     * Public method to manually create example screens (for testing/debugging)
+     * Загрузить конкретный экран по ID
      */
-    public void createExampleScreensManually() {
-        plugin.getLogger().info("ScreenLoader: Manually creating example screens...");
-        
+    public ScreenDefinition loadScreen(String screenId) {
         try {
-            // Ensure directories exist
-            Files.createDirectories(screensDirectory);
-            Files.createDirectories(getScriptsDirectory());
+            Path screenFile = screensDirectory.resolve(screenId + ".yml");
+            if (!Files.exists(screenFile)) {
+                screenFile = screensDirectory.resolve(screenId + ".yaml");
+            }
             
-            createExampleScreens();
-            plugin.getLogger().info("ScreenLoader: Example screens created manually - SUCCESS");
+            if (Files.exists(screenFile)) {
+                return loadScreenFromFile(screenFile);
+            }
         } catch (Exception e) {
-            plugin.getLogger().log(Level.SEVERE, "ScreenLoader: Failed to create example screens manually", e);
+            plugin.getLogger().log(Level.WARNING, "Failed to load screen: " + screenId, e);
         }
-    }
-    
-    private void createExampleScreens() {
-        plugin.getLogger().info("ScreenLoader: Creating example screens...");
-        createExampleMainScreen();
-        plugin.getLogger().info("ScreenLoader: Main screen created");
         
-        createExampleSimpleDemo();
-        plugin.getLogger().info("ScreenLoader: Simple demo screen created");
-        
-        createExampleGlobalShop();
-        plugin.getLogger().info("ScreenLoader: Global shop screen created");
-        
-        createExampleLuaScripts();
-        plugin.getLogger().info("ScreenLoader: Lua scripts created");
-        
-        plugin.getLogger().info("ScreenLoader: All example files creation completed");
+        return null;
     }
 
-    private void createExampleSimpleDemo() {
-        String content = """
-                id: simple_demo
-                background:
-                  color: [20, 30, 50]
-                  alpha: 180
-                  scale: [8.0, 5.0, 1.0]
-                  text: " "
-
-                scripts:
-                  file: "simple_demo.lua"
-
-                widgets:
-                  - id: title
-                    type: TEXT_BUTTON
-                    text: "Lua API Demo"
-                    hoveredText: "Демонстрация Lua API"
-                    position: [0.0, 0.85, 0.0]
-                    scale: [0.6, 0.6, 0.6]
-                    tolerance: [0.15, 0.08]
-                    backgroundColor: [60, 80, 120]
-                    backgroundAlpha: 200
-                    onClick:
-                      action: NONE
-
-                  - id: btn_heal
-                    type: ITEM_BUTTON
-                    material: GOLDEN_APPLE
-                    position: [-0.42, 0.3, 0.0]
-                    scale: [0.15, 0.15, 0.15]
-                    tolerance: [0.06, 0.06]
-                    tooltip: "Восстановить здоровье"
-                    glowOnHover: true
-                    onClick:
-                      action: RUN_SCRIPT
-                      function: "btn_heal_click"
-
-                  - id: counter_label
-                    type: TEXT_BUTTON
-                    text: "Счетчик: 0"
-                    hoveredText: "Счетчик: 0"
-                    position: [0.0, 0.3, 0.0]
-                    scale: [0.4, 0.4, 0.4]
-                    tolerance: [0.12, 0.06]
-                    backgroundColor: [40, 80, 40]
-                    backgroundAlpha: 150
-                    onClick:
-                      action: NONE
-
-                  - id: btn_increment
-                    type: ITEM_BUTTON
-                    material: GREEN_CONCRETE
-                    position: [-0.15, 0.1, 0.0]
-                    scale: [0.12, 0.12, 0.12]
-                    tolerance: [0.06, 0.06]
-                    tooltip: "Увеличить"
-                    glowOnHover: true
-                    onClick:
-                      action: RUN_SCRIPT
-                      function: "btn_increment_click"
-
-                  - id: btn_decrement
-                    type: ITEM_BUTTON
-                    material: RED_CONCRETE
-                    position: [0.15, 0.1, 0.0]
-                    scale: [0.12, 0.12, 0.12]
-                    tolerance: [0.06, 0.06]
-                    tooltip: "Уменьшить"
-                    glowOnHover: true
-                    onClick:
-                      action: RUN_SCRIPT
-                      function: "btn_decrement_click"
-
-                  - id: btn_close
-                    type: TEXT_BUTTON
-                    text: "⏺"
-                    hoveredText: "Закрыть"
-                    position: [0.35, 0.8, 0.0]
-                    scale: [0.75, 0.75, 0.75]
-                    tolerance: [0.035, 0.035]
-                    backgroundAlpha: 0
-                    hoveredBackgroundAlpha: 50
-                    onClick:
-                      action: CLOSE_SCREEN
-                """;
-        writeFile("simple_demo.yml", content);
-    }
-
-    private void createExampleMainScreen() {
-        String content = """
-                id: main_menu
-                background:
-                  color: [0, 0, 0]
-                  alpha: 160
-                  scale: [8.0, 4.0, 1.0]
-                  text: " "
-
-                scripts:
-                  file: "main_menu.lua"
-
-                widgets:
-                  - id: label_title
-                    type: TEXT_BUTTON
-                    text: "Главное меню"
-                    hoveredText: "Главное меню"
-                    position: [0.0, 0.85, 0.0]
-                    scale: [0.6, 0.6, 0.6]
-                    tolerance: [0.15, 0.08]
-                    backgroundAlpha: 0
-                    hoveredBackgroundAlpha: 0
-                    onClick:
-                      action: NONE
-
-                  - id: btn_demo
-                    type: ITEM_BUTTON
-                    material: COMMAND_BLOCK
-                    position: [-0.42, 0.3, 0.0]
-                    scale: [0.15, 0.15, 0.15]
-                    tolerance: [0.06, 0.06]
-                    tooltip: "Lua API Demo"
-                    glowOnHover: true
-                    glowColor: [255, 215, 0]
-                    onClick:
-                      action: SWITCH_SCREEN
-                      target: simple_demo
-
-                  - id: btn_info
-                    type: ITEM_BUTTON
-                    material: BOOK
-                    position: [-0.42, 0.47, 0.0]
-                    scale: [0.15, 0.15, 0.15]
-                    tolerance: [0.06, 0.06]
-                    tooltip: "Информация"
-                    glowOnHover: true
-                    onClick:
-                      action: RUN_SCRIPT
-                      function: "btn_info_click"
-
-                  - id: btn_close
-                    type: TEXT_BUTTON
-                    text: "⏺"
-                    hoveredText: "Закрыть"
-                    position: [0.35, 0.8, 0.0]
-                    scale: [0.75, 0.75, 0.75]
-                    tolerance: [0.035, 0.035]
-                    backgroundAlpha: 0
-                    hoveredBackgroundAlpha: 50
-                    onClick:
-                      action: CLOSE_SCREEN
-                """;
-        writeFile("main_menu.yml", content);
-    }
-
-    private void createExampleLuaScripts() {
-        // Создаем скрипт для главного меню
-        String mainMenuScript = "-- Main Menu Script\\n" +
-                "function on_open()\\n" +
-                "    log.info(\\\"Main menu opened for \\\" .. player.name())\\n" +
-                "    player.message(\\\"§6Добро пожаловать в DisplayLib!\\\")\\n" +
-                "    player.sound(\\\"ui.button.click\\\", 1.0, 1.0)\\n" +
-                "end\\n\\n" +
-                "function on_close()\\n" +
-                "    log.info(\\\"Main menu closed for \\\" .. player.name())\\n" +
-                "    player.message(\\\"§7До свидания!\\\")\\n" +
-                "end\\n\\n" +
-                "function btn_info_click()\\n" +
-                "    player.message(\\\"§b=== DisplayLib Info ===\\\")\\n" +
-                "    player.message(\\\"§7Плагин для создания 3D интерфейсов\\\")\\n" +
-                "    player.message(\\\"§7С поддержкой Lua скриптов\\\")\\n" +
-                "    player.sound(\\\"block.note_block.chime\\\", 1.0, 1.0)\\n" +
-                "end";
-        writeFile("main_menu.lua", mainMenuScript);
-
-        // Создаем простой демо скрипт
-        String simpleDemoScript = "-- Simple Demo Script\\n" +
-                "local counter_value = 0\\n\\n" +
-                "function on_open()\\n" +
-                "    log.info(\\\"Simple demo opened for \\\" .. player.name())\\n" +
-                "    player.message(\\\"§6Добро пожаловать в демо!\\\")\\n" +
-                "    update_counter()\\n" +
-                "end\\n\\n" +
-                "function on_close()\\n" +
-                "    log.info(\\\"Simple demo closed\\\")\\n" +
-                "    player.message(\\\"§7До свидания!\\\")\\n" +
-                "end\\n\\n" +
-                "function btn_heal_click()\\n" +
-                "    local old_health = player.health()\\n" +
-                "    player.health(20)\\n" +
-                "    player.message(\\\"§a❤ Здоровье восстановлено!\\\")\\n" +
-                "    player.sound(\\\"entity.player.levelup\\\", 1.0, 1.0)\\n" +
-                "end\\n\\n" +
-                "function btn_increment_click()\\n" +
-                "    counter_value = storage.get(\\\"counter\\\", 0) + 1\\n" +
-                "    storage.set(\\\"counter\\\", counter_value)\\n" +
-                "    update_counter()\\n" +
-                "    player.sound(\\\"block.note_block.harp\\\", 1.0, 1.0)\\n" +
-                "    player.message(\\\"§a+1 Счетчик: \\\" .. counter_value)\\n" +
-                "end\\n\\n" +
-                "function btn_decrement_click()\\n" +
-                "    counter_value = storage.get(\\\"counter\\\", 0)\\n" +
-                "    if counter_value > 0 then\\n" +
-                "        counter_value = counter_value - 1\\n" +
-                "        storage.set(\\\"counter\\\", counter_value)\\n" +
-                "        update_counter()\\n" +
-                "        player.sound(\\\"block.note_block.bass\\\", 1.0, 0.8)\\n" +
-                "        player.message(\\\"§c-1 Счетчик: \\\" .. counter_value)\\n" +
-                "    else\\n" +
-                "        player.message(\\\"§cСчетчик уже равен нулю!\\\")\\n" +
-                "    end\\n" +
-                "end\\n\\n" +
-                "function update_counter()\\n" +
-                "    local counter = storage.get(\\\"counter\\\", 0)\\n" +
-                "    local label = screen.widget(\\\"counter_label\\\")\\n" +
-                "    if label then\\n" +
-                "        label.text(\\\"Счетчик: \\\" .. counter)\\n" +
-                "    end\\n" +
-                "end";
-        writeFile("simple_demo.lua", simpleDemoScript);
-    }
-    
-    private void createExampleGlobalShop() {
-        String content = """
-                id: global_shop
-                screen_type: GLOBAL
-                interaction_radius: 6.0
-                range_check_interval: 10
-                tick_rate: 4
-                background:
-                  color: [40, 20, 60]
-                  alpha: 200
-                  scale: [6.0, 4.0, 1.0]
-                  text: " "
-
-                scripts:
-                  file: "global_shop.lua"
-
-                widgets:
-                  - id: title
-                    type: TEXT_BUTTON
-                    text: "🏪 Магазин"
-                    hoveredText: "🏪 Магазин"
-                    position: [0.0, 1.2, 0.0]
-                    scale: [0.8, 0.8, 0.8]
-                    tolerance: [0.15, 0.08]
-                    backgroundColor: [80, 40, 120]
-                    backgroundAlpha: 220
-                    onClick:
-                      action: NONE
-
-                  - id: btn_sword
-                    type: ITEM_BUTTON
-                    material: DIAMOND_SWORD
-                    position: [-1.2, 0.3, 0.0]
-                    scale: [0.2, 0.2, 0.2]
-                    tolerance: [0.08, 0.08]
-                    tooltip: "Алмазный меч - 100 монет"
-                    glowOnHover: true
-                    glowColor: [0, 255, 255]
-                    onClick:
-                      action: RUN_SCRIPT
-                      function: "buy_sword"
-
-                  - id: btn_armor
-                    type: ITEM_BUTTON
-                    material: DIAMOND_CHESTPLATE
-                    position: [-0.4, 0.3, 0.0]
-                    scale: [0.2, 0.2, 0.2]
-                    tolerance: [0.08, 0.08]
-                    tooltip: "Алмазная броня - 200 монет"
-                    glowOnHover: true
-                    glowColor: [0, 255, 255]
-                    onClick:
-                      action: RUN_SCRIPT
-                      function: "buy_armor"
-
-                  - id: btn_food
-                    type: ITEM_BUTTON
-                    material: GOLDEN_APPLE
-                    position: [0.4, 0.3, 0.0]
-                    scale: [0.2, 0.2, 0.2]
-                    tolerance: [0.08, 0.08]
-                    tooltip: "Золотое яблоко - 50 монет"
-                    glowOnHover: true
-                    glowColor: [255, 215, 0]
-                    onClick:
-                      action: RUN_SCRIPT
-                      function: "buy_food"
-
-                  - id: btn_tools
-                    type: ITEM_BUTTON
-                    material: DIAMOND_PICKAXE
-                    position: [1.2, 0.3, 0.0]
-                    scale: [0.2, 0.2, 0.2]
-                    tolerance: [0.08, 0.08]
-                    tooltip: "Алмазная кирка - 150 монет"
-                    glowOnHover: true
-                    glowColor: [0, 255, 255]
-                    onClick:
-                      action: RUN_SCRIPT
-                      function: "buy_tools"
-
-                  - id: info_label
-                    type: TEXT_BUTTON
-                    text: "Кликните на предмет для покупки"
-                    hoveredText: "Кликните на предмет для покупки"
-                    position: [0.0, -0.8, 0.0]
-                    scale: [0.3, 0.3, 0.3]
-                    tolerance: [0.15, 0.06]
-                    backgroundColor: [60, 30, 90]
-                    backgroundAlpha: 180
-                    onClick:
-                      action: NONE
-                """;
-        writeFile("global_shop.yml", content);
-        
-        // Создаем скрипт для глобального магазина
-        String globalShopScript = "-- Global Shop Script\\n" +
-                "function on_open()\\n" +
-                "    log.info(\\\"Global shop opened\\\")\\n" +
-                "end\\n\\n" +
-                "function on_close()\\n" +
-                "    log.info(\\\"Global shop closed\\\")\\n" +
-                "end\\n\\n" +
-                "function buy_sword()\\n" +
-                "    -- В глобальном экране нет конкретного игрока в контексте\\n" +
-                "    -- Эта функция будет вызвана когда игрок кликнет\\n" +
-                "    log.info(\\\"Someone tried to buy a sword\\\")\\n" +
-                "    -- Здесь можно добавить логику покупки\\n" +
-                "end\\n\\n" +
-                "function buy_armor()\\n" +
-                "    log.info(\\\"Someone tried to buy armor\\\")\\n" +
-                "end\\n\\n" +
-                "function buy_food()\\n" +
-                "    log.info(\\\"Someone tried to buy food\\\")\\n" +
-                "end\\n\\n" +
-                "function buy_tools()\\n" +
-                "    log.info(\\\"Someone tried to buy tools\\\")\\n" +
-                "end";
-        writeFile("global_shop.lua", globalShopScript);
-    }
-
-    private void writeFile(String filename, String content) {
-        try {
-            Path filePath;
-            if (filename.endsWith(".lua")) {
-                // Lua scripts go to scripts directory
-                Path scriptsDir = getScriptsDirectory();
-                filePath = scriptsDir.resolve(filename);
-                plugin.getLogger().info("ScreenLoader: Writing Lua script to " + filePath.toString());
-            } else {
-                // YAML files go to screens directory
-                filePath = screensDirectory.resolve(filename);
-                plugin.getLogger().info("ScreenLoader: Writing YAML screen to " + filePath.toString());
+    /**
+     * Загрузить экран из файла
+     */
+    private ScreenDefinition loadScreenFromFile(Path file) throws IOException {
+        try (InputStream input = Files.newInputStream(file)) {
+            // Загружаем как Map сначала для обработки
+            Map<String, Object> data = yaml.load(input);
+            
+            if (data == null) {
+                return null;
             }
             
-            // Ensure parent directory exists
-            Files.createDirectories(filePath.getParent());
+            // Создаем ScreenDefinition вручную из Map
+            ScreenDefinition screen = new ScreenDefinition();
             
-            // Write file with UTF-8 encoding
-            Files.write(filePath, content.getBytes("UTF-8"));
-            
-            // Verify file was created
-            if (Files.exists(filePath)) {
-                long fileSize = Files.size(filePath);
-                plugin.getLogger().info("ScreenLoader: Successfully created fallback file: " + filename + " (size: " + fileSize + " bytes)");
+            // Основные поля
+            if (data.containsKey("id")) {
+                screen.setId((String) data.get("id"));
             } else {
-                plugin.getLogger().severe("ScreenLoader: File was not created: " + filename);
+                // Если ID не указан в файле, используем имя файла
+                String fileName = file.getFileName().toString();
+                String id = fileName.substring(0, fileName.lastIndexOf('.'));
+                screen.setId(id);
             }
             
-        } catch (IOException e) {
-            plugin.getLogger().log(Level.SEVERE, "ScreenLoader: Failed to create fallback file: " + filename, e);
+            if (data.containsKey("tick_rate")) {
+                screen.setTickRate(((Number) data.get("tick_rate")).intValue());
+            }
+            
+            if (data.containsKey("screen_type")) {
+                String typeStr = (String) data.get("screen_type");
+                try {
+                    ScreenDefinition.ScreenType type = ScreenDefinition.ScreenType.valueOf(typeStr);
+                    screen.setScreenType(type);
+                } catch (IllegalArgumentException e) {
+                    plugin.getLogger().warning("Invalid screen_type '" + typeStr + "' in " + file + ", using PRIVATE");
+                    screen.setScreenType(ScreenDefinition.ScreenType.PRIVATE);
+                }
+            }
+            
+            if (data.containsKey("interaction_radius")) {
+                screen.setInteractionRadius(((Number) data.get("interaction_radius")).doubleValue());
+            }
+            
+            if (data.containsKey("range_check_interval")) {
+                screen.setRangeCheckInterval(((Number) data.get("range_check_interval")).intValue());
+            }
+            
+            // Background
+            if (data.containsKey("background")) {
+                Map<String, Object> bgData = (Map<String, Object>) data.get("background");
+                ScreenDefinition.BackgroundDefinition bg = new ScreenDefinition.BackgroundDefinition();
+                
+                if (bgData.containsKey("color")) {
+                    Object colorObj = bgData.get("color");
+                    if (colorObj instanceof java.util.List) {
+                        java.util.List<Number> colorList = (java.util.List<Number>) colorObj;
+                        int[] color = new int[3];
+                        for (int i = 0; i < Math.min(3, colorList.size()); i++) {
+                            color[i] = colorList.get(i).intValue();
+                        }
+                        bg.setColor(color);
+                    }
+                }
+                
+                if (bgData.containsKey("alpha")) {
+                    bg.setAlpha(((Number) bgData.get("alpha")).intValue());
+                }
+                
+                if (bgData.containsKey("scale")) {
+                    Object scaleObj = bgData.get("scale");
+                    if (scaleObj instanceof java.util.List) {
+                        java.util.List<Number> scaleList = (java.util.List<Number>) scaleObj;
+                        float[] scale = new float[3];
+                        for (int i = 0; i < Math.min(3, scaleList.size()); i++) {
+                            scale[i] = scaleList.get(i).floatValue();
+                        }
+                        bg.setScale(scale);
+                    }
+                }
+                
+                if (bgData.containsKey("position")) {
+                    Object posObj = bgData.get("position");
+                    if (posObj instanceof java.util.List) {
+                        java.util.List<Number> posList = (java.util.List<Number>) posObj;
+                        float[] position = new float[3];
+                        for (int i = 0; i < Math.min(3, posList.size()); i++) {
+                            position[i] = posList.get(i).floatValue();
+                        }
+                        bg.setPosition(position);
+                    }
+                }
+                
+                if (bgData.containsKey("text")) {
+                    bg.setText((String) bgData.get("text"));
+                }
+                
+                if (bgData.containsKey("translation")) {
+                    Object transObj = bgData.get("translation");
+                    if (transObj instanceof java.util.List) {
+                        java.util.List<Number> transList = (java.util.List<Number>) transObj;
+                        float[] translation = new float[3];
+                        for (int i = 0; i < Math.min(3, transList.size()); i++) {
+                            translation[i] = transList.get(i).floatValue();
+                        }
+                        bg.setTranslation(translation);
+                    }
+                }
+                
+                screen.setBackground(bg);
+            }
+            
+            // Scripts
+            if (data.containsKey("scripts")) {
+                Map<String, String> scripts = (Map<String, String>) data.get("scripts");
+                screen.setScripts(scripts);
+            }
+            
+            // Widgets
+            if (data.containsKey("widgets")) {
+                java.util.List<Map<String, Object>> widgetsData = (java.util.List<Map<String, Object>>) data.get("widgets");
+                java.util.List<WidgetDefinition> widgets = new java.util.ArrayList<>();
+                
+                for (Map<String, Object> widgetData : widgetsData) {
+                    WidgetDefinition widget = parseWidget(widgetData);
+                    if (widget != null) {
+                        widgets.add(widget);
+                    }
+                }
+                
+                screen.setWidgets(widgets);
+            }
+            
+            return screen;
+            
         } catch (Exception e) {
-            plugin.getLogger().log(Level.SEVERE, "ScreenLoader: Unexpected error creating file: " + filename, e);
+            plugin.getLogger().log(Level.WARNING, "Error parsing YAML file: " + file, e);
+            return null;
         }
     }
 
+    /**
+     * Получить путь к папке экранов
+     */
     public Path getScreensDirectory() {
         return screensDirectory;
     }
 
-    private Path getScriptsDirectory() {
-        return scriptsDirectory;
-    }
-    
     /**
-     * Конвертирует JSON массив форматированного текста в Adventure Component
+     * Создать примеры экранов вручную (для команды examples)
      */
-    @SuppressWarnings("unchecked")
-    private net.kyori.adventure.text.Component parseFormattedText(Object formattedText) {
-        if (formattedText == null) {
-            return net.kyori.adventure.text.Component.empty();
-        }
-        
-        if (formattedText instanceof String) {
-            return net.kyori.adventure.text.Component.text((String) formattedText);
-        }
-        
-        if (!(formattedText instanceof java.util.List)) {
-            return net.kyori.adventure.text.Component.text(formattedText.toString());
-        }
-        
-        java.util.List<Object> textParts = (java.util.List<Object>) formattedText;
-        net.kyori.adventure.text.TextComponent.Builder builder = net.kyori.adventure.text.Component.text();
-        
-        for (Object part : textParts) {
-            if (part instanceof String) {
-                // Простая строка без форматирования
-                builder.append(net.kyori.adventure.text.Component.text((String) part));
-            } else if (part instanceof Map) {
-                // Объект с форматированием
-                Map<String, Object> partMap = (Map<String, Object>) part;
-                String text = (String) partMap.getOrDefault("text", "");
-                
-                net.kyori.adventure.text.TextComponent.Builder partBuilder = 
-                    net.kyori.adventure.text.Component.text().content(text);
-                
-                // Применяем цвет
-                String color = (String) partMap.get("color");
-                if (color != null) {
+    public void createExampleScreensManually() {
+        // Базовая реализация - можно расширить позже
+        plugin.getLogger().info("Creating example screens...");
+    }
+
+    /**
+     * Парсинг виджета из Map
+     */
+    private WidgetDefinition parseWidget(Map<String, Object> data) {
+        try {
+            WidgetDefinition widget = new WidgetDefinition();
+            
+            // Основные поля
+            if (data.containsKey("id")) {
+                Object idObj = data.get("id");
+                if (idObj instanceof String) {
+                    widget.setId((String) idObj);
+                }
+            }
+            
+            if (data.containsKey("type")) {
+                Object typeObj = data.get("type");
+                if (typeObj instanceof String) {
+                    String typeStr = (String) typeObj;
                     try {
-                        if (color.startsWith("#")) {
-                            // Hex цвет
-                            partBuilder.color(net.kyori.adventure.text.format.TextColor.fromHexString(color));
-                        } else {
-                            // Именованный цвет
-                            partBuilder.color(net.kyori.adventure.text.format.NamedTextColor.NAMES.value(color.toLowerCase()));
-                        }
-                    } catch (Exception e) {
-                        // Если цвет не распознан, игнорируем
+                        WidgetDefinition.WidgetType type = WidgetDefinition.WidgetType.valueOf(typeStr);
+                        widget.setType(type);
+                    } catch (IllegalArgumentException e) {
+                        plugin.getLogger().warning("Invalid widget type: " + typeStr);
+                        return null;
                     }
                 }
-                
-                // Применяем стили
-                Boolean bold = (Boolean) partMap.get("bold");
-                if (bold != null && bold) {
-                    partBuilder.decoration(net.kyori.adventure.text.format.TextDecoration.BOLD, true);
-                }
-                
-                Boolean italic = (Boolean) partMap.get("italic");
-                if (italic != null && italic) {
-                    partBuilder.decoration(net.kyori.adventure.text.format.TextDecoration.ITALIC, true);
-                }
-                
-                Boolean underlined = (Boolean) partMap.get("underlined");
-                if (underlined != null && underlined) {
-                    partBuilder.decoration(net.kyori.adventure.text.format.TextDecoration.UNDERLINED, true);
-                }
-                
-                Boolean strikethrough = (Boolean) partMap.get("strikethrough");
-                if (strikethrough != null && strikethrough) {
-                    partBuilder.decoration(net.kyori.adventure.text.format.TextDecoration.STRIKETHROUGH, true);
-                }
-                
-                Boolean obfuscated = (Boolean) partMap.get("obfuscated");
-                if (obfuscated != null && obfuscated) {
-                    partBuilder.decoration(net.kyori.adventure.text.format.TextDecoration.OBFUSCATED, true);
-                }
-                
-                builder.append(partBuilder.build());
             }
+            
+            // Текстовые поля
+            if (data.containsKey("text")) {
+                Object textObj = data.get("text");
+                if (textObj instanceof String) {
+                    widget.setText((String) textObj);
+                }
+            }
+            
+            if (data.containsKey("hoveredText")) {
+                Object hoveredTextObj = data.get("hoveredText");
+                if (hoveredTextObj instanceof String) {
+                    widget.setHoveredText((String) hoveredTextObj);
+                }
+            }
+            
+            // Форматированный текст (может быть массивом)
+            if (data.containsKey("formattedText")) {
+                widget.setFormattedText(data.get("formattedText"));
+            }
+            
+            if (data.containsKey("formattedHoveredText")) {
+                widget.setFormattedHoveredText(data.get("formattedHoveredText"));
+            }
+            
+            if (data.containsKey("material")) {
+                Object materialObj = data.get("material");
+                if (materialObj instanceof String) {
+                    widget.setMaterial((String) materialObj);
+                }
+            }
+            
+            // Позиция
+            if (data.containsKey("position")) {
+                Object posObj = data.get("position");
+                if (posObj instanceof java.util.List) {
+                    java.util.List<Number> posList = (java.util.List<Number>) posObj;
+                    float[] position = new float[3];
+                    for (int i = 0; i < Math.min(3, posList.size()); i++) {
+                        position[i] = posList.get(i).floatValue();
+                    }
+                    widget.setPosition(position);
+                }
+            }
+            
+            // Масштаб
+            if (data.containsKey("scale")) {
+                Object scaleObj = data.get("scale");
+                if (scaleObj instanceof java.util.List) {
+                    java.util.List<Number> scaleList = (java.util.List<Number>) scaleObj;
+                    float[] scale = new float[3];
+                    for (int i = 0; i < Math.min(3, scaleList.size()); i++) {
+                        scale[i] = scaleList.get(i).floatValue();
+                    }
+                    widget.setScale(scale);
+                }
+            }
+            
+            // Толерантность
+            if (data.containsKey("tolerance")) {
+                Object tolObj = data.get("tolerance");
+                if (tolObj instanceof java.util.List) {
+                    java.util.List<Number> tolList = (java.util.List<Number>) tolObj;
+                    float[] tolerance = new float[2];
+                    for (int i = 0; i < Math.min(2, tolList.size()); i++) {
+                        tolerance[i] = tolList.get(i).floatValue();
+                    }
+                    widget.setTolerance(tolerance);
+                }
+            }
+            
+            // Цвета фона
+            if (data.containsKey("backgroundColor")) {
+                Object colorObj = data.get("backgroundColor");
+                if (colorObj instanceof java.util.List) {
+                    java.util.List<Number> colorList = (java.util.List<Number>) colorObj;
+                    int[] color = new int[3];
+                    for (int i = 0; i < Math.min(3, colorList.size()); i++) {
+                        color[i] = colorList.get(i).intValue();
+                    }
+                    widget.setBackgroundColor(color);
+                }
+            }
+            
+            if (data.containsKey("hoveredBackgroundColor")) {
+                Object colorObj = data.get("hoveredBackgroundColor");
+                if (colorObj instanceof java.util.List) {
+                    java.util.List<Number> colorList = (java.util.List<Number>) colorObj;
+                    int[] color = new int[3];
+                    for (int i = 0; i < Math.min(3, colorList.size()); i++) {
+                        color[i] = colorList.get(i).intValue();
+                    }
+                    widget.setHoveredBackgroundColor(color);
+                }
+            }
+            
+            // Альфа
+            if (data.containsKey("backgroundAlpha")) {
+                widget.setBackgroundAlpha(((Number) data.get("backgroundAlpha")).intValue());
+            }
+            
+            if (data.containsKey("hoveredBackgroundAlpha")) {
+                widget.setHoveredBackgroundAlpha(((Number) data.get("hoveredBackgroundAlpha")).intValue());
+            }
+            
+            // Alignment
+            if (data.containsKey("alignment")) {
+                Object alignmentObj = data.get("alignment");
+                if (alignmentObj instanceof String) {
+                    String alignmentStr = (String) alignmentObj;
+                    try {
+                        WidgetDefinition.TextAlignment alignment = WidgetDefinition.TextAlignment.valueOf(alignmentStr);
+                        widget.setAlignment(alignment);
+                    } catch (IllegalArgumentException e) {
+                        plugin.getLogger().warning("Invalid alignment: " + alignmentStr);
+                    }
+                }
+            }
+            
+            // Tooltip
+            if (data.containsKey("tooltip")) {
+                Object tooltipObj = data.get("tooltip");
+                if (tooltipObj instanceof String) {
+                    widget.setTooltip((String) tooltipObj);
+                }
+            }
+            
+            if (data.containsKey("tooltipColor")) {
+                Object colorObj = data.get("tooltipColor");
+                if (colorObj instanceof java.util.List) {
+                    java.util.List<Number> colorList = (java.util.List<Number>) colorObj;
+                    int[] color = new int[3];
+                    for (int i = 0; i < Math.min(3, colorList.size()); i++) {
+                        color[i] = colorList.get(i).intValue();
+                    }
+                    widget.setTooltipColor(color);
+                }
+            }
+            
+            if (data.containsKey("tooltipDelay")) {
+                widget.setTooltipDelay(((Number) data.get("tooltipDelay")).intValue());
+            }
+            
+            // onClick
+            if (data.containsKey("onClick")) {
+                Object onClickObj = data.get("onClick");
+                if (onClickObj instanceof Map) {
+                    Map<String, Object> onClickData = (Map<String, Object>) onClickObj;
+                    WidgetDefinition.ClickAction clickAction = new WidgetDefinition.ClickAction();
+                    
+                    if (onClickData.containsKey("action")) {
+                        Object actionObj = onClickData.get("action");
+                        if (actionObj instanceof String) {
+                            String actionStr = (String) actionObj;
+                            try {
+                                WidgetDefinition.ClickAction.ActionType actionType = WidgetDefinition.ClickAction.ActionType.valueOf(actionStr);
+                                clickAction.setAction(actionType);
+                            } catch (IllegalArgumentException e) {
+                                plugin.getLogger().warning("Invalid onClick action: " + actionStr);
+                            }
+                        }
+                    }
+                    
+                    if (onClickData.containsKey("function")) {
+                        Object functionObj = onClickData.get("function");
+                        if (functionObj instanceof String) {
+                            clickAction.setFunction((String) functionObj);
+                        }
+                    }
+                    
+                    if (onClickData.containsKey("screen")) {
+                        Object screenObj = onClickData.get("screen");
+                        if (screenObj instanceof String) {
+                            clickAction.setTarget((String) screenObj);
+                        }
+                    }
+                    
+                    widget.setOnClick(clickAction);
+                }
+            }
+            
+            return widget;
+            
+        } catch (Exception e) {
+            plugin.getLogger().log(Level.WARNING, "Error parsing widget", e);
+            return null;
         }
-        
-        return builder.build();
     }
 }

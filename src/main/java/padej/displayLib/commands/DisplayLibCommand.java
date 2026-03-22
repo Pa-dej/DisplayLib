@@ -201,14 +201,14 @@ public class DisplayLibCommand implements CommandExecutor, TabCompleter {
                 sender.sendMessage("§aЭкран закрыт для " + targetPlayer.getName());
             }
             
-            case "openglobal" -> {
+            case "openpublic" -> {
                 if (!sender.hasPermission("displaylib.admin")) {
                     sender.sendMessage("§cНет прав доступа");
                     return true;
                 }
                 
                 if (args.length < 5) {
-                    sender.sendMessage("§cИспользование: /displaylib openglobal <screen_id> <x> <y> <z> [yaw] [pitch]");
+                    sender.sendMessage("§cИспользование: /displaylib openpublic <screen_id> <x> <y> <z> [yaw] [pitch]");
                     return true;
                 }
                 
@@ -259,48 +259,48 @@ public class DisplayLibCommand implements CommandExecutor, TabCompleter {
                     }
                 }
                 
-                boolean success = UIManager.getInstance().openGlobalScreen(screenId, location, yaw, pitch);
+                boolean success = UIManager.getInstance().openPublicScreen(screenId, location, yaw, pitch);
                 if (success) {
-                    sender.sendMessage("§aГлобальный экран '" + screenId + "' открыт в позиции " + 
+                    sender.sendMessage("§aПубличный экран '" + screenId + "' открыт в позиции " + 
                                      String.format("%.1f %.1f %.1f", location.getX(), location.getY(), location.getZ()));
                 } else {
-                    sender.sendMessage("§cНе удалось открыть глобальный экран '" + screenId + "'");
+                    sender.sendMessage("§cНе удалось открыть публичный экран '" + screenId + "'");
                 }
             }
             
-            case "closeglobal" -> {
+            case "closepublic" -> {
                 if (!sender.hasPermission("displaylib.admin")) {
                     sender.sendMessage("§cНет прав доступа");
                     return true;
                 }
                 
                 if (args.length < 2) {
-                    sender.sendMessage("§cИспользование: /displaylib closeglobal <screen_id>");
+                    sender.sendMessage("§cИспользование: /displaylib closepublic <screen_id>");
                     return true;
                 }
                 
                 String screenId = args[1];
-                boolean success = UIManager.getInstance().closeGlobalScreenById(screenId);
+                boolean success = UIManager.getInstance().closePublicScreenById(screenId);
                 
                 if (success) {
-                    sender.sendMessage("§aГлобальный экран '" + screenId + "' закрыт");
+                    sender.sendMessage("§aПубличный экран '" + screenId + "' закрыт");
                 } else {
-                    sender.sendMessage("§cГлобальный экран '" + screenId + "' не найден");
+                    sender.sendMessage("§cПубличный экран '" + screenId + "' не найден");
                 }
             }
             
-            case "listglobal" -> {
+            case "listpublic" -> {
                 if (!sender.hasPermission("displaylib.admin")) {
                     sender.sendMessage("§cНет прав доступа");
                     return true;
                 }
                 
-                var globalScreens = UIManager.getInstance().getGlobalScreens();
-                if (globalScreens.isEmpty()) {
-                    sender.sendMessage("§eНет активных глобальных экранов");
+                var publicScreens = UIManager.getInstance().getPublicScreens();
+                if (publicScreens.isEmpty()) {
+                    sender.sendMessage("§eНет активных публичных экранов");
                 } else {
-                    sender.sendMessage("§eАктивные глобальные экраны:");
-                    for (var screen : globalScreens) {
+                    sender.sendMessage("§eАктивные публичные экраны:");
+                    for (var screen : publicScreens) {
                         Location loc = screen.getLocation();
                         int nearbyCount = screen.getNearbyPlayers().size();
                         sender.sendMessage("§7- " + screen.getScreenId() + " в " + 
@@ -362,10 +362,10 @@ public class DisplayLibCommand implements CommandExecutor, TabCompleter {
             player.sendMessage("§c=== Admin Commands ===");
             player.sendMessage("§e/displaylib reload §7- Перезагрузить экраны и скрипты");
             player.sendMessage("§e/displaylib examples §7- Создать примеры экранов");
-            player.sendMessage("§e/displaylib openglobal <id> <x> <y> <z> [yaw] [pitch] §7- Открыть глобальный экран");
+            player.sendMessage("§e/displaylib openpublic <id> <x> <y> <z> [yaw] [pitch] §7- Открыть публичный экран");
             player.sendMessage("§7  (если экран с таким ID уже существует, он будет пересоздан)");
-            player.sendMessage("§e/displaylib closeglobal <id> §7- Закрыть глобальные экраны");
-            player.sendMessage("§e/displaylib listglobal §7- Список активных глобальных экранов");
+            player.sendMessage("§e/displaylib closepublic <id> §7- Закрыть публичные экраны");
+            player.sendMessage("§e/displaylib listpublic §7- Список активных публичных экранов");
         }
     }
     
@@ -374,7 +374,7 @@ public class DisplayLibCommand implements CommandExecutor, TabCompleter {
         if (args.length == 1) {
             List<String> commands = Arrays.asList("open", "close", "list");
             if (sender.hasPermission("displaylib.admin")) {
-                commands = Arrays.asList("open", "close", "list", "reload", "examples", "openglobal", "closeglobal", "listglobal");
+                commands = Arrays.asList("open", "close", "list", "reload", "examples", "openpublic", "closepublic", "listpublic");
             }
             return commands.stream()
                     .filter(cmd -> cmd.toLowerCase().startsWith(args[0].toLowerCase()))
@@ -387,16 +387,16 @@ public class DisplayLibCommand implements CommandExecutor, TabCompleter {
                 return plugin.getScreenRegistry().getAllScreens().keySet().stream()
                         .filter(screen -> screen.toLowerCase().startsWith(args[1].toLowerCase()))
                         .toList();
-            } else if (args[0].equalsIgnoreCase("openglobal")) {
-                // Для openglobal показываем список GLOBAL экранов
+            } else if (args[0].equalsIgnoreCase("openpublic")) {
+                // Для openpublic показываем список PUBLIC экранов
                 return plugin.getScreenRegistry().getAllScreens().entrySet().stream()
-                        .filter(entry -> entry.getValue().getScreenType() == padej.displayLib.config.ScreenDefinition.ScreenType.GLOBAL)
+                        .filter(entry -> entry.getValue().getScreenType() == padej.displayLib.config.ScreenDefinition.ScreenType.PUBLIC)
                         .map(entry -> entry.getKey())
                         .filter(screen -> screen.toLowerCase().startsWith(args[1].toLowerCase()))
                         .toList();
-            } else if (args[0].equalsIgnoreCase("closeglobal")) {
-                // Для closeglobal показываем активные глобальные экраны
-                return UIManager.getInstance().getGlobalScreens().stream()
+            } else if (args[0].equalsIgnoreCase("closepublic")) {
+                // Для closepublic показываем активные публичные экраны
+                return UIManager.getInstance().getPublicScreens().stream()
                         .map(screen -> screen.getScreenId())
                         .distinct()
                         .filter(screen -> screen.toLowerCase().startsWith(args[1].toLowerCase()))

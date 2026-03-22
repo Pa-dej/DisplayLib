@@ -1,18 +1,18 @@
--- Global Demo Script
+-- Public Demo Script
 -- Simple example: Hello button and counter with +/- buttons
 
--- Global counter variable (shared between all players)
+-- Shared counter variable (shared between all players)
 local counter = 0
 
 function on_open()
-    log.info("Global demo screen opened")
+    log.info("Public demo screen opened")
     -- Load counter from storage
     counter = storage.get("global_counter", 0)
     update_counter_display()
 end
 
 function on_close()
-    log.info("Global demo screen closed")
+    log.info("Public demo screen closed")
     -- Save counter to storage
     storage.set("global_counter", counter)
 end
@@ -22,7 +22,7 @@ function say_hello()
     local playerName = player.name()
     
     -- Send personalized message to the player who clicked
-    player.message("§a§lHello, " .. playerName .. "! §r§7Welcome to the global screen!")
+    player.message("§a§lHello, " .. playerName .. "! §r§7Welcome to the public screen!")
     
     -- Play sound
     player.sound("entity.player.levelup", 1.0, 1.0)

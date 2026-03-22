@@ -55,7 +55,7 @@ public class LuaEngine {
     }
     
     /**
-     * Создать изолированную Lua среду для глобального экрана
+     * Создать изолированную Lua среду для публичного экрана
      */
     public GlobalLuaContext createGlobalContext(padej.displayLib.ui.GlobalScreenInstance screen, Player player) {
         Globals globals = JsePlatform.standardGlobals();

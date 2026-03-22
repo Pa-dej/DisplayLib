@@ -1,5 +1,5 @@
 id: global_shop
-screen_type: GLOBAL
+screen_type: PUBLIC
 interaction_radius: 6.0
 range_check_interval: 10
 tick_rate: 4

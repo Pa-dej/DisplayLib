@@ -9,8 +9,8 @@ import java.util.Map;
 public class ScreenDefinition {
     private String id;
     private int tickRate = 4; // По умолчанию обновление каждые 4 тика (5 раз в секунду)
-    private ScreenType screenType = ScreenType.PERSONAL; // По умолчанию PERSONAL
-    private double interactionRadius = 8.0; // Радиус взаимодействия для GLOBAL экранов
+    private ScreenType screenType = ScreenType.PRIVATE; // По умолчанию PRIVATE
+    private double interactionRadius = 8.0; // Радиус взаимодействия для PUBLIC экранов
     private int rangeCheckInterval = 10; // Интервал проверки расстояния в тиках
     private BackgroundDefinition background;
     private Map<String, String> scripts; // on_open, on_close -> путь к скрипту
@@ -63,8 +63,8 @@ public class ScreenDefinition {
      * Типы экранов
      */
     public enum ScreenType {
-        PERSONAL,
-        GLOBAL
+        PRIVATE,  // Персональный экран (только для одного игрока)
+        PUBLIC    // Публичный экран (доступен всем игрокам поблизости)
     }
     
     /**

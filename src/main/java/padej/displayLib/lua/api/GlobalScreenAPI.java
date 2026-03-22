@@ -8,7 +8,7 @@ import org.luaj.vm2.lib.OneArgFunction;
 import org.luaj.vm2.lib.ZeroArgFunction;
 
 /**
- * Lua API для работы с глобальным экраном
+ * Lua API для работы с публичным экраном
  */
 public class GlobalScreenAPI extends LuaTable {
     private final GlobalScreenInstance screen;
@@ -26,11 +26,11 @@ public class GlobalScreenAPI extends LuaTable {
             }
         });
         
-        // Для глобальных экранов close и switch не имеют смысла
+        // Для публичных экранов close и switch не имеют смысла
         set("close", new ZeroArgFunction() {
             @Override
             public LuaValue call() {
-                // Глобальные экраны не закрываются по клику игрока
+                // Публичные экраны не закрываются по клику игрока
                 return LuaValue.NIL;
             }
         });
@@ -38,7 +38,7 @@ public class GlobalScreenAPI extends LuaTable {
         set("switch", new OneArgFunction() {
             @Override
             public LuaValue call(LuaValue screenId) {
-                // Для глобальных экранов switch не имеет смысла
+                // Для публичных экранов switch не имеет смысла
                 return LuaValue.NIL;
             }
         });
@@ -56,7 +56,7 @@ public class GlobalScreenAPI extends LuaTable {
             }
         });
         
-        // Persistent data - для глобальных экранов используем простое хранилище
+        // Persistent data - для публичных экранов используем простое хранилище
         set("data", new LuaFunction() {
             @Override
             public LuaValue call() {

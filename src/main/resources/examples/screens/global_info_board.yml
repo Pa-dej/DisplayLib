@@ -1,5 +1,5 @@
 id: global_info_board
-screen_type: GLOBAL
+screen_type: PUBLIC
 interaction_radius: 8.0
 range_check_interval: 15
 tick_rate: 6

@@ -260,7 +260,7 @@ public class TextDisplayButtonWidget implements Widget {
 
     public boolean isValid() {
         // Виджет валиден если он был создан
-        // Для глобальных экранов viewer может быть null
+        // Для публичных экранов viewer может быть null
         return location != null && display != null;
     }
 
@@ -380,7 +380,7 @@ public class TextDisplayButtonWidget implements Widget {
     }
     
     /**
-     * Показать tooltip конкретному игроку (для GLOBAL экранов)
+     * Показать tooltip конкретному игроку (для PUBLIC экранов)
      */
     public void showTooltipTo(Player player) {
         if (tooltip != null && player != null) {
@@ -394,7 +394,7 @@ public class TextDisplayButtonWidget implements Widget {
     }
     
     /**
-     * Скрыть tooltip у конкретного игрока (для GLOBAL экранов)
+     * Скрыть tooltip у конкретного игрока (для PUBLIC экранов)
      */
     public void hideTooltipFrom(Player player) {
         if (player != null) {

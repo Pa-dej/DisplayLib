@@ -1,5 +1,5 @@
 id: global_demo
-screen_type: GLOBAL
+screen_type: PUBLIC
 interaction_radius: 6.0
 range_check_interval: 10
 tick_rate: 4
@@ -17,8 +17,8 @@ widgets:
   # Заголовок
   - id: title
     type: TEXT_BUTTON
-    text: "🌍 Глобальный экран - Демо"
-    hoveredText: "🌍 Глобальный экран - Демо"
+    text: "🌍 Публичный экран - Демо"
+    hoveredText: "🌍 Публичный экран - Демо"
     position: [0.0, 1.2, 0.0]
     scale: [0.6, 0.6, 0.6]
     tolerance: [0.2, 0.08]

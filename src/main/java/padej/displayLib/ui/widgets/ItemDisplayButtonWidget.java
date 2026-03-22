@@ -345,7 +345,7 @@ public class ItemDisplayButtonWidget implements Widget {
     }
     
     /**
-     * Показать tooltip конкретному игроку (для GLOBAL экранов)
+     * Показать tooltip конкретному игроку (для PUBLIC экранов)
      */
     public void showTooltipTo(Player player) {
         if (tooltip != null && player != null) {
@@ -359,7 +359,7 @@ public class ItemDisplayButtonWidget implements Widget {
     }
     
     /**
-     * Скрыть tooltip у конкретного игрока (для GLOBAL экранов)
+     * Скрыть tooltip у конкретного игрока (для PUBLIC экранов)
      */
     public void hideTooltipFrom(Player player) {
         if (player != null) {
