@@ -129,6 +129,10 @@ public class ScreenLoader {
                 screen.setRangeCheckInterval(((Number) data.get("range_check_interval")).intValue());
             }
             
+            if (data.containsKey("close_distance")) {
+                screen.setCloseDistance(((Number) data.get("close_distance")).doubleValue());
+            }
+            
             // Background
             if (data.containsKey("background")) {
                 Map<String, Object> bgData = (Map<String, Object>) data.get("background");

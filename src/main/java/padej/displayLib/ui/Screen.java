@@ -1,6 +1,7 @@
 package padej.displayLib.ui;
 
 import padej.displayLib.DisplayLib;
+import padej.displayLib.config.ScreenDefinition;
 import padej.displayLib.ui.annotations.AlwaysOnScreen;
 import padej.displayLib.ui.annotations.Main;
 import padej.displayLib.ui.screens.ChangeScreen;
@@ -128,6 +129,18 @@ public abstract class Screen extends WidgetManager implements IDisplayable, IPar
         updateBackgroundColor(null);
     }
 
+    @Override
+    protected ScreenDefinition getScreenDefinition() {
+        // Screen класс не использует ScreenDefinition (программные экраны)
+        return null;
+    }
+    
+    @Override
+    protected boolean isPlayerInInteractionRange() {
+        // Для программных экранов используем ту же логику что и isPlayerInRange
+        return isPlayerInRangePublic();
+    }
+    
     @Override
     protected boolean isPlayerInRange() {
         return isPlayerInRangePublic();

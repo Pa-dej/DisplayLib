@@ -1,7 +1,8 @@
 id: global_demo
 screen_type: PUBLIC
-interaction_radius: 6.0
-range_check_interval: 10
+interaction_radius: 6.0      # Радиус взаимодействия для PUBLIC экранов
+range_check_interval: 10     # Интервал проверки расстояния в тиках
+# close_distance не используется для PUBLIC экранов
 tick_rate: 4
 
 background:

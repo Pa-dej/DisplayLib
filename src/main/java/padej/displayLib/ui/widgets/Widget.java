@@ -27,4 +27,9 @@ public interface Widget {
     
     String getTooltip();
     void setTooltip(String tooltip);
+    
+    // Метод для принудительного сброса hover состояния
+    default void clearHover() {
+        // По умолчанию ничего не делаем, реализация в конкретных классах
+    }
 }

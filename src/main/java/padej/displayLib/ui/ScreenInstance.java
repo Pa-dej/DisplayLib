@@ -39,6 +39,9 @@ public class ScreenInstance extends WidgetManager {
     /** Флаг предотвращения рекурсии при закрытии */
     private boolean isClosing = false;
     
+    /** Последнее состояние interaction range для отладки */
+    private boolean lastInteractionState = true;
+    
     /** Смещение виджетов по глубине относительно фона для избежания Z-fighting */
     private static final float WIDGET_DEPTH_OFFSET = 0.001f;
     
@@ -341,9 +344,42 @@ public class ScreenInstance extends WidgetManager {
     // -------------------------------------------------------------------------
 
     @Override
+    protected ScreenDefinition getScreenDefinition() {
+        return definition;
+    }
+    
+    @Override
+    protected boolean isPlayerInInteractionRange() {
+        // Проверяем interaction_radius для оптимизации hover detection
+        double interactionRadius = definition.getInteractionRadius();
+        if (interactionRadius > 0) {
+            double distanceSq = viewer.getLocation().distanceSquared(location);
+            double distance = Math.sqrt(distanceSq);
+            boolean inRange = distanceSq <= interactionRadius * interactionRadius;
+            
+            // Update state tracking
+            lastInteractionState = inRange;
+            
+            return inRange;
+        }
+        return true; // Если радиус не ограничен, всегда в зоне взаимодействия
+    }
+    
+    @Override
     protected boolean isPlayerInRange() {
-        // Дистанция не ограничивает экраны
-        return true;
+        double distanceSq = viewer.getLocation().distanceSquared(location);
+        double distance = Math.sqrt(distanceSq);
+        
+        // Для isPlayerInRange проверяем ТОЛЬКО close_distance (автозакрытие)
+        // interaction_radius проверяется отдельно в isPlayerInInteractionRange
+        double closeDistance = definition.getCloseDistance();
+        boolean result = true;
+        
+        if (closeDistance > 0) {
+            result = distanceSq <= closeDistance * closeDistance;
+        }
+        
+        return result;
     }
 
     @Override
@@ -380,6 +416,13 @@ public class ScreenInstance extends WidgetManager {
 
     public ScreenDefinition getDefinition() {
         return definition;
+    }
+    
+    /**
+     * Публичный метод для проверки interaction_radius (для UIManager)
+     */
+    public boolean checkPlayerInInteractionRange() {
+        return isPlayerInInteractionRange();
     }
     
     /**

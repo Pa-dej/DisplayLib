@@ -10,8 +10,9 @@ public class ScreenDefinition {
     private String id;
     private int tickRate = 4; // По умолчанию обновление каждые 4 тика (5 раз в секунду)
     private ScreenType screenType = ScreenType.PRIVATE; // По умолчанию PRIVATE
-    private double interactionRadius = 8.0; // Радиус взаимодействия для PUBLIC экранов
+    private double interactionRadius = -1.0; // Радиус взаимодействия (-1 = бесконечный)
     private int rangeCheckInterval = 10; // Интервал проверки расстояния в тиках
+    private double closeDistance = -1.0; // Расстояние автозакрытия для PRIVATE экранов (-1 = отключено)
     private BackgroundDefinition background;
     private Map<String, String> scripts; // on_open, on_close -> путь к скрипту
     private List<WidgetDefinition> widgets;
@@ -19,13 +20,14 @@ public class ScreenDefinition {
     public ScreenDefinition() {}
     
     public ScreenDefinition(String id, int tickRate, ScreenType screenType, double interactionRadius, 
-                           int rangeCheckInterval, BackgroundDefinition background, 
+                           int rangeCheckInterval, double closeDistance, BackgroundDefinition background, 
                            Map<String, String> scripts, List<WidgetDefinition> widgets) {
         this.id = id;
         this.tickRate = tickRate;
         this.screenType = screenType;
         this.interactionRadius = interactionRadius;
         this.rangeCheckInterval = rangeCheckInterval;
+        this.closeDistance = closeDistance;
         this.background = background;
         this.scripts = scripts;
         this.widgets = widgets;
@@ -58,6 +60,9 @@ public class ScreenDefinition {
     
     public int getRangeCheckInterval() { return rangeCheckInterval; }
     public void setRangeCheckInterval(int rangeCheckInterval) { this.rangeCheckInterval = rangeCheckInterval; }
+    
+    public double getCloseDistance() { return closeDistance; }
+    public void setCloseDistance(double closeDistance) { this.closeDistance = closeDistance; }
     
     /**
      * Типы экранов

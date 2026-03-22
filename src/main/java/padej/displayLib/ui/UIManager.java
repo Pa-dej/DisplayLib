@@ -289,16 +289,22 @@ public class UIManager implements Listener {
     public void onPlayerInteract(PlayerInteractEvent event) {
         Player player = event.getPlayer();
         
-        // Step 1: existing private screen logic (unchanged)
+        // Step 1: PRIVATE screen logic (updated to use interaction_radius)
         ScreenInstance personal = privateScreens.get(player);
         if (personal != null) {
             if (event.getAction() == Action.LEFT_CLICK_AIR
                     || event.getAction() == Action.LEFT_CLICK_BLOCK) {
-                Widget nearest = getNearestHovered(personal);
-                if (nearest != null) {
-                    event.setCancelled(true);
-                    fireClickEvent(player, nearest);
-                    return;
+                
+                // Проверяем interaction_radius перед обработкой клика
+                if (personal.checkPlayerInInteractionRange()) {
+                    Widget nearest = getNearestHovered(personal);
+                    if (nearest != null) {
+                        event.setCancelled(true);
+                        fireClickEvent(player, nearest);
+                        return;
+                    }
+                } else {
+                    // Click ignored - player out of interaction range
                 }
             }
         }

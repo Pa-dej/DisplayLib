@@ -1,6 +1,8 @@
 package padej.displayLib.ui;
 
+import padej.displayLib.DisplayLib;
 import padej.displayLib.api.events.DisplayClickEvent;
+import padej.displayLib.config.ScreenDefinition;
 import padej.displayLib.ui.widgets.ItemDisplayButtonWidget;
 import padej.displayLib.ui.widgets.TextDisplayButtonWidget;
 import padej.displayLib.ui.widgets.Widget;
@@ -36,6 +38,12 @@ public abstract class WidgetManager {
         isDirty = true;
     }
     
+    // Абстрактный метод для получения ScreenDefinition (если есть)
+    protected abstract ScreenDefinition getScreenDefinition();
+    
+    // Абстрактный метод для проверки interaction_radius (для оптимизации hover detection)
+    protected abstract boolean isPlayerInInteractionRange();
+    
     // Абстрактный метод для проверки расстояния (реализуется в Screen)
     protected abstract boolean isPlayerInRange();
     
@@ -43,8 +51,12 @@ public abstract class WidgetManager {
     protected abstract void tryClose();
     
     public void update() {
-        // Проверка расстояния каждые 10 тиков (2 раза в секунду)
-        if (++rangeCheckTimer >= 10) {
+        // Получаем настройки из ScreenDefinition если доступно
+        ScreenDefinition definition = getScreenDefinition();
+        int rangeCheckInterval = (definition != null) ? definition.getRangeCheckInterval() : 10;
+        
+        // Проверка расстояния с настраиваемым интервалом
+        if (++rangeCheckTimer >= rangeCheckInterval) {
             rangeCheckTimer = 0;
             if (!isPlayerInRange()) {
                 tryClose();
@@ -58,13 +70,38 @@ public abstract class WidgetManager {
             isDirty = false;
         }
         
-        // Обновляем оставшиеся виджеты
+        // Оптимизация: проверяем interaction_radius перед обновлением виджетов
+        // Если игрок далеко, не обновляем hover состояния (экономим CPU)
+        boolean playerInInteractionRange = isPlayerInInteractionRange();
+        
+        // Debug logging removed to prevent console spam
+        
+        // Обновляем виджеты
         for (Widget widget : children) {
-            widget.update();
+            if (playerInInteractionRange) {
+                // Обычное обновление с hover detection
+                widget.update();
+            } else {
+                // Игрок вне радиуса взаимодействия - принудительно сбрасываем hover состояния
+                if (widget.isValid()) {
+                    // Clear hover state without debug logging
+                    if (widget.isHovered()) {
+                        widget.clearHover();
+                    }
+                    // Минимальное обновление без hover detection не нужно
+                }
+            }
         }
     }
     
     public void handleClick() {
+        // Check interaction_radius before processing click
+        boolean inRange = isPlayerInInteractionRange();
+        
+        if (!inRange) {
+            return; // Player too far for interaction
+        }
+        
         Widget nearestWidget = getNearestHoveredWidget();
         if (nearestWidget != null) {
             nearestWidget.handleClick();

@@ -401,4 +401,16 @@ public class TextDisplayButtonWidget implements Widget {
             player.clearTitle();
         }
     }
+    
+    /**
+     * Принудительно сбросить hover состояние (для interaction_radius)
+     */
+    @Override
+    public void clearHover() {
+        if (isHovered) {
+            isHovered = false;
+            onHoverStateChanged();
+            hideTooltip();
+        }
+    }
 }

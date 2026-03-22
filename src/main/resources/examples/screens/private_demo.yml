@@ -1,0 +1,144 @@
+id: private_demo
+screen_type: PRIVATE
+interaction_radius: 3.0      # Взаимодействие только в радиусе 3 блоков
+range_check_interval: 10     # Проверка каждые 10 тиков (0.5 секунды)
+close_distance: 20.0         # Автозакрытие при удалении на 20 блоков
+tick_rate: 4
+
+background:
+  color: [20, 30, 50]
+  alpha: 180
+  scale: [6.0, 4.0, 1.0]
+  text: " "
+
+scripts:
+  file: "private_demo.lua"
+
+widgets:
+  # Заголовок
+  - id: title
+    type: TEXT_BUTTON
+    text: "🔒 Тест радиуса взаимодействия"
+    hoveredText: "🔒 Тест радиуса взаимодействия"
+    position: [0.0, 1.2, 0.0]
+    scale: [0.6, 0.6, 0.6]
+    tolerance: [0.2, 0.08]
+    backgroundColor: [50, 70, 90]
+    backgroundAlpha: 200
+    hoveredBackgroundColor: [60, 80, 100]
+    hoveredBackgroundAlpha: 220
+    alignment: CENTERED
+    onClick:
+      action: NONE
+
+  # Информация о настройках
+  - id: settings_info
+    type: TEXT_BUTTON
+    text: "Взаимодействие: 3 блока | Закрытие: 20 блоков"
+    hoveredText: "Взаимодействие: 3 блока | Закрытие: 20 блоков"
+    position: [0.0, 0.8, 0.0]
+    scale: [0.35, 0.35, 0.35]
+    tolerance: [0.2, 0.06]
+    backgroundColor: [40, 60, 80]
+    backgroundAlpha: 150
+    hoveredBackgroundColor: [50, 70, 90]
+    hoveredBackgroundAlpha: 170
+    alignment: CENTERED
+    onClick:
+      action: NONE
+
+  # Кнопка 1 - Тест взаимодействия
+  - id: test_interaction
+    type: TEXT_BUTTON
+    text: "🎯 Тест взаимодействия"
+    hoveredText: "🎯 Кликнуто!"
+    position: [0.0, 0.3, 0.0]
+    scale: [0.5, 0.5, 0.5]
+    tolerance: [0.12, 0.08]
+    backgroundColor: [40, 120, 40]
+    backgroundAlpha: 200
+    hoveredBackgroundColor: [50, 140, 50]
+    hoveredBackgroundAlpha: 220
+    tooltip: "Работает только в радиусе 3 блоков"
+    tooltipColor: [144, 238, 144]
+    tooltipDelay: 5
+    alignment: CENTERED
+    onClick:
+      action: RUN_SCRIPT
+      function: "test_interaction"
+
+  # Кнопка 2 - Счетчик кликов
+  - id: click_counter
+    type: TEXT_BUTTON
+    text: "📊 Кликов: 0"
+    hoveredText: "📊 Кликов: 0"
+    position: [0.0, -0.1, 0.0]
+    scale: [0.5, 0.5, 0.5]
+    tolerance: [0.12, 0.08]
+    backgroundColor: [120, 80, 40]
+    backgroundAlpha: 200
+    hoveredBackgroundColor: [140, 100, 50]
+    hoveredBackgroundAlpha: 220
+    tooltip: "Счетчик кликов"
+    tooltipColor: [255, 200, 100]
+    tooltipDelay: 5
+    alignment: CENTERED
+    onClick:
+      action: RUN_SCRIPT
+      function: "increment_counter"
+
+  # Кнопка 3 - Сброс счетчика
+  - id: reset_counter
+    type: TEXT_BUTTON
+    text: "🔄 Сброс"
+    hoveredText: "🔄 Сброшено!"
+    position: [-1.2, -0.5, 0.0]
+    scale: [0.4, 0.4, 0.4]
+    tolerance: [0.08, 0.06]
+    backgroundColor: [80, 80, 120]
+    backgroundAlpha: 200
+    hoveredBackgroundColor: [100, 100, 140]
+    hoveredBackgroundAlpha: 220
+    tooltip: "Сбросить счетчик"
+    tooltipColor: [150, 150, 255]
+    alignment: CENTERED
+    onClick:
+      action: RUN_SCRIPT
+      function: "reset_counter"
+
+  # Кнопка 4 - Звуковой тест
+  - id: sound_test
+    type: TEXT_BUTTON
+    text: "🔊 Звук"
+    hoveredText: "🔊 Играет!"
+    position: [1.2, -0.5, 0.0]
+    scale: [0.4, 0.4, 0.4]
+    tolerance: [0.08, 0.06]
+    backgroundColor: [120, 40, 120]
+    backgroundAlpha: 200
+    hoveredBackgroundColor: [140, 50, 140]
+    hoveredBackgroundAlpha: 220
+    tooltip: "Воспроизвести звук"
+    tooltipColor: [255, 150, 255]
+    alignment: CENTERED
+    onClick:
+      action: RUN_SCRIPT
+      function: "play_sound"
+
+  # Кнопка закрытия
+  - id: close_button
+    type: TEXT_BUTTON
+    text: "❌ Закрыть"
+    hoveredText: "❌ Закрыть экран"
+    position: [0.0, -0.9, 0.0]
+    scale: [0.4, 0.4, 0.4]
+    tolerance: [0.08, 0.06]
+    backgroundColor: [120, 40, 40]
+    backgroundAlpha: 200
+    hoveredBackgroundColor: [140, 50, 50]
+    hoveredBackgroundAlpha: 220
+    tooltip: "Закрыть экран"
+    tooltipColor: [255, 182, 193]
+    alignment: CENTERED
+    onClick:
+      action: CLOSE_SCREEN
