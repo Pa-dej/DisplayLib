@@ -259,8 +259,9 @@ public class TextDisplayButtonWidget implements Widget {
     }
 
     public boolean isValid() {
-        // Виджет валиден если он был создан (независимо от видимости)
-        return location != null && viewer != null;
+        // Виджет валиден если он был создан
+        // Для глобальных экранов viewer может быть null
+        return location != null && display != null;
     }
 
     public TextDisplay getDisplay() {
@@ -375,6 +376,29 @@ public class TextDisplayButtonWidget implements Widget {
         if (display != null) {
             display.setRotation(yaw, pitch);
             display.setBillboard(org.bukkit.entity.Display.Billboard.FIXED);
+        }
+    }
+    
+    /**
+     * Показать tooltip конкретному игроку (для GLOBAL экранов)
+     */
+    public void showTooltipTo(Player player) {
+        if (tooltip != null && player != null) {
+            Title title = Title.title(
+                    Component.empty(),
+                    tooltip,
+                    Title.Times.times(Duration.ofMillis(0), Duration.ofMillis(Long.MAX_VALUE), Duration.ofMillis(200))
+            );
+            player.showTitle(title);
+        }
+    }
+    
+    /**
+     * Скрыть tooltip у конкретного игрока (для GLOBAL экранов)
+     */
+    public void hideTooltipFrom(Player player) {
+        if (player != null) {
+            player.clearTitle();
         }
     }
 }

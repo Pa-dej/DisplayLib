@@ -343,4 +343,27 @@ public class ItemDisplayButtonWidget implements Widget {
             display.setBillboard(org.bukkit.entity.Display.Billboard.FIXED);
         }
     }
+    
+    /**
+     * Показать tooltip конкретному игроку (для GLOBAL экранов)
+     */
+    public void showTooltipTo(Player player) {
+        if (tooltip != null && player != null) {
+            Title title = Title.title(
+                    Component.empty(),
+                    tooltip,
+                    Title.Times.times(Duration.ofMillis(0), Duration.ofMillis(Long.MAX_VALUE), Duration.ofMillis(200))
+            );
+            player.showTitle(title);
+        }
+    }
+    
+    /**
+     * Скрыть tooltip у конкретного игрока (для GLOBAL экранов)
+     */
+    public void hideTooltipFrom(Player player) {
+        if (player != null) {
+            player.clearTitle();
+        }
+    }
 }

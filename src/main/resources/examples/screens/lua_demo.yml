@@ -269,7 +269,5 @@ widgets:
     tolerance: [0.1, 0.05]
     backgroundColor: [80, 40, 40]
     backgroundAlpha: 150
-    hoveredBackgroundColor: [100, 50, 50]
-    hoveredBackgroundAlpha: 200
     onClick:
       action: CLOSE_SCREEN

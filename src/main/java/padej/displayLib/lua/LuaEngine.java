@@ -55,6 +55,29 @@ public class LuaEngine {
     }
     
     /**
+     * Создать изолированную Lua среду для глобального экрана
+     */
+    public GlobalLuaContext createGlobalContext(padej.displayLib.ui.GlobalScreenInstance screen, Player player) {
+        Globals globals = JsePlatform.standardGlobals();
+        
+        // Ограничиваем доступ к опасным функциям
+        restrictGlobals(globals);
+        
+        // Создаем контекст с API
+        GlobalLuaContext context = new GlobalLuaContext(globals, screen, player, plugin);
+        
+        // Инжектим API объекты
+        globals.set("player", context.getPlayerAPI() != null ? context.getPlayerAPI() : LuaValue.NIL);
+        globals.set("screen", context.getScreenAPI());
+        globals.set("widget", LuaValue.NIL); // будет установлен при клике
+        globals.set("storage", context.getStorageAPI());
+        globals.set("timer", context.getTimerAPI());
+        globals.set("log", context.getLogAPI());
+        
+        return context;
+    }
+    
+    /**
      * Загрузить и скомпилировать скрипт
      */
     public LuaValue loadScript(String scriptPath) {
@@ -105,6 +128,54 @@ public class LuaEngine {
                 // Отмечаем скрипт как загруженный
                 context.markScriptLoaded(scriptPath);
                 plugin.getLogger().fine("Script loaded into context: " + scriptPath);
+            }
+            
+            // Вызываем функцию (скрипт уже загружен)
+            LuaValue function = context.getGlobals().get(functionName);
+            if (function.isfunction()) {
+                plugin.getLogger().fine("Calling Lua function: " + functionName + " in " + scriptPath);
+                function.invoke(args);
+                return true;
+            } else {
+                plugin.getLogger().warning("Function not found: " + functionName + " in " + scriptPath);
+                return false;
+            }
+            
+        } catch (Exception e) {
+            plugin.getLogger().log(Level.WARNING, 
+                "Error calling Lua function " + functionName + " in " + scriptPath, e);
+            return false;
+        }
+    }
+    
+    /**
+     * Выполнить функцию в глобальном контексте
+     */
+    public boolean callFunction(GlobalLuaContext context, String scriptPath, String functionName, LuaValue... args) {
+        try {
+            // Загружаем скрипт только если он еще не загружен в этот контекст
+            if (!context.isScriptLoaded(scriptPath)) {
+                Path fullPath = scriptsDirectory.resolve(scriptPath);
+                if (!Files.exists(fullPath)) {
+                    plugin.getLogger().warning("Script file not found: " + scriptPath);
+                    return false;
+                }
+                
+                String content = Files.readString(fullPath);
+                
+                // Загружаем скрипт в контекст пользователя (с API)
+                LuaValue script = context.getGlobals().load(content, scriptPath);
+                if (script.isnil()) {
+                    plugin.getLogger().warning("Failed to load script: " + scriptPath);
+                    return false;
+                }
+                
+                // Выполняем скрипт в контексте для загрузки функций
+                script.call();
+                
+                // Отмечаем скрипт как загруженный
+                context.markScriptLoaded(scriptPath);
+                plugin.getLogger().fine("Script loaded into global context: " + scriptPath);
             }
             
             // Вызываем функцию (скрипт уже загружен)

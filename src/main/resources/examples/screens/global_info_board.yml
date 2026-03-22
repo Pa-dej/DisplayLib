@@ -1,0 +1,146 @@
+id: global_info_board
+screen_type: GLOBAL
+interaction_radius: 8.0
+range_check_interval: 15
+tick_rate: 6
+
+background:
+  color: [20, 40, 60]
+  alpha: 180
+  scale: [8.0, 5.0, 1.0]
+  text: " "
+  position: [0.0, 0.0, 0.0]
+  translation: [0.0, 0.0, 0.0]
+
+scripts:
+  file: "global_info_board.lua"
+
+widgets:
+  # Заголовок
+  - id: title
+    type: TEXT_BUTTON
+    text: "📋 Информационная доска"
+    hoveredText: "📋 Информационная доска"
+    position: [0.0, 1.8, 0.0]
+    scale: [0.7, 0.7, 0.7]
+    tolerance: [0.2, 0.1]
+    backgroundColor: [30, 60, 90]
+    backgroundAlpha: 220
+    hoveredBackgroundColor: [30, 60, 90]
+    hoveredBackgroundAlpha: 220
+    alignment: CENTERED
+    onClick:
+      action: NONE
+
+  # Правила сервера
+  - id: btn_rules
+    type: ITEM_BUTTON
+    material: WRITTEN_BOOK
+    position: [-2.0, 0.8, 0.0]
+    scale: [0.25, 0.25, 0.25]
+    tolerance: [0.1, 0.1]
+    tooltip: "Правила сервера"
+    tooltipColor: [255, 255, 255]
+    tooltipDelay: 10
+    glowOnHover: false
+    onClick:
+      action: RUN_SCRIPT
+      function: "show_rules"
+
+  # Команды
+  - id: btn_commands
+    type: ITEM_BUTTON
+    material: COMMAND_BLOCK
+    position: [-0.7, 0.8, 0.0]
+    scale: [0.25, 0.25, 0.25]
+    tolerance: [0.1, 0.1]
+    tooltip: "Список команд"
+    tooltipColor: [255, 215, 0]
+    tooltipDelay: 10
+    glowOnHover: false
+    onClick:
+      action: RUN_SCRIPT
+      function: "show_commands"
+
+  # Онлайн игроки
+  - id: btn_online
+    type: ITEM_BUTTON
+    material: PLAYER_HEAD
+    position: [0.7, 0.8, 0.0]
+    scale: [0.25, 0.25, 0.25]
+    tolerance: [0.1, 0.1]
+    tooltip: "Онлайн игроки"
+    tooltipColor: [144, 238, 144]
+    tooltipDelay: 10
+    glowOnHover: false
+    onClick:
+      action: RUN_SCRIPT
+      function: "show_online"
+
+  # Статистика сервера
+  - id: btn_stats
+    type: ITEM_BUTTON
+    material: CLOCK
+    position: [2.0, 0.8, 0.0]
+    scale: [0.25, 0.25, 0.25]
+    tolerance: [0.1, 0.1]
+    tooltip: "Статистика сервера"
+    tooltipColor: [255, 182, 193]
+    tooltipDelay: 10
+    glowOnHover: false
+    onClick:
+      action: RUN_SCRIPT
+      function: "show_stats"
+
+  # Новости
+  - id: news_text
+    type: TEXT_BUTTON
+    text: "🔥 Новости: Обновление 1.2.0 уже доступно!"
+    hoveredText: "🔥 Новости: Обновление 1.2.0 уже доступно!"
+    position: [0.0, 0.0, 0.0]
+    scale: [0.4, 0.4, 0.4]
+    tolerance: [0.3, 0.08]
+    backgroundColor: [40, 40, 40]
+    backgroundAlpha: 150
+    hoveredBackgroundColor: [40, 40, 40]
+    hoveredBackgroundAlpha: 150
+    alignment: CENTERED
+    onClick:
+      action: RUN_SCRIPT
+      function: "show_news"
+
+  # Полезные ссылки
+  - id: links_text
+    type: TEXT_BUTTON
+    text: "🌐 Discord | 📺 YouTube | 💬 Форум"
+    hoveredText: "🌐 Discord | 📺 YouTube | 💬 Форум"
+    position: [0.0, -0.8, 0.0]
+    scale: [0.35, 0.35, 0.35]
+    tolerance: [0.25, 0.06]
+    backgroundColor: [60, 40, 80]
+    backgroundAlpha: 180
+    hoveredBackgroundColor: [60, 40, 80]
+    hoveredBackgroundAlpha: 180
+    tooltip: "Кликните для получения ссылок"
+    tooltipColor: [200, 200, 255]
+    alignment: CENTERED
+    onClick:
+      action: RUN_SCRIPT
+      function: "show_links"
+
+  # Время сервера
+  - id: server_time
+    type: TEXT_BUTTON
+    text: "🕐 Время сервера: загрузка..."
+    hoveredText: "🕐 Время сервера: загрузка..."
+    position: [0.0, -1.6, 0.0]
+    scale: [0.3, 0.3, 0.3]
+    tolerance: [0.2, 0.05]
+    backgroundColor: [40, 60, 40]
+    backgroundAlpha: 160
+    hoveredBackgroundColor: [40, 60, 40]
+    hoveredBackgroundAlpha: 160
+    alignment: CENTERED
+    onClick:
+      action: RUN_SCRIPT
+      function: "update_time"

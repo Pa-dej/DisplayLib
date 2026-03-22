@@ -9,16 +9,23 @@ import java.util.Map;
 public class ScreenDefinition {
     private String id;
     private int tickRate = 4; // По умолчанию обновление каждые 4 тика (5 раз в секунду)
+    private ScreenType screenType = ScreenType.PERSONAL; // По умолчанию PERSONAL
+    private double interactionRadius = 8.0; // Радиус взаимодействия для GLOBAL экранов
+    private int rangeCheckInterval = 10; // Интервал проверки расстояния в тиках
     private BackgroundDefinition background;
     private Map<String, String> scripts; // on_open, on_close -> путь к скрипту
     private List<WidgetDefinition> widgets;
     
     public ScreenDefinition() {}
     
-    public ScreenDefinition(String id, int tickRate, BackgroundDefinition background, 
+    public ScreenDefinition(String id, int tickRate, ScreenType screenType, double interactionRadius, 
+                           int rangeCheckInterval, BackgroundDefinition background, 
                            Map<String, String> scripts, List<WidgetDefinition> widgets) {
         this.id = id;
         this.tickRate = tickRate;
+        this.screenType = screenType;
+        this.interactionRadius = interactionRadius;
+        this.rangeCheckInterval = rangeCheckInterval;
         this.background = background;
         this.scripts = scripts;
         this.widgets = widgets;
@@ -42,6 +49,23 @@ public class ScreenDefinition {
     
     public List<WidgetDefinition> getWidgets() { return widgets; }
     public void setWidgets(List<WidgetDefinition> widgets) { this.widgets = widgets; }
+    
+    public ScreenType getScreenType() { return screenType; }
+    public void setScreenType(ScreenType screenType) { this.screenType = screenType; }
+    
+    public double getInteractionRadius() { return interactionRadius; }
+    public void setInteractionRadius(double interactionRadius) { this.interactionRadius = interactionRadius; }
+    
+    public int getRangeCheckInterval() { return rangeCheckInterval; }
+    public void setRangeCheckInterval(int rangeCheckInterval) { this.rangeCheckInterval = rangeCheckInterval; }
+    
+    /**
+     * Типы экранов
+     */
+    public enum ScreenType {
+        PERSONAL,
+        GLOBAL
+    }
     
     /**
      * Определение фона экрана

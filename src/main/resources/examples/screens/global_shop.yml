@@ -1,0 +1,149 @@
+id: global_shop
+screen_type: GLOBAL
+interaction_radius: 6.0
+range_check_interval: 10
+tick_rate: 4
+
+background:
+  color: [40, 20, 60]
+  alpha: 200
+  scale: [6.0, 4.0, 1.0]
+  text: " "
+  position: [0.0, 0.0, 0.0]
+  translation: [0.0, 0.0, 0.0]
+
+scripts:
+  file: "global_shop.lua"
+
+widgets:
+  # Заголовок магазина
+  - id: title
+    type: TEXT_BUTTON
+    text: "🏪 Магазин"
+    hoveredText: "🏪 Магазин"
+    position: [0.0, 1.2, 0.0]
+    scale: [0.8, 0.8, 0.8]
+    tolerance: [0.15, 0.08]
+    backgroundColor: [80, 40, 120]
+    backgroundAlpha: 220
+    hoveredBackgroundColor: [80, 40, 120]
+    hoveredBackgroundAlpha: 220
+    alignment: CENTERED
+    onClick:
+      action: NONE
+
+  # Алмазный меч
+  - id: btn_sword
+    type: ITEM_BUTTON
+    material: DIAMOND_SWORD
+    position: [-1.2, 0.3, 0.0]
+    scale: [0.2, 0.2, 0.2]
+    tolerance: [0.08, 0.08]
+    tooltip: "Алмазный меч - 100 монет"
+    tooltipColor: [255, 215, 0]
+    tooltipDelay: 20
+    glowOnHover: true
+    glowColor: [0, 255, 255]
+    onClick:
+      action: RUN_SCRIPT
+      function: "buy_sword"
+
+  # Алмазная броня
+  - id: btn_armor
+    type: ITEM_BUTTON
+    material: DIAMOND_CHESTPLATE
+    position: [-0.4, 0.3, 0.0]
+    scale: [0.2, 0.2, 0.2]
+    tolerance: [0.08, 0.08]
+    tooltip: "Алмазная броня - 200 монет"
+    tooltipColor: [255, 215, 0]
+    tooltipDelay: 20
+    glowOnHover: true
+    glowColor: [0, 255, 255]
+    onClick:
+      action: RUN_SCRIPT
+      function: "buy_armor"
+
+  # Золотое яблоко
+  - id: btn_food
+    type: ITEM_BUTTON
+    material: GOLDEN_APPLE
+    position: [0.4, 0.3, 0.0]
+    scale: [0.2, 0.2, 0.2]
+    tolerance: [0.08, 0.08]
+    tooltip: "Золотое яблоко - 50 монет"
+    tooltipColor: [255, 215, 0]
+    tooltipDelay: 20
+    glowOnHover: true
+    glowColor: [255, 215, 0]
+    onClick:
+      action: RUN_SCRIPT
+      function: "buy_food"
+
+  # Алмазная кирка
+  - id: btn_tools
+    type: ITEM_BUTTON
+    material: DIAMOND_PICKAXE
+    position: [1.2, 0.3, 0.0]
+    scale: [0.2, 0.2, 0.2]
+    tolerance: [0.08, 0.08]
+    tooltip: "Алмазная кирка - 150 монет"
+    tooltipColor: [255, 215, 0]
+    tooltipDelay: 20
+    glowOnHover: true
+    glowColor: [0, 255, 255]
+    onClick:
+      action: RUN_SCRIPT
+      function: "buy_tools"
+
+  # Информационная панель
+  - id: info_label
+    type: TEXT_BUTTON
+    text: "Кликните на предмет для покупки"
+    hoveredText: "Кликните на предмет для покупки"
+    position: [0.0, -0.8, 0.0]
+    scale: [0.3, 0.3, 0.3]
+    tolerance: [0.15, 0.06]
+    backgroundColor: [60, 30, 90]
+    backgroundAlpha: 180
+    hoveredBackgroundColor: [60, 30, 90]
+    hoveredBackgroundAlpha: 180
+    alignment: CENTERED
+    onClick:
+      action: NONE
+
+  # Кнопка "Мой баланс"
+  - id: btn_balance
+    type: TEXT_BUTTON
+    text: "💰 Баланс"
+    hoveredText: "💰 Баланс"
+    position: [-1.8, -0.8, 0.0]
+    scale: [0.25, 0.25, 0.25]
+    tolerance: [0.08, 0.04]
+    backgroundColor: [40, 80, 40]
+    backgroundAlpha: 200
+    hoveredBackgroundColor: [40, 80, 40]
+    hoveredBackgroundAlpha: 200
+    tooltip: "Проверить свой баланс"
+    tooltipColor: [144, 238, 144]
+    onClick:
+      action: RUN_SCRIPT
+      function: "check_balance"
+
+  # Кнопка "Продать предметы"
+  - id: btn_sell
+    type: TEXT_BUTTON
+    text: "💸 Продать"
+    hoveredText: "💸 Продать"
+    position: [1.8, -0.8, 0.0]
+    scale: [0.25, 0.25, 0.25]
+    tolerance: [0.08, 0.04]
+    backgroundColor: [80, 40, 40]
+    backgroundAlpha: 200
+    hoveredBackgroundColor: [80, 40, 40]
+    hoveredBackgroundAlpha: 200
+    tooltip: "Продать предметы из инвентаря"
+    tooltipColor: [255, 182, 193]
+    onClick:
+      action: RUN_SCRIPT
+      function: "sell_items"

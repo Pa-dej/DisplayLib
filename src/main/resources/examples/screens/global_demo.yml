@@ -1,0 +1,121 @@
+id: global_demo
+screen_type: GLOBAL
+interaction_radius: 6.0
+range_check_interval: 10
+tick_rate: 4
+
+background:
+  color: [30, 30, 50]
+  alpha: 180
+  scale: [6.0, 4.0, 1.0]
+  text: " "
+
+scripts:
+  file: "global_demo.lua"
+
+widgets:
+  # Заголовок
+  - id: title
+    type: TEXT_BUTTON
+    text: "🌍 Глобальный экран - Демо"
+    hoveredText: "🌍 Глобальный экран - Демо"
+    position: [0.0, 1.2, 0.0]
+    scale: [0.6, 0.6, 0.6]
+    tolerance: [0.2, 0.08]
+    backgroundColor: [50, 50, 80]
+    backgroundAlpha: 200
+    hoveredBackgroundColor: [50, 50, 80]
+    hoveredBackgroundAlpha: 200
+    alignment: CENTERED
+    onClick:
+      action: NONE
+
+  # Кнопка Hello
+  - id: btn_hello
+    type: TEXT_BUTTON
+    text: "👋 Hello"
+    hoveredText: "👋 Hello"
+    position: [0.0, 0.5, 0.0]
+    scale: [0.5, 0.5, 0.5]
+    tolerance: [0.1, 0.08]
+    backgroundColor: [40, 120, 40]
+    backgroundAlpha: 200
+    hoveredBackgroundColor: [40, 120, 40]
+    hoveredBackgroundAlpha: 200
+    tooltip: "Нажмите для приветствия"
+    tooltipColor: [144, 238, 144]
+    tooltipDelay: 10
+    alignment: CENTERED
+    onClick:
+      action: RUN_SCRIPT
+      function: "say_hello"
+
+  # Текст "Counter"
+  - id: counter_label
+    type: TEXT_BUTTON
+    text: "Counter"
+    hoveredText: "Counter"
+    position: [0.0, 0.0, 0.0]
+    scale: [0.4, 0.4, 0.4]
+    tolerance: [0.1, 0.06]
+    backgroundColor: [60, 60, 60]
+    backgroundAlpha: 150
+    hoveredBackgroundColor: [60, 60, 60]
+    hoveredBackgroundAlpha: 150
+    alignment: CENTERED
+    onClick:
+      action: NONE
+
+  # Значение счетчика
+  - id: counter_value
+    type: TEXT_BUTTON
+    text: "0"
+    hoveredText: "0"
+    position: [0.0, -0.4, 0.0]
+    scale: [0.8, 0.8, 0.8]
+    tolerance: [0.1, 0.08]
+    backgroundColor: [40, 80, 40]
+    backgroundAlpha: 180
+    hoveredBackgroundColor: [40, 80, 40]
+    hoveredBackgroundAlpha: 180
+    alignment: CENTERED
+    onClick:
+      action: NONE
+
+  # Кнопка +
+  - id: btn_plus
+    type: TEXT_BUTTON
+    text: "+"
+    hoveredText: "+"
+    position: [-0.5, -0.8, 0.0]
+    scale: [0.6, 0.6, 0.6]
+    tolerance: [0.06, 0.06]
+    backgroundColor: [40, 120, 40]
+    backgroundAlpha: 200
+    hoveredBackgroundColor: [40, 120, 40]
+    hoveredBackgroundAlpha: 200
+    tooltip: "Увеличить счетчик"
+    tooltipColor: [144, 238, 144]
+    alignment: CENTERED
+    onClick:
+      action: RUN_SCRIPT
+      function: "increment_counter"
+
+  # Кнопка -
+  - id: btn_minus
+    type: TEXT_BUTTON
+    text: "-"
+    hoveredText: "-"
+    position: [0.5, -0.8, 0.0]
+    scale: [0.6, 0.6, 0.6]
+    tolerance: [0.06, 0.06]
+    backgroundColor: [120, 40, 40]
+    backgroundAlpha: 200
+    hoveredBackgroundColor: [120, 40, 40]
+    hoveredBackgroundAlpha: 200
+    tooltip: "Уменьшить счетчик"
+    tooltipColor: [255, 182, 193]
+    alignment: CENTERED
+    onClick:
+      action: RUN_SCRIPT
+      function: "decrement_counter"

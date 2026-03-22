@@ -122,7 +122,7 @@ widgets:
     hoveredBackgroundAlpha: 180
     onClick:
       action: SWITCH_SCREEN
-      target: translation_test
+      target: main_menu
 
   # Кнопка закрытия
   - id: btn_close

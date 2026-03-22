@@ -101,23 +101,23 @@ widgets:
       action: SWITCH_SCREEN
       target: simple_demo
 
-  # Тест translation
-  - id: btn_translation_test
+  # Position vs Translation Demo
+  - id: btn_position_demo
     type: ITEM_BUTTON
     material: COMPASS
     position: [0.5, 0.3, 0.0]
     scale: [0.15, 0.15, 0.02]
-    tooltip: "Translation Test - Тест позиционирования"
+    tooltip: "Position vs Translation - Демо позиционирования"
     glowOnHover: true
     onClick:
       action: SWITCH_SCREEN
-      target: translation_test
+      target: position_vs_translation_demo
 
   # Тест выравнивания текста
   - id: btn_text_alignment
     type: ITEM_BUTTON
     material: WRITABLE_BOOK
-    position: [-0.5, -0.5, 0.0]
+    position: [0.5, -0.5, 0.0]
     scale: [0.15, 0.15, 0.02]
     tooltip: "Text Alignment - Выравнивание текста"
     glowOnHover: true
@@ -129,7 +129,7 @@ widgets:
   - id: btn_tick_rate
     type: ITEM_BUTTON
     material: CLOCK
-    position: [0, -0.5, 0.0]
+    position: [-0.25, -0.5, 0.0]
     scale: [0.15, 0.15, 0.02]
     tooltip: "Tick Rate Demo - Частота обновления"
     glowOnHover: true
@@ -137,11 +137,23 @@ widgets:
       action: SWITCH_SCREEN
       target: tick_rate_demo
 
+  # Lua Demo
+  - id: btn_lua_demo
+    type: ITEM_BUTTON
+    material: REDSTONE_BLOCK
+    position: [0.0, -0.5, 0.0]
+    scale: [0.15, 0.15, 0.02]
+    tooltip: "Lua Demo - Интерактивная демонстрация"
+    glowOnHover: true
+    onClick:
+      action: SWITCH_SCREEN
+      target: lua_demo
+
   # Тест форматированного текста
   - id: btn_formatted_text
     type: ITEM_BUTTON
     material: ENCHANTED_BOOK
-    position: [0.5, -0.5, 0.0]
+    position: [0.25, -0.5, 0.0]
     scale: [0.15, 0.15, 0.02]
     tooltip: "Formatted Text - Форматированный текст"
     glowOnHover: true

@@ -27,7 +27,14 @@ public class StorageAPI extends LuaTable {
     public StorageAPI(Player player, DisplayLib plugin) {
         this.player = player;
         this.plugin = plugin;
-        this.storage = playerStorage.computeIfAbsent(player.getUniqueId(), k -> new HashMap<>());
+        
+        // Для глобальных экранов player может быть null
+        if (player != null) {
+            this.storage = playerStorage.computeIfAbsent(player.getUniqueId(), k -> new HashMap<>());
+        } else {
+            // Для глобальных экранов используем пустое хранилище
+            this.storage = new HashMap<>();
+        }
         
         // get(key) или get(key, default)
         set("get", new TwoArgFunction() {

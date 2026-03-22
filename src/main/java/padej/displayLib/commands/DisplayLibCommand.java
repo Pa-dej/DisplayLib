@@ -9,6 +9,7 @@ import org.bukkit.command.CommandSender;
 import org.bukkit.command.TabCompleter;
 import org.bukkit.entity.Player;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
@@ -200,6 +201,115 @@ public class DisplayLibCommand implements CommandExecutor, TabCompleter {
                 sender.sendMessage("§aЭкран закрыт для " + targetPlayer.getName());
             }
             
+            case "openglobal" -> {
+                if (!sender.hasPermission("displaylib.admin")) {
+                    sender.sendMessage("§cНет прав доступа");
+                    return true;
+                }
+                
+                if (args.length < 5) {
+                    sender.sendMessage("§cИспользование: /displaylib openglobal <screen_id> <x> <y> <z> [yaw] [pitch]");
+                    return true;
+                }
+                
+                String screenId = args[1];
+                Location location;
+                
+                try {
+                    double x, y, z;
+                    
+                    // Обработка координат ~ для игрока
+                    if (sender instanceof Player player) {
+                        Location playerLoc = player.getLocation();
+                        x = args[2].equals("~") ? playerLoc.getX() : Double.parseDouble(args[2]);
+                        y = args[3].equals("~") ? playerLoc.getY() : Double.parseDouble(args[3]);
+                        z = args[4].equals("~") ? playerLoc.getZ() : Double.parseDouble(args[4]);
+                        location = new Location(player.getWorld(), x, y, z);
+                    } else {
+                        x = Double.parseDouble(args[2]);
+                        y = Double.parseDouble(args[3]);
+                        z = Double.parseDouble(args[4]);
+                        // Для консоли используем первый мир
+                        location = new Location(plugin.getServer().getWorlds().get(0), x, y, z);
+                    }
+                } catch (NumberFormatException e) {
+                    sender.sendMessage("§cНеверные координаты: " + args[2] + " " + args[3] + " " + args[4]);
+                    return true;
+                }
+                
+                float yaw = location.getYaw();
+                float pitch = location.getPitch();
+                
+                // Проверяем yaw и pitch если указаны
+                if (args.length >= 6) {
+                    try {
+                        yaw = Float.parseFloat(args[5]);
+                    } catch (NumberFormatException e) {
+                        sender.sendMessage("§cНеверный yaw: " + args[5]);
+                        return true;
+                    }
+                }
+                
+                if (args.length >= 7) {
+                    try {
+                        pitch = Float.parseFloat(args[6]);
+                    } catch (NumberFormatException e) {
+                        sender.sendMessage("§cНеверный pitch: " + args[6]);
+                        return true;
+                    }
+                }
+                
+                boolean success = UIManager.getInstance().openGlobalScreen(screenId, location, yaw, pitch);
+                if (success) {
+                    sender.sendMessage("§aГлобальный экран '" + screenId + "' открыт в позиции " + 
+                                     String.format("%.1f %.1f %.1f", location.getX(), location.getY(), location.getZ()));
+                } else {
+                    sender.sendMessage("§cНе удалось открыть глобальный экран '" + screenId + "'");
+                }
+            }
+            
+            case "closeglobal" -> {
+                if (!sender.hasPermission("displaylib.admin")) {
+                    sender.sendMessage("§cНет прав доступа");
+                    return true;
+                }
+                
+                if (args.length < 2) {
+                    sender.sendMessage("§cИспользование: /displaylib closeglobal <screen_id>");
+                    return true;
+                }
+                
+                String screenId = args[1];
+                boolean success = UIManager.getInstance().closeGlobalScreenById(screenId);
+                
+                if (success) {
+                    sender.sendMessage("§aГлобальный экран '" + screenId + "' закрыт");
+                } else {
+                    sender.sendMessage("§cГлобальный экран '" + screenId + "' не найден");
+                }
+            }
+            
+            case "listglobal" -> {
+                if (!sender.hasPermission("displaylib.admin")) {
+                    sender.sendMessage("§cНет прав доступа");
+                    return true;
+                }
+                
+                var globalScreens = UIManager.getInstance().getGlobalScreens();
+                if (globalScreens.isEmpty()) {
+                    sender.sendMessage("§eНет активных глобальных экранов");
+                } else {
+                    sender.sendMessage("§eАктивные глобальные экраны:");
+                    for (var screen : globalScreens) {
+                        Location loc = screen.getLocation();
+                        int nearbyCount = screen.getNearbyPlayers().size();
+                        sender.sendMessage("§7- " + screen.getScreenId() + " в " + 
+                                         String.format("%.1f %.1f %.1f", loc.getX(), loc.getY(), loc.getZ()) +
+                                         " (игроков поблизости: " + nearbyCount + ")");
+                    }
+                }
+            }
+            
             case "reload" -> {
                 if (sender instanceof Player player && !player.hasPermission("displaylib.admin")) {
                     sender.sendMessage("§cНет прав доступа");
@@ -252,6 +362,10 @@ public class DisplayLibCommand implements CommandExecutor, TabCompleter {
             player.sendMessage("§c=== Admin Commands ===");
             player.sendMessage("§e/displaylib reload §7- Перезагрузить экраны и скрипты");
             player.sendMessage("§e/displaylib examples §7- Создать примеры экранов");
+            player.sendMessage("§e/displaylib openglobal <id> <x> <y> <z> [yaw] [pitch] §7- Открыть глобальный экран");
+            player.sendMessage("§7  (если экран с таким ID уже существует, он будет пересоздан)");
+            player.sendMessage("§e/displaylib closeglobal <id> §7- Закрыть глобальные экраны");
+            player.sendMessage("§e/displaylib listglobal §7- Список активных глобальных экранов");
         }
     }
     
@@ -260,7 +374,7 @@ public class DisplayLibCommand implements CommandExecutor, TabCompleter {
         if (args.length == 1) {
             List<String> commands = Arrays.asList("open", "close", "list");
             if (sender.hasPermission("displaylib.admin")) {
-                commands = Arrays.asList("open", "close", "list", "reload", "examples");
+                commands = Arrays.asList("open", "close", "list", "reload", "examples", "openglobal", "closeglobal", "listglobal");
             }
             return commands.stream()
                     .filter(cmd -> cmd.toLowerCase().startsWith(args[0].toLowerCase()))
@@ -271,6 +385,20 @@ public class DisplayLibCommand implements CommandExecutor, TabCompleter {
             if (args[0].equalsIgnoreCase("open")) {
                 // Для open показываем список экранов
                 return plugin.getScreenRegistry().getAllScreens().keySet().stream()
+                        .filter(screen -> screen.toLowerCase().startsWith(args[1].toLowerCase()))
+                        .toList();
+            } else if (args[0].equalsIgnoreCase("openglobal")) {
+                // Для openglobal показываем список GLOBAL экранов
+                return plugin.getScreenRegistry().getAllScreens().entrySet().stream()
+                        .filter(entry -> entry.getValue().getScreenType() == padej.displayLib.config.ScreenDefinition.ScreenType.GLOBAL)
+                        .map(entry -> entry.getKey())
+                        .filter(screen -> screen.toLowerCase().startsWith(args[1].toLowerCase()))
+                        .toList();
+            } else if (args[0].equalsIgnoreCase("closeglobal")) {
+                // Для closeglobal показываем активные глобальные экраны
+                return UIManager.getInstance().getGlobalScreens().stream()
+                        .map(screen -> screen.getScreenId())
+                        .distinct()
                         .filter(screen -> screen.toLowerCase().startsWith(args[1].toLowerCase()))
                         .toList();
             } else if (args[0].equalsIgnoreCase("close") && !(sender instanceof Player)) {

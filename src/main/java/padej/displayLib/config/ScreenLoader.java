@@ -125,6 +125,20 @@ public class ScreenLoader {
 
         // tick_rate (по умолчанию 4 тика)
         screen.setTickRate(config.getInt("tick_rate", 4));
+        
+        // screen_type (по умолчанию PERSONAL)
+        String typeStr = config.getString("screen_type", "PERSONAL");
+        try {
+            screen.setScreenType(ScreenDefinition.ScreenType.valueOf(typeStr.toUpperCase()));
+        } catch (IllegalArgumentException e) {
+            screen.setScreenType(ScreenDefinition.ScreenType.PERSONAL);
+        }
+        
+        // interaction_radius (по умолчанию 8.0)
+        screen.setInteractionRadius(config.getDouble("interaction_radius", 8.0));
+        
+        // range_check_interval (по умолчанию 10)
+        screen.setRangeCheckInterval(config.getInt("range_check_interval", 10));
 
         // background
         if (config.isConfigurationSection("background")) {
@@ -329,6 +343,9 @@ public class ScreenLoader {
         
         createExampleSimpleDemo();
         plugin.getLogger().info("ScreenLoader: Simple demo screen created");
+        
+        createExampleGlobalShop();
+        plugin.getLogger().info("ScreenLoader: Global shop screen created");
         
         createExampleLuaScripts();
         plugin.getLogger().info("ScreenLoader: Lua scripts created");
@@ -554,6 +571,127 @@ public class ScreenLoader {
                 "    end\\n" +
                 "end";
         writeFile("simple_demo.lua", simpleDemoScript);
+    }
+    
+    private void createExampleGlobalShop() {
+        String content = """
+                id: global_shop
+                screen_type: GLOBAL
+                interaction_radius: 6.0
+                range_check_interval: 10
+                tick_rate: 4
+                background:
+                  color: [40, 20, 60]
+                  alpha: 200
+                  scale: [6.0, 4.0, 1.0]
+                  text: " "
+
+                scripts:
+                  file: "global_shop.lua"
+
+                widgets:
+                  - id: title
+                    type: TEXT_BUTTON
+                    text: "🏪 Магазин"
+                    hoveredText: "🏪 Магазин"
+                    position: [0.0, 1.2, 0.0]
+                    scale: [0.8, 0.8, 0.8]
+                    tolerance: [0.15, 0.08]
+                    backgroundColor: [80, 40, 120]
+                    backgroundAlpha: 220
+                    onClick:
+                      action: NONE
+
+                  - id: btn_sword
+                    type: ITEM_BUTTON
+                    material: DIAMOND_SWORD
+                    position: [-1.2, 0.3, 0.0]
+                    scale: [0.2, 0.2, 0.2]
+                    tolerance: [0.08, 0.08]
+                    tooltip: "Алмазный меч - 100 монет"
+                    glowOnHover: true
+                    glowColor: [0, 255, 255]
+                    onClick:
+                      action: RUN_SCRIPT
+                      function: "buy_sword"
+
+                  - id: btn_armor
+                    type: ITEM_BUTTON
+                    material: DIAMOND_CHESTPLATE
+                    position: [-0.4, 0.3, 0.0]
+                    scale: [0.2, 0.2, 0.2]
+                    tolerance: [0.08, 0.08]
+                    tooltip: "Алмазная броня - 200 монет"
+                    glowOnHover: true
+                    glowColor: [0, 255, 255]
+                    onClick:
+                      action: RUN_SCRIPT
+                      function: "buy_armor"
+
+                  - id: btn_food
+                    type: ITEM_BUTTON
+                    material: GOLDEN_APPLE
+                    position: [0.4, 0.3, 0.0]
+                    scale: [0.2, 0.2, 0.2]
+                    tolerance: [0.08, 0.08]
+                    tooltip: "Золотое яблоко - 50 монет"
+                    glowOnHover: true
+                    glowColor: [255, 215, 0]
+                    onClick:
+                      action: RUN_SCRIPT
+                      function: "buy_food"
+
+                  - id: btn_tools
+                    type: ITEM_BUTTON
+                    material: DIAMOND_PICKAXE
+                    position: [1.2, 0.3, 0.0]
+                    scale: [0.2, 0.2, 0.2]
+                    tolerance: [0.08, 0.08]
+                    tooltip: "Алмазная кирка - 150 монет"
+                    glowOnHover: true
+                    glowColor: [0, 255, 255]
+                    onClick:
+                      action: RUN_SCRIPT
+                      function: "buy_tools"
+
+                  - id: info_label
+                    type: TEXT_BUTTON
+                    text: "Кликните на предмет для покупки"
+                    hoveredText: "Кликните на предмет для покупки"
+                    position: [0.0, -0.8, 0.0]
+                    scale: [0.3, 0.3, 0.3]
+                    tolerance: [0.15, 0.06]
+                    backgroundColor: [60, 30, 90]
+                    backgroundAlpha: 180
+                    onClick:
+                      action: NONE
+                """;
+        writeFile("global_shop.yml", content);
+        
+        // Создаем скрипт для глобального магазина
+        String globalShopScript = "-- Global Shop Script\\n" +
+                "function on_open()\\n" +
+                "    log.info(\\\"Global shop opened\\\")\\n" +
+                "end\\n\\n" +
+                "function on_close()\\n" +
+                "    log.info(\\\"Global shop closed\\\")\\n" +
+                "end\\n\\n" +
+                "function buy_sword()\\n" +
+                "    -- В глобальном экране нет конкретного игрока в контексте\\n" +
+                "    -- Эта функция будет вызвана когда игрок кликнет\\n" +
+                "    log.info(\\\"Someone tried to buy a sword\\\")\\n" +
+                "    -- Здесь можно добавить логику покупки\\n" +
+                "end\\n\\n" +
+                "function buy_armor()\\n" +
+                "    log.info(\\\"Someone tried to buy armor\\\")\\n" +
+                "end\\n\\n" +
+                "function buy_food()\\n" +
+                "    log.info(\\\"Someone tried to buy food\\\")\\n" +
+                "end\\n\\n" +
+                "function buy_tools()\\n" +
+                "    log.info(\\\"Someone tried to buy tools\\\")\\n" +
+                "end";
+        writeFile("global_shop.lua", globalShopScript);
     }
 
     private void writeFile(String filename, String content) {
