@@ -114,6 +114,47 @@ tasks {
         options.release.set(21)
     }
 
+    javadoc {
+        options {
+            this as StandardJavadocDocletOptions
+            encoding = "UTF-8"
+            windowTitle = "DisplayLib API"
+            addStringOption("locale", "ru")
+            links("https://docs.oracle.com/en/java/javase/21/docs/api/")
+            links("https://jd.papermc.io/paper/1.21/")
+            memberLevel = JavadocMemberLevel.PROTECTED
+            
+            // Настройки для русского языка
+            addStringOption("charset", "UTF-8")
+            addStringOption("docencoding", "UTF-8")
+            
+            // Дополнительные опции
+            addBooleanOption("author", true)
+            addBooleanOption("version", true)
+            addBooleanOption("use", true)
+            addBooleanOption("splitindex", true)
+            addStringOption("doctitle", "DisplayLib API Documentation")
+            addStringOption("header", "<b>DisplayLib v${version}</b>")
+            addStringOption("footer", "<b>DisplayLib v${version}</b>")
+            addStringOption("bottom", "Copyright © 2024 DisplayLib. Все права защищены.")
+        }
+        
+        // Исключаем тестовые классы
+        exclude("**/test_events/**")
+        
+        // Включаем только основные пакеты
+        include("**/config/**")
+        include("**/lua/api/**")
+        include("**/ui/**")
+        include("**/DisplayLib.java")
+        
+        destinationDir = file("${buildDir}/docs/javadoc")
+        
+        doLast {
+            println("Javadoc сгенерирован в: ${destinationDir}")
+        }
+    }
+
     processResources {
         val props = mapOf("version" to version)
         inputs.properties(props)

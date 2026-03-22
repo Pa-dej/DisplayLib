@@ -10,7 +10,60 @@ import org.luaj.vm2.lib.ThreeArgFunction;
 import org.luaj.vm2.lib.ZeroArgFunction;
 
 /**
- * Lua API для работы с игроком
+ * Lua API для работы с игроком.
+ * 
+ * <p>Предоставляет доступ к информации об игроке и позволяет выполнять
+ * различные действия от его имени.</p>
+ * 
+ * <h2>Доступные методы в Lua:</h2>
+ * 
+ * <p><b>Получение информации:</b></p>
+ * <ul>
+ * <li><b>player.name()</b> - Получить имя игрока</li>
+ * <li><b>player.op()</b> - Проверить, является ли игрок оператором</li>
+ * <li><b>player.gamemode()</b> - Получить режим игры</li>
+ * <li><b>player.health()</b> - Получить здоровье игрока</li>
+ * </ul>
+ * 
+ * <p><b>Изменение состояния:</b></p>
+ * <ul>
+ * <li><b>player.gamemode(mode)</b> - Установить режим игры ("creative", "survival", "adventure", "spectator")</li>
+ * <li><b>player.health(value)</b> - Установить здоровье (0-20)</li>
+ * </ul>
+ * 
+ * <p><b>Взаимодействие:</b></p>
+ * <ul>
+ * <li><b>player.message(text, [color])</b> - Отправить сообщение игроку</li>
+ * <li><b>player.sound(name, [volume], [pitch])</b> - Воспроизвести звук</li>
+ * <li><b>player.command(cmd)</b> - Выполнить команду от имени игрока</li>
+ * </ul>
+ * 
+ * <h2>Примеры использования в Lua:</h2>
+ * <pre>{@code
+ * -- Получение информации
+ * local name = player.name()
+ * local isOp = player.op()
+ * local mode = player.gamemode()
+ * local hp = player.health()
+ * 
+ * -- Изменение состояния
+ * player.gamemode("creative")
+ * player.health(20)
+ * 
+ * -- Отправка сообщений
+ * player.message("Привет!")
+ * player.message("Красный текст", "#FF0000")
+ * 
+ * -- Звуки
+ * player.sound("ENTITY_EXPERIENCE_ORB_PICKUP")
+ * player.sound("BLOCK_NOTE_BLOCK_PLING", 1.0, 2.0)
+ * 
+ * -- Команды
+ * player.command("give @s diamond 1")
+ * }</pre>
+ * 
+ * @author DisplayLib
+ * @version 1.0
  */
 public class PlayerAPI extends LuaTable {
     private final Player player;

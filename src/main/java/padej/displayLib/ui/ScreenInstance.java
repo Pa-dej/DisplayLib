@@ -7,6 +7,7 @@ import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.joml.Vector3f;
+import padej.displayLib.DisplayLib;
 import padej.displayLib.config.ScreenDefinition;
 import padej.displayLib.config.WidgetDefinition;
 import padej.displayLib.lua.LuaContext;
@@ -238,8 +239,19 @@ public class ScreenInstance extends WidgetManager {
     private ItemDisplayButtonWidget buildItemWidget(WidgetDefinition def, Location loc) {
         Material material;
         try {
-            material = Material.valueOf(def.getMaterial().toUpperCase());
+            String materialName = def.getMaterial().toUpperCase();
+            // Handle common material name variations
+            if ("CARROTS".equals(materialName)) {
+                materialName = "CARROT";
+            }
+            material = Material.valueOf(materialName);
+            // Verify the material is actually an item
+            if (!material.isItem()) {
+                DisplayLib.getInstance().getLogger().warning("Material " + materialName + " is not an item, using STONE instead");
+                material = Material.STONE;
+            }
         } catch (Exception e) {
+            DisplayLib.getInstance().getLogger().warning("Invalid material: " + def.getMaterial() + ", using STONE instead. Error: " + e.getMessage());
             material = Material.STONE;
         }
 

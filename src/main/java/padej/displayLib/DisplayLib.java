@@ -13,6 +13,47 @@ import org.bukkit.scheduler.BukkitRunnable;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Главный класс плагина DisplayLib.
+ * 
+ * <p>DisplayLib - это система для создания интерактивных 3D экранов в Minecraft
+ * с поддержкой YAML конфигурации и Lua скриптов.</p>
+ * 
+ * <h2>Основные возможности:</h2>
+ * <ul>
+ * <li><b>YAML экраны</b> - Создание экранов через конфигурационные файлы</li>
+ * <li><b>Lua скрипты</b> - Программирование логики экранов на Lua</li>
+ * <li><b>Интерактивные виджеты</b> - Кнопки, текст, предметы с поддержкой кликов</li>
+ * <li><b>Персональные и публичные экраны</b> - Экраны для одного игрока или для всех</li>
+ * <li><b>Система хранения данных</b> - Сохранение состояния между сессиями</li>
+ * <li><b>Таймеры и анимации</b> - Динамические эффекты и отложенные действия</li>
+ * </ul>
+ * 
+ * <h2>Структура файлов:</h2>
+ * <pre>
+ * plugins/DisplayLib/
+ * ├── screens/          # YAML файлы экранов
+ * │   ├── main_menu.yml
+ * │   └── settings.yml
+ * ├── scripts/          # Lua скрипты
+ * │   ├── main_menu.lua
+ * │   └── common.lua
+ * └── config.yml        # Основная конфигурация
+ * </pre>
+ * 
+ * <h2>Команды:</h2>
+ * <ul>
+ * <li><b>/displaylib reload</b> - Перезагрузить экраны и скрипты</li>
+ * <li><b>/displaylib open &lt;screen&gt; [player]</b> - Открыть экран</li>
+ * <li><b>/displaylib close [player]</b> - Закрыть экран</li>
+ * <li><b>/displaylib list</b> - Список доступных экранов</li>
+ * <li><b>/displaylib examples</b> - Создать примеры файлов</li>
+ * </ul>
+ * 
+ * @author DisplayLib Team
+ * @version 2.0.0
+ * @since 1.0.0
+ */
 @SuppressWarnings("unused")
 public final class DisplayLib extends JavaPlugin {
 

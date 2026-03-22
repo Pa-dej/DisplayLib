@@ -9,6 +9,7 @@ import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.util.Vector;
 import org.joml.Vector3f;
+import padej.displayLib.DisplayLib;
 import padej.displayLib.config.ScreenDefinition;
 import padej.displayLib.config.WidgetDefinition;
 import padej.displayLib.lua.LuaContext;
@@ -347,8 +348,19 @@ public class GlobalScreenInstance {
     private ItemDisplayButtonWidget buildItemWidget(WidgetDefinition def) {
         Material material;
         try {
-            material = Material.valueOf(def.getMaterial().toUpperCase());
+            String materialName = def.getMaterial().toUpperCase();
+            // Handle common material name variations
+            if ("CARROTS".equals(materialName)) {
+                materialName = "CARROT";
+            }
+            material = Material.valueOf(materialName);
+            // Verify the material is actually an item
+            if (!material.isItem()) {
+                DisplayLib.getInstance().getLogger().warning("Material " + materialName + " is not an item, using STONE instead");
+                material = Material.STONE;
+            }
         } catch (Exception e) {
+            DisplayLib.getInstance().getLogger().warning("Invalid material: " + def.getMaterial() + ", using STONE instead. Error: " + e.getMessage());
             material = Material.STONE;
         }
 
@@ -646,23 +658,29 @@ public class GlobalScreenInstance {
         
         String scriptFile = scripts.get("file");
         if (scriptFile != null) {
-            if (player != null) {
-                // Временно устанавливаем игрока в постоянный контекст
-                PlayerAPI oldPlayerAPI = luaContext.getPlayerAPI();
-                PlayerAPI tempPlayerAPI = new PlayerAPI(player);
-                luaContext.getGlobals().set("player", tempPlayerAPI);
-                
-                luaEngine.callFunction(luaContext, scriptFile, functionName);
-                
-                // Восстанавливаем предыдущий player API
-                if (oldPlayerAPI != null) {
-                    luaContext.getGlobals().set("player", oldPlayerAPI);
+            try {
+                if (player != null) {
+                    // Временно устанавливаем игрока в постоянный контекст
+                    PlayerAPI oldPlayerAPI = luaContext.getPlayerAPI();
+                    PlayerAPI tempPlayerAPI = new PlayerAPI(player);
+                    luaContext.getGlobals().set("player", tempPlayerAPI);
+                    
+                    luaEngine.callFunction(luaContext, scriptFile, functionName);
+                    
+                    // Восстанавливаем предыдущий player API
+                    if (oldPlayerAPI != null) {
+                        luaContext.getGlobals().set("player", oldPlayerAPI);
+                    } else {
+                        luaContext.getGlobals().set("player", LuaValue.NIL);
+                    }
                 } else {
+                    // Вызов без игрока (on_open, on_close)
+                    // Убеждаемся что player API установлен как nil для безопасности
                     luaContext.getGlobals().set("player", LuaValue.NIL);
+                    luaEngine.callFunction(luaContext, scriptFile, functionName);
                 }
-            } else {
-                // Вызов без игрока (on_open, on_close)
-                luaEngine.callFunction(luaContext, scriptFile, functionName);
+            } catch (Exception e) {
+                DisplayLib.getInstance().getLogger().warning("Error calling Lua function " + functionName + " in " + scriptFile + ": " + e.getMessage());
             }
         }
     }

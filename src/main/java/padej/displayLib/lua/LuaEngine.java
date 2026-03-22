@@ -184,8 +184,11 @@ public class LuaEngine {
                 plugin.getLogger().fine("Calling Lua function: " + functionName + " in " + scriptPath);
                 function.invoke(args);
                 return true;
+            } else if (function.isnil()) {
+                plugin.getLogger().warning("Function '" + functionName + "' not found in " + scriptPath + " - function is nil");
+                return false;
             } else {
-                plugin.getLogger().warning("Function not found: " + functionName + " in " + scriptPath);
+                plugin.getLogger().warning("'" + functionName + "' in " + scriptPath + " is not a function (type: " + function.typename() + ")");
                 return false;
             }
             

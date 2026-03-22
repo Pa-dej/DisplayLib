@@ -30,14 +30,17 @@ function on_open()
 end
 
 function on_close()
-    log.info("Lua Demo closed for " .. player.name())
+    log.info("Lua Demo closed")
     
     -- Отменяем все активные таймеры
     cancel_all_timers()
     
-    -- Прощальное сообщение
-    player.message("§7Спасибо за тестирование Lua API!")
-    player.sound("block.note_block.chime", 1.0, 0.8)
+    -- Прощальное сообщение только если игрок доступен
+    if player and player.name then
+        log.info("Lua Demo closed for " .. player.name())
+        player.message("§7Спасибо за тестирование Lua API!")
+        player.sound("block.note_block.chime", 1.0, 0.8)
+    end
 end
 
 -- =============================================================================

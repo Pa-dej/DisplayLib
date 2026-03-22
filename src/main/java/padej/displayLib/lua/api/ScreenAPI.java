@@ -11,7 +11,60 @@ import org.luaj.vm2.lib.TwoArgFunction;
 import org.luaj.vm2.lib.ZeroArgFunction;
 
 /**
- * Lua API для работы с экраном
+ * Lua API для работы с персональным экраном.
+ * 
+ * <p>Предоставляет методы для управления экраном, доступа к виджетам
+ * и хранения данных между вызовами функций.</p>
+ * 
+ * <h2>Доступные методы в Lua:</h2>
+ * 
+ * <p><b>Управление экраном:</b></p>
+ * <ul>
+ * <li><b>screen.id()</b> - Получить ID текущего экрана</li>
+ * <li><b>screen.close()</b> - Закрыть текущий экран</li>
+ * <li><b>screen.switch(screenId)</b> - Переключиться на другой экран</li>
+ * </ul>
+ * 
+ * <p><b>Работа с виджетами:</b></p>
+ * <ul>
+ * <li><b>screen.widget(id)</b> - Получить виджет по ID</li>
+ * </ul>
+ * 
+ * <p><b>Хранение данных:</b></p>
+ * <ul>
+ * <li><b>screen.data(key)</b> - Получить значение по ключу</li>
+ * <li><b>screen.data(key, value)</b> - Установить значение</li>
+ * <li><b>screen.data(key, nil)</b> - Удалить значение</li>
+ * </ul>
+ * 
+ * <h2>Примеры использования в Lua:</h2>
+ * <pre>{@code
+ * -- Получение информации об экране
+ * local currentId = screen.id()
+ * log.info("Текущий экран: " .. currentId)
+ * 
+ * -- Управление экраном
+ * screen.switch("main_menu")  -- Переключиться на главное меню
+ * screen.close()              -- Закрыть экран
+ * 
+ * -- Работа с виджетами
+ * local button = screen.widget("my_button")
+ * if button then
+ *     button.text("Новый текст")
+ *     button.visible(true)
+ * end
+ * 
+ * -- Хранение данных (сохраняется пока экран открыт)
+ * screen.data("counter", 0)           -- Установить счетчик
+ * local count = screen.data("counter") -- Получить значение
+ * screen.data("counter", count + 1)   -- Увеличить
+ * screen.data("temp", nil)            -- Удалить временные данные
+ * }</pre>
+ * 
+ * @author DisplayLib
+ * @version 1.0
+ * @see WidgetAPI
+ * @see GlobalScreenAPI
  */
 public class ScreenAPI extends LuaTable {
     private final ScreenInstance screen;

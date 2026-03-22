@@ -13,8 +13,67 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * Lua API для хранения данных между сессиями
- * Данные живут между открытиями экрана, но сбрасываются при выходе игрока
+ * Lua API для хранения данных между сессиями.
+ * 
+ * <p>Предоставляет постоянное хранилище данных для каждого игрока.
+ * Данные сохраняются между открытиями экранов, но сбрасываются при выходе игрока с сервера.</p>
+ * 
+ * <h2>Доступные методы в Lua:</h2>
+ * 
+ * <p><b>Основные операции:</b></p>
+ * <ul>
+ * <li><b>storage.get(key)</b> - Получить значение по ключу</li>
+ * <li><b>storage.get(key, default)</b> - Получить значение или значение по умолчанию</li>
+ * <li><b>storage.set(key, value)</b> - Установить значение</li>
+ * <li><b>storage.has(key)</b> - Проверить существование ключа</li>
+ * <li><b>storage.remove(key)</b> - Удалить ключ</li>
+ * <li><b>storage.clear()</b> - Очистить все данные</li>
+ * </ul>
+ * 
+ * <h2>Поддерживаемые типы данных:</h2>
+ * <ul>
+ * <li>Строки (string)</li>
+ * <li>Числа (number)</li>
+ * <li>Логические значения (boolean)</li>
+ * <li>nil (для удаления)</li>
+ * </ul>
+ * 
+ * <h2>Примеры использования в Lua:</h2>
+ * <pre>{@code
+ * -- Сохранение настроек игрока
+ * storage.set("language", "ru")
+ * storage.set("music_volume", 0.8)
+ * storage.set("show_hints", true)
+ * 
+ * -- Получение настроек
+ * local lang = storage.get("language", "en")  -- "ru" или "en" по умолчанию
+ * local volume = storage.get("music_volume")  -- 0.8 или nil
+ * local hints = storage.get("show_hints", true)  -- true
+ * 
+ * -- Проверка существования
+ * if storage.has("first_visit") then
+ *     player.message("С возвращением!")
+ * else
+ *     storage.set("first_visit", true)
+ *     player.message("Добро пожаловать!")
+ * end
+ * 
+ * -- Счетчики
+ * local visits = storage.get("visit_count", 0)
+ * storage.set("visit_count", visits + 1)
+ * 
+ * -- Удаление данных
+ * storage.remove("temporary_data")
+ * 
+ * -- Полная очистка (осторожно!)
+ * storage.clear()
+ * }</pre>
+ * 
+ * <p><b>Примечание:</b> Данные хранятся в памяти и очищаются при выходе игрока.
+ * Для постоянного хранения используйте файлы или базы данных через внешние плагины.</p>
+ * 
+ * @author DisplayLib
+ * @version 1.0
  */
 public class StorageAPI extends LuaTable {
     // Глобальное хранилище для всех игроков
