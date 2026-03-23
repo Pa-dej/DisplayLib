@@ -330,9 +330,8 @@ public class GlobalScreenInstance {
                 .setPosition(new WidgetPosition(0, 0, 0));
 
         if (def.getTooltip() != null) {
-            int[] tc = def.getTooltipColor();
-            cfg.setTooltip(Component.text(def.getTooltip())
-                    .color(TextColor.color(tc[0], tc[1], tc[2])));
+            Component tooltipComponent = parseFormattedText(def.getTooltip());
+            cfg.setTooltip(tooltipComponent);
             cfg.setTooltipDelay(def.getTooltipDelay());
         }
 
@@ -387,9 +386,8 @@ public class GlobalScreenInstance {
         }
 
         if (def.getTooltip() != null) {
-            int[] tc = def.getTooltipColor();
-            cfg.setTooltip(def.getTooltip())
-                    .setTooltipColor(TextColor.color(tc[0], tc[1], tc[2]))
+            Component tooltipComponent = parseFormattedText(def.getTooltip());
+            cfg.setTooltip(tooltipComponent)
                     .setTooltipDelay(def.getTooltipDelay());
         }
 
@@ -463,6 +461,7 @@ public class GlobalScreenInstance {
                 net.kyori.adventure.text.TextComponent.Builder partBuilder = 
                     Component.text().content(text);
                 
+                // Применяем только цвет
                 String color = (String) partMap.get("color");
                 if (color != null) {
                     try {
@@ -474,31 +473,6 @@ public class GlobalScreenInstance {
                     } catch (Exception e) {
                         // Ignore invalid colors
                     }
-                }
-                
-                Boolean bold = (Boolean) partMap.get("bold");
-                if (bold != null && bold) {
-                    partBuilder.decoration(net.kyori.adventure.text.format.TextDecoration.BOLD, true);
-                }
-                
-                Boolean italic = (Boolean) partMap.get("italic");
-                if (italic != null && italic) {
-                    partBuilder.decoration(net.kyori.adventure.text.format.TextDecoration.ITALIC, true);
-                }
-                
-                Boolean underlined = (Boolean) partMap.get("underlined");
-                if (underlined != null && underlined) {
-                    partBuilder.decoration(net.kyori.adventure.text.format.TextDecoration.UNDERLINED, true);
-                }
-                
-                Boolean strikethrough = (Boolean) partMap.get("strikethrough");
-                if (strikethrough != null && strikethrough) {
-                    partBuilder.decoration(net.kyori.adventure.text.format.TextDecoration.STRIKETHROUGH, true);
-                }
-                
-                Boolean obfuscated = (Boolean) partMap.get("obfuscated");
-                if (obfuscated != null && obfuscated) {
-                    partBuilder.decoration(net.kyori.adventure.text.format.TextDecoration.OBFUSCATED, true);
                 }
                 
                 builder.append(partBuilder.build());

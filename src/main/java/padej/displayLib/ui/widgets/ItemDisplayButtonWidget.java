@@ -93,7 +93,7 @@ public class ItemDisplayButtonWidget implements Widget {
         widget.glowColor = config.getGlowColor();
         
         if (config.hasTooltip()) {
-            widget.tooltip = Component.text(config.getTooltip()).color(config.getTooltipColor());
+            widget.tooltip = config.getTooltip();
             widget.tooltipDelay = config.getTooltipDelay();
         }
 
@@ -325,6 +325,11 @@ public class ItemDisplayButtonWidget implements Widget {
         } else {
             this.tooltip = null;
         }
+    }
+    
+    @Override
+    public void setTooltip(Component tooltip) {
+        this.tooltip = tooltip;
     }
     
     /**

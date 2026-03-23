@@ -134,8 +134,11 @@ public class WidgetDefinition {
     
     // ===== Общие свойства =====
     
-    /** Текст подсказки, отображаемой при наведении */
-    private String tooltip;
+    /** 
+     * Текст подсказки, отображаемой при наведении.
+     * Может быть строкой или массивом объектов с полями text, color, bold, italic и т.д.
+     */
+    private Object tooltip;
     
     /** RGB цвет текста подсказки [красный, зеленый, синий] (0-255) */
     private int[] tooltipColor = {134, 135, 136};
@@ -203,8 +206,8 @@ public class WidgetDefinition {
     public int[] getGlowColor() { return glowColor; }
     public void setGlowColor(int[] glowColor) { this.glowColor = glowColor; }
     
-    public String getTooltip() { return tooltip; }
-    public void setTooltip(String tooltip) { this.tooltip = tooltip; }
+    public Object getTooltip() { return tooltip; }
+    public void setTooltip(Object tooltip) { this.tooltip = tooltip; }
     
     public int[] getTooltipColor() { return tooltipColor; }
     public void setTooltipColor(int[] tooltipColor) { this.tooltipColor = tooltipColor; }

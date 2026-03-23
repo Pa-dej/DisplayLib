@@ -270,11 +270,16 @@ public class ScreenLoader {
                 }
             }
             
-            // Текстовые поля
+            // Текстовые поля (могут быть строкой или массивом)
             if (data.containsKey("text")) {
                 Object textObj = data.get("text");
                 if (textObj instanceof String) {
                     widget.setText((String) textObj);
+                } else {
+                    // Если text не строка, сохраняем как formattedText
+                    widget.setFormattedText(textObj);
+                    // Очищаем text, чтобы избежать конфликтов
+                    widget.setText(null);
                 }
             }
             
@@ -282,6 +287,11 @@ public class ScreenLoader {
                 Object hoveredTextObj = data.get("hoveredText");
                 if (hoveredTextObj instanceof String) {
                     widget.setHoveredText((String) hoveredTextObj);
+                } else {
+                    // Если hoveredText не строка, сохраняем как formattedHoveredText
+                    widget.setFormattedHoveredText(hoveredTextObj);
+                    // Очищаем hoveredText, чтобы избежать конфликтов
+                    widget.setHoveredText(null);
                 }
             }
             
@@ -388,12 +398,9 @@ public class ScreenLoader {
                 }
             }
             
-            // Tooltip
+            // Tooltip (может быть строкой или массивом)
             if (data.containsKey("tooltip")) {
-                Object tooltipObj = data.get("tooltip");
-                if (tooltipObj instanceof String) {
-                    widget.setTooltip((String) tooltipObj);
-                }
+                widget.setTooltip(data.get("tooltip"));
             }
             
             if (data.containsKey("tooltipColor")) {

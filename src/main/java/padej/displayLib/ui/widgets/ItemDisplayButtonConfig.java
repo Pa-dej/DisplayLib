@@ -1,5 +1,6 @@
 package padej.displayLib.ui.widgets;
 
+import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.TextColor;
 import org.bukkit.Color;
 import org.bukkit.Material;
@@ -12,7 +13,7 @@ import org.joml.Vector3f;
 public class ItemDisplayButtonConfig {
     private Material material;
     private Runnable onClick;
-    private String tooltip;
+    private Component tooltip;
     private TextColor tooltipColor;
     private int tooltipDelay = 30;
     private boolean hasTooltip;
@@ -43,6 +44,12 @@ public class ItemDisplayButtonConfig {
     }
 
     public ItemDisplayButtonConfig setTooltip(String tooltip) {
+        this.tooltip = Component.text(tooltip);
+        this.hasTooltip = true;
+        return this;
+    }
+    
+    public ItemDisplayButtonConfig setTooltip(Component tooltip) {
         this.tooltip = tooltip;
         this.hasTooltip = true;
         return this;
@@ -145,7 +152,7 @@ public class ItemDisplayButtonConfig {
         return onClick;
     }
 
-    public String getTooltip() {
+    public Component getTooltip() {
         return tooltip;
     }
 

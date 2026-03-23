@@ -92,7 +92,7 @@ public class TextDisplayButtonWidget implements Widget {
         widget.textAlignment = config.getTextAlignment();
         
         if (config.getTooltip() != null) {
-            widget.tooltip = config.getTooltip().color(config.getTooltipColor());
+            widget.tooltip = config.getTooltip();
             widget.tooltipDelay = config.getTooltipDelay();
         }
 
@@ -326,6 +326,11 @@ public class TextDisplayButtonWidget implements Widget {
         } else {
             this.tooltip = null;
         }
+    }
+    
+    @Override
+    public void setTooltip(Component tooltip) {
+        this.tooltip = tooltip;
     }
     
     // Методы для работы с текстом

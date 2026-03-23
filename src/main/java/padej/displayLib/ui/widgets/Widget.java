@@ -28,6 +28,11 @@ public interface Widget {
     String getTooltip();
     void setTooltip(String tooltip);
     
+    // Методы для форматированных tooltip
+    default void setTooltip(net.kyori.adventure.text.Component tooltip) {
+        setTooltip(tooltip != null ? tooltip.toString() : null);
+    }
+    
     // Метод для принудительного сброса hover состояния
     default void clearHover() {
         // По умолчанию ничего не делаем, реализация в конкретных классах
