@@ -510,6 +510,24 @@ public class ScreenInstance extends WidgetManager {
     /**
      * Конвертирует JSON массив форматированного текста в Adventure Component
      */
+    /**
+     * Парсит форматированный текст из YAML конфигурации в Adventure Component.
+     * 
+     * <p>Поддерживает два формата:</p>
+     * <ul>
+     * <li><b>Простая строка:</b> возвращает Component.text(строка)</li>
+     * <li><b>Массив объектов:</b> обрабатывает каждый объект с полями text и color</li>
+     * </ul>
+     * 
+     * <p>Поддерживаемые поля в объектах:</p>
+     * <ul>
+     * <li><b>text</b> - текст компонента (обязательное)</li>
+     * <li><b>color</b> - цвет текста (hex "#FF0000" или именованный "red", "blue" и т.д.)</li>
+     * </ul>
+     * 
+     * @param formattedText объект из YAML (String или List&lt;Map&gt;)
+     * @return Adventure Component для отображения
+     */
     @SuppressWarnings("unchecked")
     private Component parseFormattedText(Object formattedText) {
         if (formattedText == null) {

@@ -34,7 +34,7 @@
  * 
  * <h2>Быстрый старт:</h2>
  * 
- * <h3>1. Создание экрана (screens/example.yml):</h3>
+ * <h3>1. Создание экрана с форматированным текстом (screens/example.yml):</h3>
  * <pre>{@code
  * id: "example"
  * screen_type: PRIVATE
@@ -46,7 +46,14 @@
  * widgets:
  *   - id: "hello_button"
  *     type: TEXT_BUTTON
- *     text: "Привет!"
+ *     text:                              # Форматированный текст
+ *       - text: "Привет, "
+ *         color: "green"
+ *       - text: "мир!"
+ *         color: "#FFD700"
+ *     tooltip:                           # Форматированный tooltip
+ *       - text: "Нажми для приветствия"
+ *         color: "gray"
  *     position: [0, 0, 0]
  *     onClick:
  *       action: RUN_SCRIPT
@@ -74,7 +81,14 @@
  * /displaylib open example
  * }</pre>
  * 
+ * <h2>Форматирование текста:</h2>
+ * <p>Поддерживается два формата для текстовых полей:</p>
+ * <ul>
+ * <li><b>Простая строка:</b> "Простой текст"</li>
+ * <li><b>Массив объектов:</b> [{text: "Красный", color: "#FF0000"}, {text: "синий", color: "blue"}]</li>
+ * </ul>
+ * 
  * @author DisplayLib Team
- * @version 2.0.0
+ * @version 2.1.0
  */
 package padej.displayLib;

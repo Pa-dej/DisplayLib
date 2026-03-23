@@ -244,6 +244,21 @@ public class ScreenLoader {
     /**
      * Парсинг виджета из Map
      */
+    /**
+     * Парсит виджет из YAML данных.
+     * 
+     * <p>Поддерживает форматированный текст для полей text, hoveredText, formattedText, 
+     * formattedHoveredText и tooltip. Форматированный текст может быть:</p>
+     * <ul>
+     * <li><b>Простой строкой:</b> "Текст"</li>
+     * <li><b>Массивом объектов:</b> [{text: "Красный", color: "#FF0000"}, {text: "синий", color: "blue"}]</li>
+     * </ul>
+     * 
+     * <p>Если поле text содержит массив, оно автоматически сохраняется как formattedText.</p>
+     * 
+     * @param data YAML данные виджета
+     * @return объект WidgetDefinition или null при ошибке
+     */
     private WidgetDefinition parseWidget(Map<String, Object> data) {
         try {
             WidgetDefinition widget = new WidgetDefinition();

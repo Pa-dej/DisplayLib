@@ -18,7 +18,7 @@ import java.util.Map;
  * <pre>{@code
  * - id: "my_button"                      # Уникальный ID виджета
  *   type: TEXT_BUTTON                    # Тип виджета
- *   text: "Нажми меня"                   # Обычный текст
+ *   text: "Нажми меня"                   # Простой текст
  *   hoveredText: "Кликни!"               # Текст при наведении
  *   position: [0.0, 0.5, 0.0]           # Позиция [x, y, z]
  *   scale: [0.2, 0.2, 0.2]              # Размер [x, y, z]
@@ -28,8 +28,7 @@ import java.util.Map;
  *   hoveredBackgroundColor: [80, 80, 80] # RGB цвет при наведении
  *   hoveredBackgroundAlpha: 200          # Прозрачность при наведении
  *   alignment: CENTERED                  # Выравнивание: LEFT, CENTERED, RIGHT
- *   tooltip: "Подсказка"                 # Текст подсказки
- *   tooltipColor: [255, 255, 0]          # RGB цвет подсказки
+ *   tooltip: "Подсказка"                 # Простая подсказка
  *   tooltipDelay: 10                     # Задержка показа в тиках
  *   onClick:                             # Действие при клике
  *     action: RUN_SCRIPT                 # Тип действия
@@ -51,17 +50,43 @@ import java.util.Map;
  *     target: "weapon_menu"              # ID целевого экрана
  * }</pre>
  * 
- * <h2>Форматированный текст:</h2>
- * <p>Для TEXT_BUTTON можно использовать форматированный текст с цветами и стилями:</p>
+ * <h2>Форматированный текст и tooltip:</h2>
+ * <p>Поддерживается два формата для полей text, hoveredText, formattedText, formattedHoveredText и tooltip:</p>
+ * 
+ * <h3>1. Простая строка:</h3>
  * <pre>{@code
- * formattedText:
+ * text: "Простой текст"
+ * tooltip: "Простая подсказка"
+ * }</pre>
+ * 
+ * <h3>2. Массив объектов с цветами:</h3>
+ * <pre>{@code
+ * text:
  *   - text: "Красный "
  *     color: "#FF0000"
- *     bold: true
- *   - text: "и синий"
+ *   - text: "синий"
  *     color: "blue"
- *     italic: true
+ * 
+ * tooltip:
+ *   - text: "Урон: "
+ *     color: "gray"
+ *   - text: "25"
+ *     color: "red"
  * }</pre>
+ * 
+ * <h3>Поддерживаемые поля в объектах:</h3>
+ * <ul>
+ * <li><b>text</b> - текст компонента (обязательное)</li>
+ * <li><b>color</b> - цвет текста (hex "#FF0000" или именованный "red", "blue", "green" и т.д.)</li>
+ * </ul>
+ * 
+ * <h3>Примеры цветов:</h3>
+ * <ul>
+ * <li>Hex формат: "#FF0000", "#00FF00", "#0000FF"</li>
+ * <li>Именованные: "red", "blue", "green", "yellow", "gold", "gray", "white", "black"</li>
+ * </ul>
+ * 
+ * <p><b>Примечание:</b> Поле tooltipColor больше не используется. Цвета задаются в поле color каждого объекта.</p>
  * 
  * @author DisplayLib
  * @version 1.0
@@ -88,21 +113,51 @@ public class WidgetDefinition {
     
     // ===== Поля для TEXT_BUTTON =====
     
-    /** Основной текст виджета (для TEXT_BUTTON) */
+    /** 
+     * Основной текст виджета (для TEXT_BUTTON).
+     * 
+     * <p>Поддерживает два формата:</p>
+     * <ul>
+     * <li><b>Простая строка:</b> "Простой текст"</li>
+     * <li><b>Массив объектов:</b> [{text: "Красный ", color: "#FF0000"}, {text: "синий", color: "blue"}]</li>
+     * </ul>
+     */
     private String text;
     
-    /** Текст при наведении курсора (для TEXT_BUTTON) */
+    /** 
+     * Текст при наведении курсора (для TEXT_BUTTON).
+     * 
+     * <p>Поддерживает два формата:</p>
+     * <ul>
+     * <li><b>Простая строка:</b> "Текст при наведении"</li>
+     * <li><b>Массив объектов:</b> [{text: "Наведен!", color: "yellow"}]</li>
+     * </ul>
+     */
     private String hoveredText;
     
     /** 
-     * Форматированный текст с поддержкой цветов и стилей (для TEXT_BUTTON).
-     * Может быть строкой или массивом объектов с полями text, color, bold, italic и т.д.
+     * Форматированный текст с поддержкой цветов (для TEXT_BUTTON).
+     * 
+     * <p>Поддерживает два формата:</p>
+     * <ul>
+     * <li><b>Простая строка:</b> "Простой текст"</li>
+     * <li><b>Массив объектов:</b> [{text: "Красный ", color: "#FF0000"}, {text: "синий", color: "blue"}]</li>
+     * </ul>
+     * 
+     * <p>Если указан formattedText, он используется вместо поля text.</p>
      */
     private Object formattedText;
     
     /** 
      * Форматированный текст при наведении (для TEXT_BUTTON).
-     * Аналогично formattedText, но отображается при hover.
+     * 
+     * <p>Поддерживает два формата:</p>
+     * <ul>
+     * <li><b>Простая строка:</b> "Текст при наведении"</li>
+     * <li><b>Массив объектов:</b> [{text: "Наведен!", color: "yellow"}]</li>
+     * </ul>
+     * 
+     * <p>Если указан formattedHoveredText, он используется вместо поля hoveredText.</p>
      */
     private Object formattedHoveredText;
     
@@ -136,7 +191,18 @@ public class WidgetDefinition {
     
     /** 
      * Текст подсказки, отображаемой при наведении.
-     * Может быть строкой или массивом объектов с полями text, color, bold, italic и т.д.
+     * 
+     * <p>Поддерживает два формата:</p>
+     * <ul>
+     * <li><b>Простая строка:</b> "Простая подсказка"</li>
+     * <li><b>Массив объектов:</b> [{text: "Урон: ", color: "gray"}, {text: "25", color: "red"}]</li>
+     * </ul>
+     * 
+     * <p>Поддерживаемые поля в объектах:</p>
+     * <ul>
+     * <li><b>text</b> - текст компонента (обязательное)</li>
+     * <li><b>color</b> - цвет текста (hex "#FF0000" или именованный "red", "blue" и т.д.)</li>
+     * </ul>
      */
     private Object tooltip;
     

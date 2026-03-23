@@ -23,11 +23,12 @@
  * <li>Позиция, размер, область клика</li>
  * <li>Визуальные свойства (текст, цвета, материалы)</li>
  * <li>Поведение при взаимодействии</li>
+ * <li>Поддержка форматированного текста с цветами</li>
  * </ul>
  * 
  * <h3>{@link padej.displayLib.config.ScreenLoader}</h3>
  * <p>Загружает YAML файлы экранов из папки screens/ и преобразует их
- * в объекты ScreenDefinition.</p>
+ * в объекты ScreenDefinition. Поддерживает форматированный текст.</p>
  * 
  * <h3>{@link padej.displayLib.config.ScreenRegistry}</h3>
  * <p>Центральный реестр всех загруженных экранов с возможностью
@@ -53,18 +54,34 @@
  * scripts:
  *   file: "my_screen.lua"            # Путь к файлу
  * 
- * # Виджеты
+ * # Виджеты с форматированным текстом
  * widgets:
  *   - id: "button1"
  *     type: TEXT_BUTTON
- *     text: "Кнопка"
+ *     text:                          # Форматированный текст
+ *       - text: "Красная "
+ *         color: "#FF0000"
+ *       - text: "кнопка"
+ *         color: "blue"
+ *     tooltip:                       # Форматированный tooltip
+ *       - text: "Урон: "
+ *         color: "gray"
+ *       - text: "25"
+ *         color: "red"
  *     position: [0.0, 0.5, 0.0]
  *     onClick:
  *       action: RUN_SCRIPT
  *       function: "onButtonClick"
  * }</pre>
  * 
+ * <h2>Форматирование текста:</h2>
+ * <p>Поддерживается два формата для полей text, hoveredText, formattedText, formattedHoveredText и tooltip:</p>
+ * <ul>
+ * <li><b>Простая строка:</b> "Простой текст"</li>
+ * <li><b>Массив объектов:</b> [{text: "Красный", color: "#FF0000"}, {text: "синий", color: "blue"}]</li>
+ * </ul>
+ * 
  * @author DisplayLib Team
- * @version 2.0.0
+ * @version 2.1.0
  */
 package padej.displayLib.config;
