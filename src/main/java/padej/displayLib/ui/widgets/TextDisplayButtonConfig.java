@@ -34,6 +34,7 @@ public class TextDisplayButtonConfig {
     private Vector3f translation;
     private Transformation hoveredTransformation;
     private int hoveredTransformationDuration;
+    private padej.displayLib.config.HoverAnimation hoverAnimation;
     private boolean privateVisible = false;
 
     public TextDisplayButtonConfig(Component text, Component hoveredText, Runnable onClick) {
@@ -275,5 +276,14 @@ public class TextDisplayButtonConfig {
 
     public int getMaxLineWidth() {
         return maxLineWidth;
+    }
+    
+    public TextDisplayButtonConfig setHoverAnimation(padej.displayLib.config.HoverAnimation hoverAnimation) {
+        this.hoverAnimation = hoverAnimation;
+        return this;
+    }
+    
+    public padej.displayLib.config.HoverAnimation getHoverAnimation() {
+        return hoverAnimation;
     }
 }

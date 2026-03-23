@@ -1,0 +1,299 @@
+# Продвинутая демонстрация hover анимаций
+# Показывает сложные настройки: задержки, зацикливание, комбинации
+
+id: "hover_advanced_demo"
+screen_type: PRIVATE
+tick_rate: 4
+interaction_radius: 10.0
+
+background:
+  color: [20, 20, 40]
+  alpha: 230
+  scale: [16.0, 10.0, 1.0]
+  text: "▓"
+
+scripts:
+  file: "hover_advanced_demo.lua"
+
+widgets:
+  # Заголовок
+  - id: "title"
+    type: TEXT_BUTTON
+    text: "🎪 Продвинутые Hover Анимации"
+    position: [0.0, 4.0, 0.0]
+    scale: [0.35, 0.35, 0.35]
+    tolerance: [0.0, 0.0]
+    backgroundColor: [0, 0, 0]
+    backgroundAlpha: 0
+
+  # === АНИМАЦИИ С ЗАДЕРЖКОЙ ===
+  
+  - id: "delay_title"
+    type: TEXT_BUTTON
+    text: "Анимации с задержкой:"
+    position: [0.0, 3.0, 0.0]
+    scale: [0.2, 0.2, 0.2]
+    tolerance: [0.0, 0.0]
+    backgroundColor: [0, 0, 0]
+    backgroundAlpha: 0
+
+  # Без задержки
+  - id: "no_delay"
+    type: TEXT_BUTTON
+    text: "Мгновенно"
+    position: [-4.0, 2.2, 0.0]
+    scale: [0.15, 0.15, 0.15]
+    backgroundColor: [80, 80, 120]
+    backgroundAlpha: 180
+    tooltip: "Без задержки"
+    hoverAnimation:
+      type: SCALE
+      duration: 8
+      delay: 0
+      scale: [1.3, 1.3, 1.0]
+      easing: EASE_OUT
+
+  # Малая задержка
+  - id: "small_delay"
+    type: TEXT_BUTTON
+    text: "0.25 сек"
+    position: [-1.3, 2.2, 0.0]
+    scale: [0.15, 0.15, 0.15]
+    backgroundColor: [120, 80, 80]
+    backgroundAlpha: 180
+    tooltip: "Задержка 5 тиков (0.25 сек)"
+    hoverAnimation:
+      type: SCALE
+      duration: 8
+      delay: 5
+      scale: [1.3, 1.3, 1.0]
+      easing: EASE_OUT
+
+  # Средняя задержка
+  - id: "medium_delay"
+    type: TEXT_BUTTON
+    text: "0.5 сек"
+    position: [1.3, 2.2, 0.0]
+    scale: [0.15, 0.15, 0.15]
+    backgroundColor: [80, 120, 80]
+    backgroundAlpha: 180
+    tooltip: "Задержка 10 тиков (0.5 сек)"
+    hoverAnimation:
+      type: SCALE
+      duration: 8
+      delay: 10
+      scale: [1.3, 1.3, 1.0]
+      easing: EASE_OUT
+
+  # Большая задержка
+  - id: "large_delay"
+    type: TEXT_BUTTON
+    text: "1.0 сек"
+    position: [4.0, 2.2, 0.0]
+    scale: [0.15, 0.15, 0.15]
+    backgroundColor: [120, 120, 80]
+    backgroundAlpha: 180
+    tooltip: "Задержка 20 тиков (1.0 сек)"
+    hoverAnimation:
+      type: SCALE
+      duration: 8
+      delay: 20
+      scale: [1.3, 1.3, 1.0]
+      easing: EASE_OUT
+
+  # === ЗАЦИКЛЕННЫЕ АНИМАЦИИ ===
+
+  - id: "loop_title"
+    type: TEXT_BUTTON
+    text: "Зацикленные анимации:"
+    position: [0.0, 1.0, 0.0]
+    scale: [0.2, 0.2, 0.2]
+    tolerance: [0.0, 0.0]
+    backgroundColor: [0, 0, 0]
+    backgroundAlpha: 0
+
+  # Бесконечное вращение
+  - id: "infinite_spin"
+    type: ITEM_BUTTON
+    material: NETHER_STAR
+    position: [-3.0, 0.0, 0.0]
+    scale: [0.25, 0.25, 0.25]
+    glowOnHover: true
+    glowColor: [255, 255, 0]
+    tooltip: "Бесконечное вращение"
+    hoverAnimation:
+      type: ROTATE
+      duration: 30
+      rotation: [0, 360, 0]
+      axis: [0, 1, 0]
+      easing: LINEAR
+      loop: true
+      loopCount: -1
+
+  # 3 цикла пульсации
+  - id: "triple_pulse"
+    type: TEXT_BUTTON
+    text: "3x Pulse"
+    position: [0.0, 0.0, 0.0]
+    scale: [0.18, 0.18, 0.18]
+    backgroundColor: [100, 50, 150]
+    backgroundAlpha: 180
+    tooltip: "3 цикла пульсации"
+    hoverAnimation:
+      type: SCALE
+      duration: 10
+      scale: [1.2, 1.2, 1.0]
+      easing: EASE_IN_OUT
+      loop: true
+      loopCount: 3
+
+  # Левитация с 5 циклами
+  - id: "levitation"
+    type: ITEM_BUTTON
+    material: FEATHER
+    position: [3.0, 0.0, 0.0]
+    scale: [0.25, 0.25, 0.25]
+    tooltip: "5 циклов левитации"
+    hoverAnimation:
+      type: TRANSLATE
+      duration: 20
+      offset: [0.0, 0.04, 0.0]
+      easing: EASE_IN_OUT
+      loop: true
+      loopCount: 5
+
+  # === СЛОЖНЫЕ КОМБИНАЦИИ ===
+
+  - id: "complex_title"
+    type: TEXT_BUTTON
+    text: "Сложные комбинации:"
+    position: [0.0, -1.2, 0.0]
+    scale: [0.2, 0.2, 0.2]
+    tolerance: [0.0, 0.0]
+    backgroundColor: [0, 0, 0]
+    backgroundAlpha: 0
+
+  # Комбинация с задержкой
+  - id: "delayed_combo"
+    type: TEXT_BUTTON
+    text: "Delayed Combo"
+    position: [-3.0, -2.0, 0.0]
+    scale: [0.16, 0.16, 0.16]
+    backgroundColor: [150, 50, 100]
+    backgroundAlpha: 180
+    tooltip: "Комбинация с задержкой 15 тиков"
+    hoverAnimation:
+      type: COMBINED
+      duration: 15
+      delay: 15
+      easing: BOUNCE
+      effects:
+        - type: SCALE
+          scale: [1.3, 1.1, 1.0]
+        - type: TRANSLATE
+          offset: [0.02, 0.03, 0.0]
+        - type: ROTATE
+          rotation: [0, 20, 0]
+          axis: [0, 1, 0]
+
+  # Быстрая комбинация
+  - id: "fast_combo"
+    type: TEXT_BUTTON
+    text: "Fast Combo"
+    position: [0.0, -2.0, 0.0]
+    scale: [0.16, 0.16, 0.16]
+    backgroundColor: [50, 150, 100]
+    backgroundAlpha: 180
+    tooltip: "Быстрая комбинация (3 тика)"
+    hoverAnimation:
+      type: COMBINED
+      duration: 3
+      easing: EASE_IN
+      effects:
+        - type: SCALE
+          scale: [1.15, 1.15, 1.0]
+        - type: TRANSLATE
+          offset: [0.0, 0.01, 0.0]
+
+  # Медленная комбинация
+  - id: "slow_combo"
+    type: TEXT_BUTTON
+    text: "Slow Combo"
+    position: [3.0, -2.0, 0.0]
+    scale: [0.16, 0.16, 0.16]
+    backgroundColor: [100, 150, 50]
+    backgroundAlpha: 180
+    tooltip: "Медленная комбинация (40 тиков)"
+    hoverAnimation:
+      type: COMBINED
+      duration: 40
+      easing: ELASTIC
+      effects:
+        - type: SCALE
+          scale: [1.4, 1.2, 1.0]
+        - type: TRANSLATE
+          offset: [0.0, 0.05, 0.0]
+        - type: ROTATE
+          rotation: [0, 45, 0]
+          axis: [0, 1, 0]
+
+  # === АНИМАЦИЯ БЕЗ ВОЗВРАТА ===
+
+  - id: "no_reverse_title"
+    type: TEXT_BUTTON
+    text: "Без возврата к исходному состоянию:"
+    position: [0.0, -3.2, 0.0]
+    scale: [0.18, 0.18, 0.18]
+    tolerance: [0.0, 0.0]
+    backgroundColor: [0, 0, 0]
+    backgroundAlpha: 0
+
+  # Остается увеличенным
+  - id: "no_reverse"
+    type: TEXT_BUTTON
+    text: "Остается большим"
+    position: [0.0, -4.0, 0.0]
+    scale: [0.16, 0.16, 0.16]
+    backgroundColor: [120, 120, 80]
+    backgroundAlpha: 180
+    tooltip: "Не возвращается к исходному размеру"
+    hoverAnimation:
+      type: SCALE
+      duration: 8
+      scale: [1.5, 1.5, 1.0]
+      easing: EASE_OUT
+      reverseOnExit: false
+
+  # Кнопка сброса
+  - id: "reset_btn"
+    type: TEXT_BUTTON
+    text: "🔄 Сбросить"
+    position: [-3.0, -4.8, 0.0]
+    scale: [0.15, 0.15, 0.15]
+    backgroundColor: [100, 100, 100]
+    backgroundAlpha: 180
+    hoverAnimation:
+      type: PRESET
+      preset: BOUNCE
+      duration: 5
+      intensity: 1.1
+    onClick:
+      action: RUN_SCRIPT
+      function: "resetDemo"
+
+  # Кнопка назад
+  - id: "back_btn"
+    type: TEXT_BUTTON
+    text: "⬅ Назад"
+    position: [3.0, -4.8, 0.0]
+    scale: [0.15, 0.15, 0.15]
+    backgroundColor: [100, 100, 100]
+    backgroundAlpha: 180
+    hoverAnimation:
+      type: PRESET
+      preset: SCALE
+      duration: 4
+      intensity: 1.1
+    onClick:
+      action: SWITCH_SCREEN
+      target: "main_menu"

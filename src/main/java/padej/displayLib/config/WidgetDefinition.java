@@ -215,6 +215,9 @@ public class WidgetDefinition {
     /** Действие при клике на виджет */
     private ClickAction onClick;
     
+    /** Анимация при наведении курсора */
+    private HoverAnimation hoverAnimation;
+    
     public WidgetDefinition() {}
     
     // Getters and setters
@@ -283,6 +286,9 @@ public class WidgetDefinition {
     
     public ClickAction getOnClick() { return onClick; }
     public void setOnClick(ClickAction onClick) { this.onClick = onClick; }
+    
+    public HoverAnimation getHoverAnimation() { return hoverAnimation; }
+    public void setHoverAnimation(HoverAnimation hoverAnimation) { this.hoverAnimation = hoverAnimation; }
     
     /**
      * Типы виджетов определяют способ отображения и взаимодействия.

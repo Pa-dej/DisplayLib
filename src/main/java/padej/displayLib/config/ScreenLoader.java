@@ -326,6 +326,26 @@ public class ScreenLoader {
                 }
             }
             
+            // Glow settings
+            if (data.containsKey("glowOnHover")) {
+                Object glowObj = data.get("glowOnHover");
+                if (glowObj instanceof Boolean) {
+                    widget.setGlowOnHover((Boolean) glowObj);
+                }
+            }
+            
+            if (data.containsKey("glowColor")) {
+                Object colorObj = data.get("glowColor");
+                if (colorObj instanceof java.util.List) {
+                    java.util.List<Number> colorList = (java.util.List<Number>) colorObj;
+                    int[] color = new int[3];
+                    for (int i = 0; i < Math.min(3, colorList.size()); i++) {
+                        color[i] = colorList.get(i).intValue();
+                    }
+                    widget.setGlowColor(color);
+                }
+            }
+            
             // Позиция
             if (data.containsKey("position")) {
                 Object posObj = data.get("position");
@@ -362,6 +382,19 @@ public class ScreenLoader {
                         tolerance[i] = tolList.get(i).floatValue();
                     }
                     widget.setTolerance(tolerance);
+                }
+            }
+            
+            // Translation
+            if (data.containsKey("translation")) {
+                Object translationObj = data.get("translation");
+                if (translationObj instanceof java.util.List) {
+                    java.util.List<Number> translationList = (java.util.List<Number>) translationObj;
+                    float[] translation = new float[3];
+                    for (int i = 0; i < Math.min(3, translationList.size()); i++) {
+                        translation[i] = translationList.get(i).floatValue();
+                    }
+                    widget.setTranslation(translation);
                 }
             }
             
@@ -472,10 +505,196 @@ public class ScreenLoader {
                 }
             }
             
+            // hoverAnimation
+            if (data.containsKey("hoverAnimation")) {
+                Object hoverAnimObj = data.get("hoverAnimation");
+                if (hoverAnimObj instanceof Map) {
+                    Map<String, Object> hoverAnimData = (Map<String, Object>) hoverAnimObj;
+                    padej.displayLib.config.HoverAnimation hoverAnimation = parseHoverAnimation(hoverAnimData);
+                    if (hoverAnimation != null) {
+                        widget.setHoverAnimation(hoverAnimation);
+                    }
+                }
+            }
+            
             return widget;
             
         } catch (Exception e) {
             plugin.getLogger().log(Level.WARNING, "Error parsing widget", e);
+            return null;
+        }
+    }
+    
+    /**
+     * Парсит конфигурацию hover анимации из YAML данных
+     */
+    private padej.displayLib.config.HoverAnimation parseHoverAnimation(Map<String, Object> data) {
+        try {
+            padej.displayLib.config.HoverAnimation animation = new padej.displayLib.config.HoverAnimation();
+            
+            // Тип анимации
+            if (data.containsKey("type")) {
+                Object typeObj = data.get("type");
+                if (typeObj instanceof String) {
+                    String typeStr = (String) typeObj;
+                    try {
+                        padej.displayLib.config.HoverAnimation.AnimationType type = 
+                            padej.displayLib.config.HoverAnimation.AnimationType.valueOf(typeStr);
+                        animation.setType(type);
+                    } catch (IllegalArgumentException e) {
+                        plugin.getLogger().warning("Invalid hover animation type: " + typeStr);
+                        return null;
+                    }
+                }
+            }
+            
+            // Длительность
+            if (data.containsKey("duration")) {
+                Object durationObj = data.get("duration");
+                if (durationObj instanceof Number) {
+                    animation.setDuration(((Number) durationObj).intValue());
+                }
+            }
+            
+            // Easing
+            if (data.containsKey("easing")) {
+                Object easingObj = data.get("easing");
+                if (easingObj instanceof String) {
+                    String easingStr = (String) easingObj;
+                    try {
+                        padej.displayLib.config.HoverAnimation.EasingType easing = 
+                            padej.displayLib.config.HoverAnimation.EasingType.valueOf(easingStr);
+                        animation.setEasing(easing);
+                    } catch (IllegalArgumentException e) {
+                        plugin.getLogger().warning("Invalid easing type: " + easingStr);
+                    }
+                }
+            }
+            
+            // Reverse on exit
+            if (data.containsKey("reverseOnExit")) {
+                Object reverseObj = data.get("reverseOnExit");
+                if (reverseObj instanceof Boolean) {
+                    animation.setReverseOnExit((Boolean) reverseObj);
+                }
+            }
+            
+            // Delay
+            if (data.containsKey("delay")) {
+                Object delayObj = data.get("delay");
+                if (delayObj instanceof Number) {
+                    animation.setDelay(((Number) delayObj).intValue());
+                }
+            }
+            
+            // Loop
+            if (data.containsKey("loop")) {
+                Object loopObj = data.get("loop");
+                if (loopObj instanceof Boolean) {
+                    animation.setLoop((Boolean) loopObj);
+                }
+            }
+            
+            // Loop count
+            if (data.containsKey("loopCount")) {
+                Object loopCountObj = data.get("loopCount");
+                if (loopCountObj instanceof Number) {
+                    animation.setLoopCount(((Number) loopCountObj).intValue());
+                }
+            }
+            
+            // Preset
+            if (data.containsKey("preset")) {
+                Object presetObj = data.get("preset");
+                if (presetObj instanceof String) {
+                    String presetStr = (String) presetObj;
+                    try {
+                        padej.displayLib.config.HoverAnimation.AnimationPreset preset = 
+                            padej.displayLib.config.HoverAnimation.AnimationPreset.valueOf(presetStr);
+                        animation.setPreset(preset);
+                    } catch (IllegalArgumentException e) {
+                        plugin.getLogger().warning("Invalid animation preset: " + presetStr);
+                    }
+                }
+            }
+            
+            // Intensity
+            if (data.containsKey("intensity")) {
+                Object intensityObj = data.get("intensity");
+                if (intensityObj instanceof Number) {
+                    animation.setIntensity(((Number) intensityObj).floatValue());
+                }
+            }
+            
+            // Scale
+            if (data.containsKey("scale")) {
+                Object scaleObj = data.get("scale");
+                if (scaleObj instanceof java.util.List) {
+                    java.util.List<Number> scaleList = (java.util.List<Number>) scaleObj;
+                    float[] scale = new float[3];
+                    for (int i = 0; i < Math.min(3, scaleList.size()); i++) {
+                        scale[i] = scaleList.get(i).floatValue();
+                    }
+                    animation.setScale(scale);
+                }
+            }
+            
+            // Offset
+            if (data.containsKey("offset")) {
+                Object offsetObj = data.get("offset");
+                if (offsetObj instanceof java.util.List) {
+                    java.util.List<Number> offsetList = (java.util.List<Number>) offsetObj;
+                    float[] offset = new float[3];
+                    for (int i = 0; i < Math.min(3, offsetList.size()); i++) {
+                        offset[i] = offsetList.get(i).floatValue();
+                    }
+                    animation.setOffset(offset);
+                }
+            }
+            
+            // Rotation
+            if (data.containsKey("rotation")) {
+                Object rotationObj = data.get("rotation");
+                if (rotationObj instanceof java.util.List) {
+                    java.util.List<Number> rotationList = (java.util.List<Number>) rotationObj;
+                    float[] rotation = new float[3];
+                    for (int i = 0; i < Math.min(3, rotationList.size()); i++) {
+                        rotation[i] = rotationList.get(i).floatValue();
+                    }
+                    animation.setRotation(rotation);
+                }
+            }
+            
+            // Axis
+            if (data.containsKey("axis")) {
+                Object axisObj = data.get("axis");
+                if (axisObj instanceof java.util.List) {
+                    java.util.List<Number> axisList = (java.util.List<Number>) axisObj;
+                    float[] axis = new float[3];
+                    for (int i = 0; i < Math.min(3, axisList.size()); i++) {
+                        axis[i] = axisList.get(i).floatValue();
+                    }
+                    animation.setAxis(axis);
+                }
+            }
+            
+            // Effects (для COMBINED типа)
+            if (data.containsKey("effects")) {
+                Object effectsObj = data.get("effects");
+                if (effectsObj instanceof java.util.List) {
+                    java.util.List<Map<String, Object>> effectsList = (java.util.List<Map<String, Object>>) effectsObj;
+                    padej.displayLib.config.HoverAnimation[] effects = new padej.displayLib.config.HoverAnimation[effectsList.size()];
+                    for (int i = 0; i < effectsList.size(); i++) {
+                        effects[i] = parseHoverAnimation(effectsList.get(i));
+                    }
+                    animation.setEffects(effects);
+                }
+            }
+            
+            return animation;
+            
+        } catch (Exception e) {
+            plugin.getLogger().log(Level.WARNING, "Error parsing hover animation", e);
             return null;
         }
     }

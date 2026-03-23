@@ -224,6 +224,11 @@ public class ScreenInstance extends WidgetManager {
             cfg.setTooltip(tooltipComponent);
             cfg.setTooltipDelay(def.getTooltipDelay());
         }
+        
+        // Добавляем поддержку новой системы анимации hover
+        if (def.getHoverAnimation() != null) {
+            cfg.setHoverAnimation(def.getHoverAnimation());
+        }
 
         TextDisplayButtonWidget widget = TextDisplayButtonWidget.create(loc, viewer, cfg);
         
@@ -284,6 +289,11 @@ public class ScreenInstance extends WidgetManager {
             Component tooltipComponent = parseFormattedText(def.getTooltip());
             cfg.setTooltip(tooltipComponent)
                     .setTooltipDelay(def.getTooltipDelay());
+        }
+        
+        // Добавляем поддержку новой системы анимации hover
+        if (def.getHoverAnimation() != null) {
+            cfg.setHoverAnimation(def.getHoverAnimation());
         }
 
         ItemDisplayButtonWidget widget = ItemDisplayButtonWidget.create(itemLoc, viewer, cfg);

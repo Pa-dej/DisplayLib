@@ -47,6 +47,7 @@ public class TextDisplayButtonWidget implements Widget {
     private Vector3f translation;
     private Transformation hoveredTransformation;
     private int hoveredTransformationDuration;
+    private padej.displayLib.config.HoverAnimation hoverAnimation;
     private org.bukkit.entity.TextDisplay.TextAlignment textAlignment = org.bukkit.entity.TextDisplay.TextAlignment.CENTER;
     
     // Сохранение ориентации для восстановления после пересоздания
@@ -89,6 +90,7 @@ public class TextDisplayButtonWidget implements Widget {
         widget.translation = config.getTranslation();
         widget.hoveredTransformation = config.getHoveredTransformation();
         widget.hoveredTransformationDuration = config.getHoveredTransformationDuration();
+        widget.hoverAnimation = config.getHoverAnimation();
         widget.textAlignment = config.getTextAlignment();
         
         if (config.getTooltip() != null) {
@@ -221,14 +223,37 @@ public class TextDisplayButtonWidget implements Widget {
             display.text(hoveredText);
             display.setBackgroundColor(Color.fromARGB(hoveredBackgroundAlpha, hoveredBackgroundColor.getRed(), hoveredBackgroundColor.getGreen(), hoveredBackgroundColor.getBlue()));
             
-            if (hoveredTransformation != null) {
+            // Приоритет: новая система анимации, затем старая hoveredTransformation
+            if (hoverAnimation != null) {
+                // Используем новую систему анимации с правильной easing интерполяцией
+                try {
+                    hoverAnimation.applyHoverAnimation(display, translation, new Vector3f(scaleX, scaleY, scaleZ), true);
+                    // Debug log
+                    padej.displayLib.DisplayLib.getInstance().getLogger().info("Applied hover animation: " + hoverAnimation.getType() + ", duration: " + hoverAnimation.getDuration());
+                } catch (Exception e) {
+                    padej.displayLib.DisplayLib.getInstance().getLogger().warning("Error applying hover animation: " + e.getMessage());
+                    e.printStackTrace();
+                }
+            } else if (hoveredTransformation != null) {
+                // Fallback на старую систему
                 Animation.applyTransformationWithInterpolation(display, hoveredTransformation, hoveredTransformationDuration);
             }
         } else {
             display.text(text);
             display.setBackgroundColor(Color.fromARGB(backgroundAlpha, backgroundColor.getRed(), backgroundColor.getGreen(), backgroundColor.getBlue()));
             
-            if (hoveredTransformation != null) {
+            // Возвращаем к исходному состоянию
+            if (hoverAnimation != null && hoverAnimation.isReverseOnExit()) {
+                // Используем новую систему для возврата
+                try {
+                    hoverAnimation.applyHoverAnimation(display, translation, new Vector3f(scaleX, scaleY, scaleZ), false);
+                    // Debug log
+                    padej.displayLib.DisplayLib.getInstance().getLogger().info("Reversed hover animation");
+                } catch (Exception e) {
+                    padej.displayLib.DisplayLib.getInstance().getLogger().warning("Error reversing hover animation: " + e.getMessage());
+                }
+            } else if (hoveredTransformation != null) {
+                // Fallback на старую систему
                 Animation.applyTransformationWithInterpolation(display, new Transformation(
                         translation,
                         new AxisAngle4f(),

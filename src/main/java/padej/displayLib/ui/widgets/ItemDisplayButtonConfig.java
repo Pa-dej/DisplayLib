@@ -33,6 +33,7 @@ public class ItemDisplayButtonConfig {
     private Vector3f translation;
     private Transformation hoveredTransformation;
     private int hoveredTransformationDuration;
+    private padej.displayLib.config.HoverAnimation hoverAnimation;
     private boolean glowOnHover = true;
     private boolean privateVisible = false;
 
@@ -259,5 +260,14 @@ public class ItemDisplayButtonConfig {
 
     public boolean isPrivateVisible() {
         return privateVisible;
+    }
+    
+    public ItemDisplayButtonConfig setHoverAnimation(padej.displayLib.config.HoverAnimation hoverAnimation) {
+        this.hoverAnimation = hoverAnimation;
+        return this;
+    }
+    
+    public padej.displayLib.config.HoverAnimation getHoverAnimation() {
+        return hoverAnimation;
     }
 }

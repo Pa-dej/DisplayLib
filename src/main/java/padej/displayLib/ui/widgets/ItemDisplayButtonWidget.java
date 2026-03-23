@@ -49,6 +49,7 @@ public class ItemDisplayButtonWidget implements Widget {
     private Vector3f translation;
     private Transformation hoveredTransformation;
     private int hoveredTransformationDuration;
+    private padej.displayLib.config.HoverAnimation hoverAnimation;
     private boolean glowOnHover = true;
     private org.bukkit.Color glowColor;
     
@@ -89,6 +90,7 @@ public class ItemDisplayButtonWidget implements Widget {
         widget.translation = config.getTranslation();
         widget.hoveredTransformation = config.getHoveredTransformation();
         widget.hoveredTransformationDuration = config.getHoveredTransformationDuration();
+        widget.hoverAnimation = config.getHoverAnimation();
         widget.glowOnHover = config.isGlowOnHover();
         widget.glowColor = config.getGlowColor();
         
@@ -225,7 +227,19 @@ public class ItemDisplayButtonWidget implements Widget {
             display.setGlowing(isHovered);
         }
 
-        if (hoveredTransformation != null) {
+        // Приоритет: новая система анимации, затем старая hoveredTransformation
+        if (hoverAnimation != null) {
+            // Используем новую систему анимации с правильной easing интерполяцией
+            try {
+                hoverAnimation.applyHoverAnimation(display, translation, new Vector3f(scaleX, scaleY, scaleZ), isHovered);
+                // Debug log
+                padej.displayLib.DisplayLib.getInstance().getLogger().info("Applied item hover animation: " + hoverAnimation.getType());
+            } catch (Exception e) {
+                padej.displayLib.DisplayLib.getInstance().getLogger().warning("Error applying item hover animation: " + e.getMessage());
+                e.printStackTrace();
+            }
+        } else if (hoveredTransformation != null) {
+            // Fallback на старую систему
             if (isHovered) {
                 Animation.applyTransformationWithInterpolation(display, hoveredTransformation, hoveredTransformationDuration);
             } else {

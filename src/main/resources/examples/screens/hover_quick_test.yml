@@ -1,0 +1,128 @@
+# Быстрый тест hover анимаций
+# Простой экран для тестирования основных эффектов
+# 
+# НОВИНКА: Непрерывные анимации!
+# type: PULSE_CONTINUOUS - пульсирует все время пока наведен курсор
+# duration: время одного цикла пульсации (в тиках)
+# intensity: максимальный размер (1.0 = исходный, 1.5 = в 1.5 раза больше)
+
+id: "hover_quick_test"
+screen_type: PRIVATE
+tick_rate: 4
+
+background:
+  color: [30, 30, 50]
+  alpha: 200
+  scale: [12.0, 8.0, 1.0]
+  text: "█"
+
+scripts:
+  file: "hover_quick_test.lua"
+
+widgets:
+  # Заголовок
+  - id: "title"
+    type: TEXT_BUTTON
+    text: "⚡ Быстрый тест анимаций"
+    position: [0.0, 3.0, 0.0]
+    scale: [0.3, 0.3, 0.3]
+    tolerance: [0.0, 0.0]
+    backgroundColor: [0, 0, 0]
+    backgroundAlpha: 0
+
+  # Простой scale (самый базовый тест)
+  - id: "simple_scale"
+    type: TEXT_BUTTON
+    text: "Scale Test"
+    position: [0.0, 1.5, 0.0]
+    scale: [0.2, 0.2, 0.2]
+    backgroundColor: [180, 70, 130]
+    backgroundAlpha: 180
+    hoverAnimation:
+      type: SCALE
+      duration: 6
+      scale: [1.3, 1.3, 1.0]
+      easing: LINEAR
+    onClick:
+      action: RUN_SCRIPT
+      function: "testClick"
+
+  # Простой translate
+  - id: "simple_translate"
+    type: TEXT_BUTTON
+    text: "Translate Test"
+    position: [-2.5, 0.0, 0.0]
+    scale: [0.18, 0.18, 0.18]
+    backgroundColor: [130, 180, 70]
+    backgroundAlpha: 180
+    hoverAnimation:
+      type: TRANSLATE
+      duration: 6
+      offset: [0.0, 0.05, 0.0]
+      easing: LINEAR
+    onClick:
+      action: RUN_SCRIPT
+      function: "testClick"
+
+  # Комбинированный эффект
+  - id: "combined_test"
+    type: TEXT_BUTTON
+    text: "Combined Test"
+    position: [2.5, 0.0, 0.0]
+    scale: [0.18, 0.18, 0.18]
+    backgroundColor: [100, 50, 150]
+    backgroundAlpha: 180
+    hoverAnimation:
+      type: COMBINED
+      duration: 8
+      effects:
+        - type: SCALE
+          scale: [1.2, 1.2, 1.0]
+        - type: TRANSLATE
+          offset: [0.0, 0.03, 0.0]
+    onClick:
+      action: RUN_SCRIPT
+      function: "testClick"
+
+  # Непрерывная пульсация
+  - id: "continuous_pulse"
+    type: TEXT_BUTTON
+    text: "Пульсация"
+    position: [-2.5, -1.5, 0.0]
+    scale: [0.18, 0.18, 0.18]
+    backgroundColor: [255, 140, 0]
+    backgroundAlpha: 180
+    hoverAnimation:
+      type: PULSE_CONTINUOUS
+      duration: 10
+      intensity: 1.4
+    onClick:
+      action: RUN_SCRIPT
+      function: "testClick"
+
+  # Предмет с непрерывной пульсацией
+  - id: "animated_item"
+    type: ITEM_BUTTON
+    material: DIAMOND
+    position: [2.5, -1.5, 0.0]
+    scale: [0.3, 0.3, 0.3]
+    glowOnHover: true
+    glowColor: [0, 255, 255]
+    hoverAnimation:
+      type: PULSE_CONTINUOUS
+      duration: 8
+      intensity: 1.3
+    onClick:
+      action: RUN_SCRIPT
+      function: "testClick"
+
+  # Кнопка закрытия
+  - id: "close_btn"
+    type: TEXT_BUTTON
+    text: "✖ Закрыть"
+    position: [0.0, -2.5, 0.0]
+    scale: [0.2, 0.2, 0.2]
+    backgroundColor: [150, 50, 50]
+    backgroundAlpha: 180
+    onClick:
+      action: CLOSE_SCREEN
