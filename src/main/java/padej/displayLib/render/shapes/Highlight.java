@@ -29,7 +29,21 @@ public class Highlight {
     private static Color currentColor;
     private static int currentAlpha = 150;
 
-    public static Map<String, List<TextDisplay>> blockPosDisplays = new HashMap<>();
+    /** Подсветки по координатам блока; ключ - координаты, упакованные в long (см. {@link #blockKey}) */
+    public static Map<Long, List<TextDisplay>> blockPosDisplays = new HashMap<>();
+
+    /**
+     * Упаковать координаты блока в один long (26 бит на X и Z, 12 бит на Y) -
+     * вместо строки "x,y,z", которую приходилось собирать на каждое обращение.
+     */
+    public static long blockKey(int x, int y, int z) {
+        return ((long) (x & 0x3FFFFFF) << 38) | ((long) (z & 0x3FFFFFF) << 12) | (y & 0xFFF);
+    }
+
+    /** Подсвечен ли блок с этими координатами. */
+    public static boolean hasSelection(int x, int y, int z) {
+        return blockPosDisplays.containsKey(blockKey(x, y, z));
+    }
 
     private static float t = 0.0f;
     private static boolean increasing = true;
@@ -96,14 +110,13 @@ public class Highlight {
 
     private static void addIfNotNull(TextDisplay display, Location location) {
         if (display != null) {
-            String blockPosKey = location.getBlockX() + "," + location.getBlockY() + "," + location.getBlockZ();
+            long blockPosKey = blockKey(location.getBlockX(), location.getBlockY(), location.getBlockZ());
             blockPosDisplays.computeIfAbsent(blockPosKey, k -> new ArrayList<>()).add(display);
         }
     }
 
     public static void removeSelectionOnBlockPos(int x, int y, int z) {
-        String blockPosKey = x + "," + y + "," + z;
-        List<TextDisplay> displaysToRemove = blockPosDisplays.remove(blockPosKey);
+        List<TextDisplay> displaysToRemove = blockPosDisplays.remove(blockKey(x, y, z));
         if (displaysToRemove != null) {
             for (TextDisplay display : displaysToRemove) {
                 display.remove();

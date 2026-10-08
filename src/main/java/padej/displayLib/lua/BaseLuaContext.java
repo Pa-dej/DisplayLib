@@ -5,11 +5,14 @@ import padej.displayLib.lua.api.LogAPI;
 import padej.displayLib.lua.api.PlayerAPI;
 import padej.displayLib.lua.api.StorageAPI;
 import padej.displayLib.lua.api.TimerAPI;
+import padej.displayLib.lua.api.WidgetAPI;
+import padej.displayLib.ui.widgets.Widget;
 import org.bukkit.entity.Player;
 import org.luaj.vm2.Globals;
 
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.IdentityHashMap;
 import java.util.Map;
 import java.util.Set;
 
@@ -37,6 +40,9 @@ public abstract class BaseLuaContext {
     // Отслеживание загруженных скриптов
     private final Set<String> loadedScripts = new HashSet<>();
 
+    // Lua-обёртки виджетов: одна на виджет на всё время жизни экрана
+    private final Map<Widget, WidgetAPI> widgetApis = new IdentityHashMap<>();
+
     /**
      * @param player владелец экрана; null для публичных экранов
      */
@@ -61,6 +67,14 @@ public abstract class BaseLuaContext {
     public TimerAPI getTimerAPI() { return timerAPI; }
     public LogAPI getLogAPI() { return logAPI; }
 
+    /**
+     * Lua-объект виджета. Создаётся при первом обращении и затем переиспользуется:
+     * раньше каждый {@code screen.widget(id)} и каждый клик строили новую таблицу с замыканиями.
+     */
+    public WidgetAPI widgetApi(Widget widget) {
+        return widgetApis.computeIfAbsent(widget, WidgetAPI::new);
+    }
+
     // Persistent data methods
     public Object getPersistentData(String key) {
         return persistentData.get(key);
@@ -81,6 +95,7 @@ public abstract class BaseLuaContext {
         timerAPI.cancelAllTimers();
         persistentData.clear();
         loadedScripts.clear();
+        widgetApis.clear();
     }
 
     /**

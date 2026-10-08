@@ -61,6 +61,20 @@ public class TextDisplayButtonWidget implements Widget {
     
     // Отслеживание видимости
     private boolean visible = true;
+
+    // Виджет удалён окончательно (remove) - пересоздавать сущность нельзя
+    private boolean removed = false;
+
+    /** Подсказка висит, пока игрок смотрит на виджет; время показа общее для всех виджетов */
+    private static final Title.Times TOOLTIP_TIMES =
+            Title.Times.times(Duration.ZERO, Duration.ofMillis(Long.MAX_VALUE), Duration.ofMillis(200));
+    private Title tooltipTitle;
+
+    // Исходный масштаб одним объектом - чтобы не создавать вектор на каждую смену наведения
+    private Vector3f baseScale;
+
+    private Color backgroundArgb;
+    private Color hoveredBackgroundArgb;
     
     /** Текст TextDisplay виден только с лицевой стороны - наводиться можно только с неё */
     private static final boolean FRONT_ONLY = true;
@@ -106,6 +120,7 @@ public class TextDisplayButtonWidget implements Widget {
             widget.tooltipDelay = config.getTooltipDelay();
         }
 
+        widget.baseScale = new Vector3f(widget.scaleX, widget.scaleY, widget.scaleZ);
         widget.spawn();
         return widget;
     }
@@ -113,7 +128,7 @@ public class TextDisplayButtonWidget implements Widget {
     private void spawn() {
         display = (TextDisplay) location.getWorld().spawnEntity(location, EntityType.TEXT_DISPLAY);
         display.text(text);
-        display.setBackgroundColor(Color.fromARGB(backgroundAlpha, backgroundColor.getRed(), backgroundColor.getGreen(), backgroundColor.getBlue()));
+        display.setBackgroundColor(backgroundArgb());
         
         // Применяем выравнивание текста
         display.setAlignment(textAlignment);
@@ -205,6 +220,7 @@ public class TextDisplayButtonWidget implements Widget {
 
     @Override
     public void remove() {
+        removed = true;
         if (display != null) {
             display.remove();
             display = null;
@@ -259,13 +275,13 @@ public class TextDisplayButtonWidget implements Widget {
     private void onHoverStateChanged() {
         if (isHovered) {
             display.text(hoveredText);
-            display.setBackgroundColor(Color.fromARGB(hoveredBackgroundAlpha, hoveredBackgroundColor.getRed(), hoveredBackgroundColor.getGreen(), hoveredBackgroundColor.getBlue()));
+            display.setBackgroundColor(hoveredBackgroundArgb());
             
             // Приоритет: новая система анимации, затем старая hoveredTransformation
             if (hoverAnimation != null) {
                 // Используем новую систему анимации с правильной easing интерполяцией
                 try {
-                    hoverAnimation.applyHoverAnimation(display, translation, new Vector3f(scaleX, scaleY, scaleZ), true);
+                    hoverAnimation.applyHoverAnimation(display, translation, baseScale, true);
                 } catch (Exception e) {
                     DisplayLib.getInstance().getLogger().log(java.util.logging.Level.WARNING, "Error applying hover animation", e);
                 }
@@ -275,13 +291,13 @@ public class TextDisplayButtonWidget implements Widget {
             }
         } else {
             display.text(text);
-            display.setBackgroundColor(Color.fromARGB(backgroundAlpha, backgroundColor.getRed(), backgroundColor.getGreen(), backgroundColor.getBlue()));
+            display.setBackgroundColor(backgroundArgb());
             
             // Возвращаем к исходному состоянию
             if (hoverAnimation != null && hoverAnimation.isReverseOnExit()) {
                 // Используем новую систему для возврата
                 try {
-                    hoverAnimation.applyHoverAnimation(display, translation, new Vector3f(scaleX, scaleY, scaleZ), false);
+                    hoverAnimation.applyHoverAnimation(display, translation, baseScale, false);
                 } catch (Exception e) {
                     DisplayLib.getInstance().getLogger().log(java.util.logging.Level.WARNING, "Error reversing hover animation", e);
                 }
@@ -299,14 +315,43 @@ public class TextDisplayButtonWidget implements Widget {
 
     private void showTooltip() {
         if (tooltip != null && viewer != null) {
-            Title title = Title.title(
-                    Component.empty(),
-                    tooltip,
-                    Title.Times.times(Duration.ofMillis(0), Duration.ofMillis(Long.MAX_VALUE), Duration.ofMillis(200))
-            );
-            viewer.showTitle(title);
+            viewer.showTitle(tooltipTitle());
             isShowingTooltip = true;
         }
+    }
+
+    /**
+     * Заголовок с подсказкой. Собирается один раз и переиспользуется при каждом показе
+     * (раньше Title, Times и три Duration создавались заново на каждое наведение).
+     */
+    private Title tooltipTitle() {
+        if (tooltipTitle == null) {
+            tooltipTitle = Title.title(Component.empty(), tooltip, TOOLTIP_TIMES);
+        }
+        return tooltipTitle;
+    }
+
+    /**
+     * Пересоздать сущность, если она исчезла из мира (например, чанк был выгружен:
+     * сущности экранов не сохраняются в чанк). Ничего не делает, если виджет удалён,
+     * скрыт или его чанк сейчас не загружен.
+     */
+    @Override
+    public void ensureSpawned() {
+        if (removed || !visible) return;
+        // isDead(), а не isValid(): только что созданная сущность в чанке на границе
+        // загруженной области ещё "не валидна", но существует - пересоздавать её не нужно
+        if (display != null && !display.isDead()) return;
+
+        org.bukkit.World world = location.getWorld();
+        if (world == null || !world.isChunkLoaded(location.getBlockX() >> 4, location.getBlockZ() >> 4)) return;
+
+        if (display != null) {
+            display.remove(); // на случай, если старая сущность ещё числится в мире
+        }
+        spawn();
+        positionCached = false;
+        isHovered = false;
     }
 
     private void hideTooltip() {
@@ -384,11 +429,13 @@ public class TextDisplayButtonWidget implements Widget {
         } else {
             this.tooltip = null;
         }
+        this.tooltipTitle = null;
     }
     
     @Override
     public void setTooltip(Component tooltip) {
         this.tooltip = tooltip;
+        this.tooltipTitle = null;
     }
     
     // Методы для работы с текстом
@@ -415,16 +462,33 @@ public class TextDisplayButtonWidget implements Widget {
     // Методы для работы с цветом фона
     public void setBackgroundColor(int red, int green, int blue) {
         this.backgroundColor = Color.fromRGB(red, green, blue);
+        this.backgroundArgb = null;
         if (display != null && !isHovered) {
-            display.setBackgroundColor(Color.fromARGB(backgroundAlpha, red, green, blue));
+            display.setBackgroundColor(backgroundArgb());
         }
     }
     
     public void setBackgroundAlpha(int alpha) {
         this.backgroundAlpha = alpha;
+        this.backgroundArgb = null;
         if (display != null && !isHovered) {
-            display.setBackgroundColor(Color.fromARGB(alpha, backgroundColor.getRed(), backgroundColor.getGreen(), backgroundColor.getBlue()));
+            display.setBackgroundColor(backgroundArgb());
         }
+    }
+
+    // Итоговые цвета фона (цвет + прозрачность) собираются один раз, а не на каждую смену наведения
+    private Color backgroundArgb() {
+        if (backgroundArgb == null) {
+            backgroundArgb = Color.fromARGB(backgroundAlpha, backgroundColor.getRed(), backgroundColor.getGreen(), backgroundColor.getBlue());
+        }
+        return backgroundArgb;
+    }
+
+    private Color hoveredBackgroundArgb() {
+        if (hoveredBackgroundArgb == null) {
+            hoveredBackgroundArgb = Color.fromARGB(hoveredBackgroundAlpha, hoveredBackgroundColor.getRed(), hoveredBackgroundColor.getGreen(), hoveredBackgroundColor.getBlue());
+        }
+        return hoveredBackgroundArgb;
     }
     
     /**
@@ -448,12 +512,7 @@ public class TextDisplayButtonWidget implements Widget {
      */
     public void showTooltipTo(Player player) {
         if (tooltip != null && player != null) {
-            Title title = Title.title(
-                    Component.empty(),
-                    tooltip,
-                    Title.Times.times(Duration.ofMillis(0), Duration.ofMillis(Long.MAX_VALUE), Duration.ofMillis(200))
-            );
-            player.showTitle(title);
+            player.showTitle(tooltipTitle());
         }
     }
     

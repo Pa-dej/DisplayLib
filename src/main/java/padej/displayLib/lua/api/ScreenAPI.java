@@ -108,7 +108,7 @@ public class ScreenAPI extends LuaTable {
                 String id = widgetId.checkjstring();
                 Widget widget = screen.getWidget(id);
                 if (widget != null) {
-                    return new WidgetAPI(widget);
+                    return context.widgetApi(widget);
                 }
                 return LuaValue.NIL;
             }

@@ -59,6 +59,13 @@ public interface Widget {
     default boolean isValid() {
         return true;
     }
+
+    /**
+     * Пересоздать сущность виджета, если она исчезла из мира (выгрузка чанка).
+     * По умолчанию ничего не делает.
+     */
+    default void ensureSpawned() {
+    }
     
     // Методы для Lua API
     boolean isVisible();

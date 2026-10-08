@@ -195,11 +195,11 @@ public class EasedAnimation {
 
     /** Заменить один компонент трансформации (масштаб или смещение), сохранив остальные. */
     private static void applyComponent(Display entity, Channel channel, float x, float y, float z, int interpolationTicks) {
-        Transformation current = entity.getTransformation();
-        Vector3f value = new Vector3f(x, y, z);
-        Transformation next = channel == Channel.SCALE
-                ? new Transformation(current.getTranslation(), current.getLeftRotation(), value, current.getRightRotation())
-                : new Transformation(value, current.getLeftRotation(), current.getScale(), current.getRightRotation());
+        // getTransformation() возвращает свежую копию - меняем в ней нужный компонент и отдаём обратно,
+        // не создавая на каждый кадр новый вектор и новую Transformation с четырьмя копиями внутри.
+        // Читать текущее состояние нужно каждый кадр: параллельно могут идти анимация второго канала и поворот.
+        Transformation next = entity.getTransformation();
+        (channel == Channel.SCALE ? next.getScale() : next.getTranslation()).set(x, y, z);
         
         entity.setTransformation(next);
         entity.setInterpolationDuration(interpolationTicks);

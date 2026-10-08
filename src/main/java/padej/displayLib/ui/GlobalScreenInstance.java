@@ -9,7 +9,6 @@ import padej.displayLib.config.WidgetDefinition;
 import padej.displayLib.lua.GlobalLuaContext;
 import padej.displayLib.lua.LuaEngine;
 import padej.displayLib.lua.api.PlayerAPI;
-import padej.displayLib.lua.api.WidgetAPI;
 import padej.displayLib.ui.widgets.*;
 import padej.displayLib.utils.ViewRay;
 import org.luaj.vm2.Globals;
@@ -69,6 +68,9 @@ public class GlobalScreenInstance {
     /** На какой виджет наведён каждый игрок (по UUID, чтобы не удерживать объекты Player) */
     private final Map<UUID, Widget> hoveredByPlayer = new HashMap<>();
     
+    /** Lua-обёртки игроков, кликавших по экрану (удаляются, когда игрок уходит) */
+    private final Map<UUID, PlayerAPI> playerApis = new HashMap<>();
+    
     /** Переиспользуемые объекты для цикла обновления */
     private final ViewRay viewRay = new ViewRay();
     private final Location playerScratch = new Location(null, 0, 0, 0);
@@ -116,6 +118,14 @@ public class GlobalScreenInstance {
         if (rangeCheckTimer >= rangeCheckInterval) {
             rangeCheckTimer = 0;
             refreshNearbyPlayers();
+            
+            // Сущности экрана не сохраняются в чанк и исчезают при его выгрузке.
+            // Раз рядом есть игроки - возвращаем пропавшие на место.
+            if (!nearbyPlayers.isEmpty()) {
+                for (int i = 0; i < children.size(); i++) {
+                    children.get(i).ensureSpawned();
+                }
+            }
         }
 
         // Фаза 2: обнаружение hover и tooltip (каждый тик, только nearbyPlayers)
@@ -133,6 +143,7 @@ public class GlobalScreenInstance {
         nearbyPlayers.clear();
         nearbyPlayerIds.clear();
         hoveredByPlayer.clear();
+        playerApis.clear();
         
         // Удаляем все виджеты
         for (Widget widget : new ArrayList<>(children)) {
@@ -227,6 +238,7 @@ public class GlobalScreenInstance {
         if (hoveredByPlayer.remove(id) != null) {
             player.clearTitle();
         }
+        playerApis.remove(id);
     }
 
     public ScreenDefinition getDefinition() {
@@ -413,9 +425,11 @@ public class GlobalScreenInstance {
         Globals globals = context.getGlobals();
         
         // Временно устанавливаем игрока и виджет в постоянный контекст
-        globals.set("player", player != null ? new PlayerAPI(player) : LuaValue.NIL);
+        globals.set("player", player != null
+                ? playerApis.computeIfAbsent(player.getUniqueId(), id -> new PlayerAPI(player))
+                : LuaValue.NIL);
         if (widget != null) {
-            globals.set("widget", new WidgetAPI(widget));
+            globals.set("widget", context.widgetApi(widget));
         }
         
         try {

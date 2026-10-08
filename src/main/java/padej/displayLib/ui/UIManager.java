@@ -39,13 +39,31 @@ public class UIManager implements Listener {
     // PRIVATE screens: ключ - UUID игрока, чтобы не удерживать объект Player
     // и не зависеть от того, тот же ли это экземпляр после перезахода
     private final Map<UUID, ScreenInstance> privateScreens = new HashMap<>();
-    private final Map<UUID, BukkitTask> privateUpdateTasks = new HashMap<>();
+    private final Map<UUID, ScreenTicker> privateUpdateTasks = new HashMap<>();
     
     // PUBLIC screens. Список обходится в обработчиках событий, а скрипт по клику может
     // открыть или закрыть экран, поэтому используется copy-on-write: обход всегда
     // идёт по снимку и не ломается при изменении списка.
     private final List<GlobalScreenInstance> publicScreens = new CopyOnWriteArrayList<>();
-    private final Map<GlobalScreenInstance, BukkitTask> publicUpdateTasks = new IdentityHashMap<>();
+    private final Map<GlobalScreenInstance, ScreenTicker> publicUpdateTasks = new IdentityHashMap<>();
+    
+    // Одна задача планировщика на все экраны вместо отдельной задачи на каждый экран
+    private final List<ScreenTicker> tickers = new ArrayList<>();
+    private BukkitTask tickTask;
+    private boolean tickersDirty = false;
+
+    /** Обновление одного экрана со своим периодом (tick_rate). */
+    private static final class ScreenTicker {
+        final Runnable update;
+        final int period;
+        int countdown = 1; // первое обновление - на ближайшем тике
+        boolean cancelled = false;
+
+        ScreenTicker(Runnable update, int period) {
+            this.update = update;
+            this.period = period;
+        }
+    }
     
     private ScreenRegistry screenRegistry;
     private LuaEngine luaEngine;
@@ -365,45 +383,76 @@ public class UIManager implements Listener {
     // -------------------------------------------------------------------------
 
     private void startUpdateTaskForScreen(UUID playerId, ScreenInstance screenInstance) {
-        // Останавливаем предыдущую задачу если есть
+        // Останавливаем предыдущее обновление если есть
         stopUpdateTaskForScreen(playerId);
         
-        // Получаем tick_rate из определения экрана
-        int tickRate = Math.max(1, screenInstance.getDefinition().getTickRate());
-        
-        // Создаем новую задачу обновления для этого экрана
-        BukkitTask task = Bukkit.getScheduler().runTaskTimer(DisplayLib.getInstance(), () -> {
+        privateUpdateTasks.put(playerId, startTicker(screenInstance.getDefinition().getTickRate(), () -> {
             // Обновляем только если этот экран всё ещё активен у игрока
             if (privateScreens.get(playerId) == screenInstance) {
                 screenInstance.update();
             }
-        }, 0L, tickRate);
-        
-        privateUpdateTasks.put(playerId, task);
+        }));
     }
 
     private void stopUpdateTaskForScreen(UUID playerId) {
-        BukkitTask task = privateUpdateTasks.remove(playerId);
-        if (task != null) {
-            task.cancel();
-        }
+        stopTicker(privateUpdateTasks.remove(playerId));
     }
 
     private void startUpdateTaskForPublicScreen(GlobalScreenInstance screenInstance) {
-        // Получаем tick_rate из определения экрана
-        int tickRate = Math.max(1, screenInstance.getDefinition().getTickRate());
-        
-        // Создаем новую задачу обновления для этого глобального экрана
-        BukkitTask task = Bukkit.getScheduler().runTaskTimer(DisplayLib.getInstance(),
-                screenInstance::update, 0L, tickRate);
-        
-        publicUpdateTasks.put(screenInstance, task);
+        publicUpdateTasks.put(screenInstance,
+                startTicker(screenInstance.getDefinition().getTickRate(), screenInstance::update));
     }
 
     private void stopUpdateTaskForPublicScreen(GlobalScreenInstance screenInstance) {
-        BukkitTask task = publicUpdateTasks.remove(screenInstance);
-        if (task != null) {
-            task.cancel();
+        stopTicker(publicUpdateTasks.remove(screenInstance));
+    }
+
+    private ScreenTicker startTicker(int tickRate, Runnable update) {
+        ScreenTicker ticker = new ScreenTicker(update, Math.max(1, tickRate));
+        tickers.add(ticker);
+        
+        // Общая задача работает, только пока есть хотя бы один экран
+        if (tickTask == null) {
+            tickTask = Bukkit.getScheduler().runTaskTimer(DisplayLib.getInstance(), this::tickScreens, 0L, 1L);
+        }
+        return ticker;
+    }
+
+    private void stopTicker(ScreenTicker ticker) {
+        if (ticker != null) {
+            // Из списка убирается после обхода: остановка может прийти изнутри обновления экрана
+            ticker.cancelled = true;
+            tickersDirty = true;
+        }
+    }
+
+    private void tickScreens() {
+        // Обход по индексу: во время обновления экраны могут открываться (добавляются в конец) и закрываться
+        for (int i = 0; i < tickers.size(); i++) {
+            ScreenTicker ticker = tickers.get(i);
+            if (ticker.cancelled || --ticker.countdown > 0) continue;
+            
+            ticker.countdown = ticker.period;
+            try {
+                ticker.update.run();
+            } catch (Exception e) {
+                // Ошибка одного экрана не должна останавливать обновление остальных
+                DisplayLib.getInstance().getLogger().log(java.util.logging.Level.WARNING, "Error updating screen", e);
+            }
+        }
+        
+        if (tickersDirty) {
+            tickersDirty = false;
+            for (int i = tickers.size() - 1; i >= 0; i--) {
+                if (tickers.get(i).cancelled) {
+                    tickers.remove(i);
+                }
+            }
+        }
+        
+        if (tickers.isEmpty() && tickTask != null) {
+            tickTask.cancel();
+            tickTask = null;
         }
     }
 
@@ -464,12 +513,16 @@ public class UIManager implements Listener {
         }
         publicScreens.clear();
         
-        // Останавливаем все задачи обновления
-        privateUpdateTasks.values().forEach(BukkitTask::cancel);
+        // Останавливаем обновление экранов
         privateUpdateTasks.clear();
-        
-        publicUpdateTasks.values().forEach(BukkitTask::cancel);
         publicUpdateTasks.clear();
+        tickers.forEach(ticker -> ticker.cancelled = true);
+        tickers.clear();
+        tickersDirty = false;
+        if (tickTask != null) {
+            tickTask.cancel();
+            tickTask = null;
+        }
     }
 
     public boolean hasActiveScreens() {

@@ -23,8 +23,7 @@ public class ApplyHighlightToBlockTest implements Listener {
             if (clickedBlock != null && player.getCooldown(Material.COAL) < 1) {
                 Location location = clickedBlock.getLocation();
 
-                String blockPosKey = location.getBlockX() + "," + location.getBlockY() + "," + location.getBlockZ();
-                if (Highlight.blockPosDisplays.containsKey(blockPosKey)) {
+                if (Highlight.hasSelection(location.getBlockX(), location.getBlockY(), location.getBlockZ())) {
                     Highlight.removeSelectionOnBlockPos(location.getBlockX(), location.getBlockY(), location.getBlockZ());
                 } else {
                     Highlight.createSides(location, HighlightStyle.BRONZE, 200);

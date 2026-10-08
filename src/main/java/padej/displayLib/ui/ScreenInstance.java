@@ -6,7 +6,6 @@ import padej.displayLib.config.ScreenDefinition;
 import padej.displayLib.config.WidgetDefinition;
 import padej.displayLib.lua.LuaContext;
 import padej.displayLib.lua.LuaEngine;
-import padej.displayLib.lua.api.WidgetAPI;
 import padej.displayLib.ui.widgets.*;
 import org.luaj.vm2.LuaValue;
 
@@ -316,7 +315,7 @@ public class ScreenInstance extends WidgetManager {
         // Устанавливаем widget в глобальный контекст
         Widget widget = widgetDef.getId() != null ? widgetById.get(widgetDef.getId()) : null;
         if (widget != null) {
-            luaContext.getGlobals().set("widget", new WidgetAPI(widget));
+            luaContext.getGlobals().set("widget", luaContext.widgetApi(widget));
         }
         
         try {
