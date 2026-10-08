@@ -1,0 +1,78 @@
+// jumper_test: проверка возможностей Jumper в DisplayLib (конфиг .jmc с выражениями)
+
+String id = "jumper_test";
+String screenType = "PRIVATE";
+int tickRate = 2;
+double interactionRadius = 8;
+double closeDistance = 12;
+
+// Переменные и выражения прямо в конфиге
+boolean dark = true;
+dyn panel = dark ? [20, 22, 30] : [230, 230, 230];
+dyn btn = [50, 60, 90];
+dyn btnHover = [80, 95, 140];
+dyn gold = "#FFD700";
+dyn gray = "gray";
+double rowTop = 1.6, rowMid = 0.4, rowLow = -0.8, rowBottom = -2.2;
+double colL = -4.5, colC = 0, colR = 4.5;
+
+dyn background = { color: panel, alpha: 220, scale: [16, 9, 1] };
+String script = "jumper_test.jmp";
+
+// Общие поля кнопки, чтобы не повторять
+dyn widgets = [
+    {
+        id: "title",
+        type: "TEXT_BUTTON",
+        text: [ { text: "Jumper ", color: gold }, { text: "test screen", color: "white" }, { text: " v" + 1, color: gray } ],
+        position: [colC, 3.2, 0],
+        scale: [0.7, 0.7, 0.7],
+        backgroundAlpha: 0,
+    },
+    {
+        id: "status",
+        type: "TEXT_BUTTON",
+        text: "Нажми любую кнопку",
+        position: [colC, 2.4, 0],
+        scale: [0.4, 0.4, 0.4],
+        backgroundColor: [0, 0, 0], backgroundAlpha: 120,
+    },
+
+    // Ряд 1: данные и модули
+    { id: "b_counter", type: "TEXT_BUTTON", text: "Счётчик: 0", position: [colL, rowTop, 0], scale: [0.45, 0.45, 0.45],
+      backgroundColor: btn, backgroundAlpha: 200, hoveredBackgroundColor: btnHover, hoveredBackgroundAlpha: 230,
+      tooltip: "storage хранит int как int", hoverAnimation: { type: "PRESET", preset: "LIFT" }, onClick: "count" },
+    { id: "b_module", type: "TEXT_BUTTON", text: "import lib/util.jmp", position: [colC, rowTop, 0], scale: [0.45, 0.45, 0.45],
+      backgroundColor: btn, backgroundAlpha: 200, hoveredBackgroundColor: btnHover, hoveredBackgroundAlpha: 230,
+      tooltip: "функция из модуля", onClick: "useModule" },
+    { id: "b_table", type: "TEXT_BUTTON", text: "таблицы и массивы", position: [colR, rowTop, 0], scale: [0.45, 0.45, 0.45],
+      backgroundColor: btn, backgroundAlpha: 200, hoveredBackgroundColor: btnHover, hoveredBackgroundAlpha: 230,
+      tooltip: "{k: v}, [..], keys(), len()", onClick: "tables" },
+
+    // Ряд 2: таймеры
+    { id: "b_every", type: "ITEM_BUTTON", material: "CLOCK", position: [colL, rowMid, 0], scale: [0.25, 0.25, 0.05],
+      tolerance: [0.12, 0.12], tooltip: "timer.every: старт/стоп", glowOnHover: true, onClick: "toggleEvery" },
+    { id: "b_times", type: "ITEM_BUTTON", material: "REPEATER", position: [colC, rowMid, 0], scale: [0.25, 0.25, 0.05],
+      tolerance: [0.12, 0.12], tooltip: "timer.times(5, 5, i -> ...)", glowOnHover: true, onClick: "countdown" },
+    { id: "b_loop", type: "ITEM_BUTTON", material: "COMPARATOR", position: [colR, rowMid, 0], scale: [0.25, 0.25, 0.05],
+      tolerance: [0.12, 0.12], tooltip: "замыкания в цикле (через функцию-шаг)", glowOnHover: true, onClick: "loopClosures" },
+
+    // Ряд 3: ошибки и песочница
+    { id: "b_error", type: "TEXT_BUTTON", text: "ошибка в скрипте", position: [colL, rowLow, 0], scale: [0.45, 0.45, 0.45],
+      backgroundColor: [120, 50, 50], backgroundAlpha: 200, hoveredBackgroundColor: [160, 70, 70], hoveredBackgroundAlpha: 230,
+      tooltip: "смотри консоль: файл и строка", onClick: "boom" },
+    { id: "b_policy", type: "TEXT_BUTTON", text: "player.handle()", position: [colC, rowLow, 0], scale: [0.45, 0.45, 0.45],
+      backgroundColor: [120, 50, 50], backgroundAlpha: 200, hoveredBackgroundColor: [160, 70, 70], hoveredBackgroundAlpha: 230,
+      tooltip: "Bukkit закрыт политикой scripts.jma", onClick: "policy" },
+    { id: "b_freeze", type: "TEXT_BUTTON", text: "while (true)", position: [colR, rowLow, 0], scale: [0.45, 0.45, 0.45],
+      backgroundColor: [120, 50, 50], backgroundAlpha: 200, hoveredBackgroundColor: [160, 70, 70], hoveredBackgroundAlpha: 230,
+      tooltip: "сторожок прервёт через scriptTimeoutMs", onClick: "freeze" },
+
+    // Ряд 4: навигация
+    { id: "b_menu", type: "TEXT_BUTTON", text: "⏴ main_menu", position: [colL, rowBottom, 0], scale: [0.45, 0.45, 0.45],
+      backgroundColor: [60, 60, 60], backgroundAlpha: 180, onClick: { switchTo: "main_menu" } },
+    { id: "b_public", type: "TEXT_BUTTON", text: "публичный: /dlib openpublic jumper_test_public x y z", position: [colC, rowBottom, 0], scale: [0.3, 0.3, 0.3],
+      backgroundAlpha: 0 },
+    { id: "b_close", type: "TEXT_BUTTON", text: "Закрыть ⏺", position: [colR, rowBottom, 0], scale: [0.45, 0.45, 0.45],
+      backgroundColor: [90, 40, 40], backgroundAlpha: 180, onClick: "close" },
+];

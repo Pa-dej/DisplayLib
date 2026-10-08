@@ -1,0 +1,122 @@
+// Тестовый скрипт DisplayLib на Jumper. Работает и на приватном экране (jumper_test),
+// и на публичном (jumper_test_public): там глобал player == null, игрок приходит аргументом.
+
+import "lib/util.jmp";
+
+int everyId = -1;          // id повторяющегося таймера, -1 = выключен
+int ticks = 0;
+
+void setStatus(dyn text) {
+    dyn s = screen.widget("status");
+    if (s != null) s.text(text);
+}
+
+void onOpen() {
+    log.info("jumper_test open; public=" + screen.isPublic() + " player=" + player);
+    if (player != null) {
+        player.message("§6Jumper test §7- " + screen.id() + ", hp=" + player.health() + ", gm=" + player.gamemode());
+        player.sound("ui.button.click");
+    }
+    dyn c = screen.widget("b_counter");
+    if (c != null) c.text("Счётчик: " + storage.get("count", 0));
+}
+
+void onClose() {
+    log.info("jumper_test close, module calls=" + moduleCalls() + ", timers active=" + timer.active());
+}
+
+// --- ряд 1 ---
+
+void count(dyn widget, dyn player) {
+    int n = storage.get("count", 0) + 1;          // хранилище отдаёт int, не строку
+    storage.set("count", n);
+    widget.text("Счётчик: " + n);
+    widget.bgColor(50 + clamp(n * 8, 0, 150), 60, 90);
+    setStatus(type(storage.get("count")) + " " + n + (n % 5 == 0 ? " - кратно пяти" : ""));
+    player.sound("block.note_block.pling", 1, 0.8 + n * 0.05);
+}
+
+void useModule(dyn widget, dyn player) {
+    int k = bump();
+    setStatus("модуль: вызов №" + k + ", fmtTicks(1300) = " + fmtTicks(1300));
+    player.message("§bimport работает: " + k);
+}
+
+void tables(dyn widget, dyn player) {
+    dyn t = { name: player.name(), hp: player.health(), tags: ["a", "b"] };
+    t.extra = 42;
+    t.name = null;                                 // удаление ключа
+    dyn arr = [3, 1, 2];
+    arr.push(0);
+    java.util.Collections.sort(arr);              // массив = java.util.List
+    setStatus("keys=" + keys(t) + " len=" + len(t) + " arr=" + arr + " [0]=" + arr[0]);
+}
+
+// --- ряд 2 ---
+
+void toggleEvery(dyn widget, dyn player) {
+    if (everyId >= 0) {
+        timer.cancel(everyId);
+        everyId = -1;
+        setStatus("every остановлен после " + ticks + " тиков (" + fmtTicks(ticks * 10) + ")");
+        return;
+    }
+    ticks = 0;
+    everyId = timer.every(10, () -> {
+        ticks++;
+        setStatus("every: " + ticks + " (" + fmtTicks(ticks * 10) + "), активных таймеров " + timer.active());
+    });
+    player.message("§eevery(10) запущен, id=" + everyId + "; нажми ещё раз, чтобы остановить");
+}
+
+void countdown(dyn widget, dyn player) {
+    timer.times(10, 5, i -> {
+        setStatus("times: " + i + " из 5");
+        player.sound("block.note_block.harp", 1, 0.8 + i * 0.1);
+        if (i == 5) player.message("§aобратный отсчёт завершён");
+    });
+}
+
+// Замыкание захватывает переменную, а не значение, и тело цикла не создаёт свежих переменных
+// на итерацию: каждый шаг планируется через функцию - её параметры свои у каждого вызова.
+void step(dyn player, int i) {
+    timer.after(i * 10, () -> {
+        setStatus("шаг " + i + " из 4");
+        player.sound("block.note_block.bell", 1, 0.6 + i * 0.2);
+    });
+}
+
+void loopClosures(dyn widget, dyn player) {
+    for (int i = 1; i <= 4; i++) step(player, i);
+}
+
+// --- ряд 3 ---
+
+void boom(dyn widget, dyn player) {
+    setStatus("смотри консоль: JmpError с номером строки");
+    dyn nothing = null;
+    nothing.text("это упадёт");                    // Cannot call 'text' of null -> в лог, экран живёт
+}
+
+void policy(dyn widget, dyn player) {
+    // Обычную ошибку скрипт перехватывает и читает e.message (разрешено в scripts.jma)
+    try {
+        dyn nothing = null;
+        nothing.foo();
+    } catch (e) {
+        setStatus("catch: " + e.message + " (строка " + e.line + ")");
+    }
+    // А вот Bukkit закрыт политикой: сам объект отдать можно, но первый же метод -
+    // SecurityException, который скрипт перехватить не может; экран живёт, причина в консоли
+    dyn p = player.handle();
+    player.message("§7handle() = " + p + "; сейчас будет Access denied в консоли");
+    p.setFoodLevel(20);
+    setStatus("сюда не дойдём");
+}
+
+void freeze(dyn widget, dyn player) {
+    setStatus("зависаем... сторожок должен прервать");
+    player.message("§cбесконечный цикл; прерывание через scriptTimeoutMs из config.jmc");
+    long n = 0;
+    while (true) { n++; }
+}

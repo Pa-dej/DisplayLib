@@ -12,6 +12,12 @@ Policy.allowPackage("java.lang");
 // Коллекции, Random, Optional и т.д.
 Policy.allowPackage("java.util");
 
+// Ошибки, перехваченные через try/catch: e.message и e.line. Класс лежит в пакете самого Jumper,
+// который политика закрывает целиком, поэтому эти два метода открыты отдельно.
+Policy.allowMethod("me.padej.jumper.runtime.JmpError", "message");
+Policy.allowMethod("me.padej.jumper.runtime.JmpError", "getMessage");
+Policy.allowMethod("me.padej.jumper.runtime.JmpError", "line");
+
 // import "lib/util.jmp" - общие модули внутри scripts/
 Policy.allowModules();
 

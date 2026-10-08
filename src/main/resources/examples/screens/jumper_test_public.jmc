@@ -1,0 +1,18 @@
+// jumper_test_public: тот же скрипт на публичном экране - глобал player равен null,
+// игрок приходит аргументом обработчика
+
+String id = "jumper_test_public";
+String screenType = "PUBLIC";
+double interactionRadius = 6;
+
+dyn background = { color: [30, 20, 40], alpha: 220, scale: [8, 4, 1] };
+String script = "jumper_test.jmp";
+
+dyn widgets = [
+    { id: "title", type: "TEXT_BUTTON", text: [ { text: "Jumper public", color: "#FFD700" } ], position: [0, 1.3, 0], scale: [0.5, 0.5, 0.5], backgroundAlpha: 0 },
+    { id: "status", type: "TEXT_BUTTON", text: "кликни", position: [0, 0.7, 0], scale: [0.3, 0.3, 0.3], backgroundColor: [0, 0, 0], backgroundAlpha: 120 },
+    { id: "b_counter", type: "TEXT_BUTTON", text: "Счётчик: 0", position: [-2, 0, 0], scale: [0.35, 0.35, 0.35], backgroundColor: [50, 60, 90], backgroundAlpha: 200, onClick: "count" },
+    { id: "b_module", type: "TEXT_BUTTON", text: "модуль", position: [0, 0, 0], scale: [0.35, 0.35, 0.35], backgroundColor: [50, 60, 90], backgroundAlpha: 200, onClick: "useModule" },
+    { id: "b_error", type: "TEXT_BUTTON", text: "ошибка", position: [2, 0, 0], scale: [0.35, 0.35, 0.35], backgroundColor: [120, 50, 50], backgroundAlpha: 200, onClick: "boom" },
+    { id: "b_times", type: "ITEM_BUTTON", material: "REPEATER", position: [0, -0.9, 0], scale: [0.2, 0.2, 0.05], tolerance: [0.1, 0.1], tooltip: "timer.times", onClick: "countdown" },
+];
