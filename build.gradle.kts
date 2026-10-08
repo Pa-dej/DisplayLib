@@ -12,18 +12,16 @@ repositories {
         name = "papermc-repo"
         url = uri("https://repo.papermc.io/repository/maven-public/")
     }
-    maven {
-        name = "jitpack"
-        url = uri("https://jitpack.io")
-    }
 }
 
 dependencies {
     compileOnly("io.papermc.paper:paper-api:1.21.11-R0.1-SNAPSHOT")
 
     // Jumper: язык скриптов (.jmp), конфигов (.jmc) и политик доступа (.jma).
-    // Без зависимостей, вшивается в JAR. Версия - тег релиза https://github.com/jumper-lang/jumper/releases
-    implementation("com.github.jumper-lang:jumper:v0.11.0")
+    // libs/jmp.jar - jmp.jar из релиза https://github.com/jumper-lang/jumper/releases (сейчас v0.11.1),
+    // без зависимостей, вшивается в JAR плагина. JitPack-координата из README Jumper
+    // (com.github.jumper-lang:jumper:<tag>) пока не разрешается: в lang/build.gradle.kts нет maven-publish.
+    implementation(files("libs/jmp.jar"))
 }
 
 tasks {
@@ -147,7 +145,7 @@ tasks {
         include("**/ui/**")
         include("**/DisplayLib.java")
         
-        destinationDir = file("${buildDir}/docs/javadoc")
+        setDestinationDir(layout.buildDirectory.dir("docs/javadoc").get().asFile)
         
         doLast {
             println("Javadoc сгенерирован в: ${destinationDir}")
