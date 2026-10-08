@@ -173,3 +173,9 @@ java {
         toolchain.languageVersion = JavaLanguageVersion.of(21)
     }
 }
+
+// Personal, untracked build tasks (e.g. copying the JAR to your own test server).
+// The file is optional and is not committed; see .git/info/exclude or .gitignore.
+if (file("local.gradle.kts").exists()) {
+    apply(from = "local.gradle.kts")
+}
