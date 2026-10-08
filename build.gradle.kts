@@ -24,7 +24,7 @@ dependencies {
     // Jumper: язык скриптов (.jmp), конфигов (.jmc) и политик доступа (.jma).
     // Без зависимостей, вшивается в JAR плагина. Версия - тег релиза
     // https://github.com/jumper-lang/jumper/releases (JitPack собирает :lang по jitpack.yml).
-    implementation("com.github.jumper-lang:jumper:v0.11.1")
+    implementation("com.github.jumper-lang:jumper:v0.11.2")
 }
 
 tasks {
