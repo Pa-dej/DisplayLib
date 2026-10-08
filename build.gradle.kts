@@ -12,16 +12,19 @@ repositories {
         name = "papermc-repo"
         url = uri("https://repo.papermc.io/repository/maven-public/")
     }
+    maven {
+        name = "jitpack"
+        url = uri("https://jitpack.io")
+    }
 }
 
 dependencies {
     compileOnly("io.papermc.paper:paper-api:1.21.11-R0.1-SNAPSHOT")
 
     // Jumper: язык скриптов (.jmp), конфигов (.jmc) и политик доступа (.jma).
-    // libs/jmp.jar - jmp.jar из релиза https://github.com/jumper-lang/jumper/releases (сейчас v0.11.1),
-    // без зависимостей, вшивается в JAR плагина. JitPack-координата из README Jumper
-    // (com.github.jumper-lang:jumper:<tag>) пока не разрешается: в lang/build.gradle.kts нет maven-publish.
-    implementation(files("libs/jmp.jar"))
+    // Без зависимостей, вшивается в JAR плагина. Версия - тег релиза
+    // https://github.com/jumper-lang/jumper/releases (JitPack собирает :lang по jitpack.yml).
+    implementation("com.github.jumper-lang:jumper:v0.11.1")
 }
 
 tasks {

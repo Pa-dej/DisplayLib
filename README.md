@@ -223,7 +223,7 @@ int scriptTimeoutMs = 1000;    // сторожевой таймер: вызов 
 
 ## Сборка
 
-Jumper лежит в `libs/jmp.jar` (jmp.jar из релизов Jumper, сейчас v0.11.1) и подключается как файл в `build.gradle.kts`; чтобы обновить, замените jar.
+Jumper подключается через JitPack: `com.github.jumper-lang:jumper:<тег релиза>` (см. `build.gradle.kts`, сейчас `v0.11.1`).
 Gradle 8.8 запускайте на JDK 21.
 
 ## Лицензия
