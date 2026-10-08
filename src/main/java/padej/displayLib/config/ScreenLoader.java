@@ -42,18 +42,20 @@ public class ScreenLoader {
                 return screens;
             }
             
-            Files.walk(screensDirectory)
-                    .filter(path -> path.toString().endsWith(".yml") || path.toString().endsWith(".yaml"))
-                    .forEach(path -> {
-                        try {
-                            ScreenDefinition screen = loadScreenFromFile(path);
-                            if (screen != null) {
-                                screens.put(screen.getId(), screen);
+            // Files.walk держит открытые дескрипторы каталогов, пока поток не закрыт
+            try (java.util.stream.Stream<Path> files = Files.walk(screensDirectory)) {
+                files.filter(path -> path.toString().endsWith(".yml") || path.toString().endsWith(".yaml"))
+                        .forEach(path -> {
+                            try {
+                                ScreenDefinition screen = loadScreenFromFile(path);
+                                if (screen != null) {
+                                    screens.put(screen.getId(), screen);
+                                }
+                            } catch (Exception e) {
+                                plugin.getLogger().log(Level.WARNING, "Failed to load screen: " + path, e);
                             }
-                        } catch (Exception e) {
-                            plugin.getLogger().log(Level.WARNING, "Failed to load screen: " + path, e);
-                        }
-                    });
+                        });
+            }
         } catch (IOException e) {
             plugin.getLogger().log(Level.SEVERE, "Failed to load screens", e);
         }

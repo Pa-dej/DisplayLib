@@ -2,7 +2,8 @@ package padej.displayLib.ui.widgets;
 
 import padej.displayLib.DisplayLib;
 import padej.displayLib.utils.Animation;
-import padej.displayLib.utils.PointDetection;
+import padej.displayLib.utils.HitArea;
+import padej.displayLib.utils.ViewRay;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.TextColor;
 import net.kyori.adventure.title.Title;
@@ -14,7 +15,6 @@ import org.bukkit.entity.ItemDisplay;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.util.Transformation;
-import org.bukkit.util.Vector;
 import org.joml.AxisAngle4f;
 import org.joml.Matrix4f;
 import org.joml.Vector3f;
@@ -64,9 +64,28 @@ public class ItemDisplayButtonWidget implements Widget {
     
     // Отслеживание видимости
     private boolean visible = true;
+
+    // Виджет удалён окончательно (remove) - пересоздавать сущность нельзя
+    private boolean removed = false;
+
+    /** Подсказка висит, пока игрок смотрит на виджет; время показа общее для всех виджетов */
+    private static final Title.Times TOOLTIP_TIMES =
+            Title.Times.times(Duration.ZERO, Duration.ofMillis(Long.MAX_VALUE), Duration.ofMillis(200));
+    private Title tooltipTitle;
+
+    // Исходный масштаб одним объектом - чтобы не создавать вектор на каждую смену наведения
+    private Vector3f baseScale;
     
-    private Vector cachedPosition;
+    /** Предмет виден с обеих сторон - наводиться можно с любой */
+    private static final boolean FRONT_ONLY = false;
+
+    // Зона наведения в плоскости display; строится один раз (виджеты экрана неподвижны)
+    private final HitArea hitArea = new HitArea();
     private boolean positionCached = false;
+
+    // Переиспользуемые объекты для проверки наведения (без аллокаций в горячем цикле)
+    private final ViewRay ownRay = new ViewRay();
+    private final Location positionScratch = new Location(null, 0, 0, 0);
 
     public static ItemDisplayButtonWidget create(Location location, Player viewer, ItemDisplayButtonConfig config) {
         ItemDisplayButtonWidget widget = new ItemDisplayButtonWidget();
@@ -99,6 +118,7 @@ public class ItemDisplayButtonWidget implements Widget {
             widget.tooltipDelay = config.getTooltipDelay();
         }
 
+        widget.baseScale = new Vector3f(widget.scaleX, widget.scaleY, widget.scaleZ);
         widget.spawn();
         return widget;
     }
@@ -126,6 +146,10 @@ public class ItemDisplayButtonWidget implements Widget {
 
         display.setInterpolationDuration(1);
         display.setTeleportDuration(1);
+
+        // Сущности экрана временные: не сохраняем их в чанк, иначе после падения
+        // или перезапуска сервера в мире остаются "осиротевшие" display
+        display.setPersistent(false);
         
         // Восстанавливаем ориентацию если она была сохранена
         if (hasRotation) {
@@ -134,31 +158,51 @@ public class ItemDisplayButtonWidget implements Widget {
         }
     }
 
+    /**
+     * Смотрит ли зритель на виджет прямо сейчас (вычисляется заново при каждом вызове).
+     * В цикле обновления экрана используется {@link #update(ViewRay)} с общим лучом.
+     */
     @Override
     public boolean isHovered() {
         if (display == null || viewer == null) return false;
+        return isHoveredBy(ownRay.set(viewer));
+    }
 
-        Vector eye = viewer.getEyeLocation().toVector();
-        Vector direction = viewer.getEyeLocation().getDirection();
+    private boolean isHoveredBy(ViewRay ray) {
+        return hitDistance(ray) >= 0.0;
+    }
+
+    @Override
+    public double hitDistance(ViewRay ray) {
+        if (display == null) return -1.0;
 
         if (!positionCached) {
-            cachedPosition = display.getLocation().toVector();
-            positionCached = true;
+            cachePosition();
         }
 
-        Vector toWidget = cachedPosition.clone().subtract(eye).normalize();
-        if (toWidget.dot(direction) < 0.5) return false;
-
-        return PointDetection.lookingAtPoint(eye, direction, cachedPosition, horizontalTolerance, verticalTolerance);
+        return hitArea.intersect(ray);
     }
-    
+
+    /**
+     * Построить зону наведения по текущему состоянию сущности: позиция, поворот и translation.
+     * tolerance задаёт полуширину и полувысоту зоны в плоскости виджета.
+     */
+    private void cachePosition() {
+        display.getLocation(positionScratch);
+        float tx = translation != null ? translation.x : 0.0f;
+        float ty = translation != null ? translation.y : 0.0f;
+        float tz = translation != null ? translation.z : 0.0f;
+        hitArea.set(positionScratch, tx, ty, tz, horizontalTolerance, verticalTolerance, FRONT_ONLY);
+        positionScratch.setWorld(null);
+        positionCached = true;
+    }
+
     public void updateCachedPosition() {
         if (display != null) {
-            cachedPosition = display.getLocation().toVector();
-            positionCached = true;
+            cachePosition();
         }
     }
-    
+
     @Override
     public Location getLocation() {
         return display != null ? display.getLocation() : location;
@@ -177,6 +221,7 @@ public class ItemDisplayButtonWidget implements Widget {
 
     @Override
     public void remove() {
+        removed = true;
         if (display != null) {
             display.remove();
             display = null;
@@ -201,8 +246,14 @@ public class ItemDisplayButtonWidget implements Widget {
     @Override
     public void update() {
         if (display == null || viewer == null) return;
+        update(ownRay.set(viewer));
+    }
 
-        boolean currentlyHovered = isHovered();
+    @Override
+    public void update(ViewRay ray) {
+        if (display == null || viewer == null) return;
+
+        boolean currentlyHovered = isHoveredBy(ray);
         
         if (currentlyHovered != isHovered) {
             isHovered = currentlyHovered;
@@ -231,12 +282,9 @@ public class ItemDisplayButtonWidget implements Widget {
         if (hoverAnimation != null) {
             // Используем новую систему анимации с правильной easing интерполяцией
             try {
-                hoverAnimation.applyHoverAnimation(display, translation, new Vector3f(scaleX, scaleY, scaleZ), isHovered);
-                // Debug log
-                padej.displayLib.DisplayLib.getInstance().getLogger().info("Applied item hover animation: " + hoverAnimation.getType());
+                hoverAnimation.applyHoverAnimation(display, translation, baseScale, isHovered);
             } catch (Exception e) {
-                padej.displayLib.DisplayLib.getInstance().getLogger().warning("Error applying item hover animation: " + e.getMessage());
-                e.printStackTrace();
+                DisplayLib.getInstance().getLogger().log(java.util.logging.Level.WARNING, "Error applying item hover animation", e);
             }
         } else if (hoveredTransformation != null) {
             // Fallback на старую систему
@@ -255,14 +303,43 @@ public class ItemDisplayButtonWidget implements Widget {
 
     private void showTooltip() {
         if (tooltip != null && viewer != null) {
-            Title title = Title.title(
-                    Component.empty(),
-                    tooltip,
-                    Title.Times.times(Duration.ofMillis(0), Duration.ofMillis(Long.MAX_VALUE), Duration.ofMillis(200))
-            );
-            viewer.showTitle(title);
+            viewer.showTitle(tooltipTitle());
             isShowingTooltip = true;
         }
+    }
+
+    /**
+     * Заголовок с подсказкой. Собирается один раз и переиспользуется при каждом показе
+     * (раньше Title, Times и три Duration создавались заново на каждое наведение).
+     */
+    private Title tooltipTitle() {
+        if (tooltipTitle == null) {
+            tooltipTitle = Title.title(Component.empty(), tooltip, TOOLTIP_TIMES);
+        }
+        return tooltipTitle;
+    }
+
+    /**
+     * Пересоздать сущность, если она исчезла из мира (например, чанк был выгружен:
+     * сущности экранов не сохраняются в чанк). Ничего не делает, если виджет удалён,
+     * скрыт или его чанк сейчас не загружен.
+     */
+    @Override
+    public void ensureSpawned() {
+        if (removed || !visible) return;
+        // isDead(), а не isValid(): только что созданная сущность в чанке на границе
+        // загруженной области ещё "не валидна", но существует - пересоздавать её не нужно
+        if (display != null && !display.isDead()) return;
+
+        org.bukkit.World world = location.getWorld();
+        if (world == null || !world.isChunkLoaded(location.getBlockX() >> 4, location.getBlockZ() >> 4)) return;
+
+        if (display != null) {
+            display.remove(); // на случай, если старая сущность ещё числится в мире
+        }
+        spawn();
+        positionCached = false;
+        isHovered = false;
     }
 
     private void hideTooltip() {
@@ -339,11 +416,13 @@ public class ItemDisplayButtonWidget implements Widget {
         } else {
             this.tooltip = null;
         }
+        this.tooltipTitle = null;
     }
     
     @Override
     public void setTooltip(Component tooltip) {
         this.tooltip = tooltip;
+        this.tooltipTitle = null;
     }
     
     /**
@@ -355,6 +434,7 @@ public class ItemDisplayButtonWidget implements Widget {
         this.savedYaw = yaw + 180.0f;
         this.savedPitch = -pitch;
         this.hasRotation = true;
+        this.positionCached = false; // зона наведения зависит от поворота
         
         // Применяем ориентацию если display уже существует
         if (display != null) {
@@ -368,12 +448,7 @@ public class ItemDisplayButtonWidget implements Widget {
      */
     public void showTooltipTo(Player player) {
         if (tooltip != null && player != null) {
-            Title title = Title.title(
-                    Component.empty(),
-                    tooltip,
-                    Title.Times.times(Duration.ofMillis(0), Duration.ofMillis(Long.MAX_VALUE), Duration.ofMillis(200))
-            );
-            player.showTitle(title);
+            player.showTitle(tooltipTitle());
         }
     }
     

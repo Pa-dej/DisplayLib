@@ -3,11 +3,16 @@ package padej.displayLib.utils;
 import padej.displayLib.DisplayLib;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Display;
+import org.bukkit.scheduler.BukkitRunnable;
+import org.bukkit.scheduler.BukkitTask;
 import org.bukkit.util.Transformation;
 import org.joml.AxisAngle4f;
 import org.joml.Vector3f;
 import org.joml.Quaternionf;
 
+import java.util.HashMap;
+import java.util.Map;
+import java.util.UUID;
 import java.util.function.DoubleUnaryOperator;
 
 /**
@@ -78,68 +83,21 @@ public class EasedAnimation {
         }
     }
     
+    /** Канал анимации: анимации разных каналов одной сущности не мешают друг другу. */
+    private enum Channel { SCALE, TRANSLATION }
+
+    /**
+     * Текущие покадровые анимации по сущности и каналу.
+     * Используется только из основного потока сервера.
+     */
+    private static final Map<UUID, BukkitTask[]> RUNNING = new HashMap<>();
+
     /**
      * Анимирует масштаб display entity с easing функцией
      */
     public static void animateScale(Display entity, Vector3f from, Vector3f to, 
                                    int totalTicks, DoubleUnaryOperator easingFn) {
-        if (entity == null || !entity.isValid()) return;
-        
-        // Для коротких анимаций используем прямое применение
-        if (totalTicks <= 2) {
-            Transformation current = entity.getTransformation();
-            Transformation target = new Transformation(
-                current.getTranslation(),
-                current.getLeftRotation(),
-                to,
-                current.getRightRotation()
-            );
-            
-            entity.setTransformation(target);
-            entity.setInterpolationDuration(totalTicks);
-            entity.setInterpolationDelay(0);
-            return;
-        }
-        
-        // Увеличиваем количество шагов для более плавной анимации
-        int steps = Math.max(totalTicks, totalTicks * 2); // Больше промежуточных кадров
-        int stepDelay = Math.max(1, totalTicks / steps);   // Задержка между кадрами
-        
-        for (int i = 0; i <= steps; i++) {
-            final int step = i;
-            
-            Bukkit.getScheduler().runTaskLater(DisplayLib.getInstance(), () -> {
-                if (!entity.isValid()) return;
-                
-                double rawT = steps > 0 ? (double) step / steps : 1.0;
-                double easedT = easingFn.applyAsDouble(Math.min(1.0, Math.max(0.0, rawT)));
-                
-                float sx = (float)(from.x + (to.x - from.x) * easedT);
-                float sy = (float)(from.y + (to.y - from.y) * easedT);
-                float sz = (float)(from.z + (to.z - from.z) * easedT);
-                
-                Transformation current = entity.getTransformation();
-                Transformation next = new Transformation(
-                    current.getTranslation(),
-                    current.getLeftRotation(),
-                    new Vector3f(sx, sy, sz),
-                    current.getRightRotation()
-                );
-                
-                entity.setTransformation(next);
-                entity.setInterpolationDuration(CLIENT_INTERPOLATION_DURATION);
-                entity.setInterpolationDelay(0);
-                
-                // Debug log для первого и последнего кадра
-                if (step == 0 || step == steps) {
-                    DisplayLib.getInstance().getLogger().info(String.format(
-                        "Scale animation step %d/%d: t=%.2f, scale=[%.2f,%.2f,%.2f], interpolation=%d", 
-                        step, steps, easedT, sx, sy, sz, CLIENT_INTERPOLATION_DURATION
-                    ));
-                }
-                
-            }, (long) step * stepDelay);
-        }
+        animate(entity, Channel.SCALE, from, to, totalTicks, easingFn);
     }
     
     /**
@@ -147,63 +105,105 @@ public class EasedAnimation {
      */
     public static void animateTranslation(Display entity, Vector3f from, Vector3f to,
                                          int totalTicks, DoubleUnaryOperator easingFn) {
+        animate(entity, Channel.TRANSLATION, from, to, totalTicks, easingFn);
+    }
+
+    /**
+     * Покадровая анимация одного компонента трансформации.
+     *
+     * <p>Вся анимация - одна повторяющаяся задача планировщика (раньше на каждый кадр
+     * заранее создавалась отдельная отложенная задача, то есть десятки задач и замыканий
+     * на каждое наведение). Новая анимация того же канала отменяет предыдущую, поэтому
+     * при быстром наведении и уходе взгляда кадры двух анимаций больше не чередуются.</p>
+     */
+    private static void animate(Display entity, Channel channel, Vector3f from, Vector3f to,
+                                int totalTicks, DoubleUnaryOperator easingFn) {
         if (entity == null || !entity.isValid()) return;
+        
+        // Предыдущая анимация этого канала больше не актуальна
+        cancel(entity, channel);
         
         // Для коротких анимаций используем прямое применение
         if (totalTicks <= 2) {
-            Transformation current = entity.getTransformation();
-            Transformation target = new Transformation(
-                to,
-                current.getLeftRotation(),
-                current.getScale(),
-                current.getRightRotation()
-            );
-            
-            entity.setTransformation(target);
-            entity.setInterpolationDuration(totalTicks);
-            entity.setInterpolationDelay(0);
+            applyComponent(entity, channel, to.x, to.y, to.z, totalTicks);
             return;
         }
         
-        // Увеличиваем количество шагов для более плавной анимации
-        int steps = Math.max(totalTicks, totalTicks * 2); // Больше промежуточных кадров
-        int stepDelay = Math.max(1, totalTicks / steps);   // Задержка между кадрами
+        // Количество кадров и шаг между ними - как в прежней реализации
+        final int steps = Math.max(totalTicks, totalTicks * 2);
+        final int stepDelay = Math.max(1, totalTicks / steps);
+        final UUID entityId = entity.getUniqueId();
+        final float fx = from.x, fy = from.y, fz = from.z;
+        final float tx = to.x, ty = to.y, tz = to.z;
         
-        for (int i = 0; i <= steps; i++) {
-            final int step = i;
+        BukkitTask task = new BukkitRunnable() {
+            private int step = 0;
             
-            Bukkit.getScheduler().runTaskLater(DisplayLib.getInstance(), () -> {
-                if (!entity.isValid()) return;
-                
-                double rawT = steps > 0 ? (double) step / steps : 1.0;
-                double easedT = easingFn.applyAsDouble(Math.min(1.0, Math.max(0.0, rawT)));
-                
-                float tx = (float)(from.x + (to.x - from.x) * easedT);
-                float ty = (float)(from.y + (to.y - from.y) * easedT);
-                float tz = (float)(from.z + (to.z - from.z) * easedT);
-                
-                Transformation current = entity.getTransformation();
-                Transformation next = new Transformation(
-                    new Vector3f(tx, ty, tz),
-                    current.getLeftRotation(),
-                    current.getScale(),
-                    current.getRightRotation()
-                );
-                
-                entity.setTransformation(next);
-                entity.setInterpolationDuration(CLIENT_INTERPOLATION_DURATION);
-                entity.setInterpolationDelay(0);
-                
-                // Debug log для первого и последнего кадра
-                if (step == 0 || step == steps) {
-                    DisplayLib.getInstance().getLogger().info(String.format(
-                        "Translation animation step %d/%d: t=%.2f, pos=[%.3f,%.3f,%.3f], interpolation=%d", 
-                        step, steps, easedT, tx, ty, tz, CLIENT_INTERPOLATION_DURATION
-                    ));
+            @Override
+            public void run() {
+                if (!entity.isValid()) {
+                    finish();
+                    return;
                 }
                 
-            }, (long) step * stepDelay);
+                double rawT = (double) step / steps;
+                double easedT = easingFn.applyAsDouble(Math.min(1.0, Math.max(0.0, rawT)));
+                
+                applyComponent(entity, channel,
+                        (float) (fx + (tx - fx) * easedT),
+                        (float) (fy + (ty - fy) * easedT),
+                        (float) (fz + (tz - fz) * easedT),
+                        CLIENT_INTERPOLATION_DURATION);
+                
+                if (++step > steps) {
+                    finish();
+                }
+            }
+            
+            private void finish() {
+                cancel();
+                BukkitTask[] tasks = RUNNING.get(entityId);
+                // Снимаем регистрацию, только если в канале всё ещё эта задача
+                if (tasks != null && tasks[channel.ordinal()] != null
+                        && tasks[channel.ordinal()].getTaskId() == getTaskId()) {
+                    tasks[channel.ordinal()] = null;
+                    if (tasks[0] == null && tasks[1] == null) {
+                        RUNNING.remove(entityId);
+                    }
+                }
+            }
+        }.runTaskTimer(DisplayLib.getInstance(), 0L, stepDelay);
+        
+        RUNNING.computeIfAbsent(entityId, k -> new BukkitTask[Channel.values().length])[channel.ordinal()] = task;
+    }
+
+    /** Отменить текущую анимацию канала у сущности, если она есть. */
+    private static void cancel(Display entity, Channel channel) {
+        UUID entityId = entity.getUniqueId();
+        BukkitTask[] tasks = RUNNING.get(entityId);
+        if (tasks == null) return;
+        
+        BukkitTask task = tasks[channel.ordinal()];
+        if (task != null) {
+            task.cancel();
+            tasks[channel.ordinal()] = null;
         }
+        if (tasks[0] == null && tasks[1] == null) {
+            RUNNING.remove(entityId);
+        }
+    }
+
+    /** Заменить один компонент трансформации (масштаб или смещение), сохранив остальные. */
+    private static void applyComponent(Display entity, Channel channel, float x, float y, float z, int interpolationTicks) {
+        // getTransformation() возвращает свежую копию - меняем в ней нужный компонент и отдаём обратно,
+        // не создавая на каждый кадр новый вектор и новую Transformation с четырьмя копиями внутри.
+        // Читать текущее состояние нужно каждый кадр: параллельно могут идти анимация второго канала и поворот.
+        Transformation next = entity.getTransformation();
+        (channel == Channel.SCALE ? next.getScale() : next.getTranslation()).set(x, y, z);
+        
+        entity.setTransformation(next);
+        entity.setInterpolationDuration(interpolationTicks);
+        entity.setInterpolationDelay(0);
     }
     
     /**
@@ -267,11 +267,6 @@ public class EasedAnimation {
         entity.setTransformation(target);
         entity.setInterpolationDuration(duration);
         entity.setInterpolationDelay(0);
-        
-        DisplayLib.getInstance().getLogger().info(String.format(
-            "Simple scale animation: from=[%.2f,%.2f,%.2f] to=[%.2f,%.2f,%.2f], duration=%d", 
-            from.x, from.y, from.z, to.x, to.y, to.z, duration
-        ));
     }
     
     /**
@@ -291,11 +286,6 @@ public class EasedAnimation {
         entity.setTransformation(target);
         entity.setInterpolationDuration(duration);
         entity.setInterpolationDelay(0);
-        
-        DisplayLib.getInstance().getLogger().info(String.format(
-            "Simple translation animation: from=[%.3f,%.3f,%.3f] to=[%.3f,%.3f,%.3f], duration=%d", 
-            from.x, from.y, from.z, to.x, to.y, to.z, duration
-        ));
     }
     /**
      * Непрерывная пульсирующая анимация масштаба (зацикленная)
@@ -339,11 +329,6 @@ public class EasedAnimation {
             // Переключаем направление
             isExpanding[0] = !isExpanding[0];
             
-            DisplayLib.getInstance().getLogger().info(String.format(
-                "Pulsing animation: %s to [%.2f,%.2f,%.2f]", 
-                isExpanding[0] ? "shrinking" : "expanding", to.x, to.y, to.z
-            ));
-            
         }, 0, pulseDuration).getTaskId();
         
         // Сохраняем ID задачи в метаданных entity для возможности остановки
@@ -365,8 +350,6 @@ public class EasedAnimation {
             int taskId = entity.getPersistentDataContainer().get(key, org.bukkit.persistence.PersistentDataType.INTEGER);
             Bukkit.getScheduler().cancelTask(taskId);
             entity.getPersistentDataContainer().remove(key);
-            
-            DisplayLib.getInstance().getLogger().info("Stopped continuous animation, task ID: " + taskId);
         }
     }
     

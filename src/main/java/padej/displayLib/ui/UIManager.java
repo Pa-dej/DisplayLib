@@ -16,24 +16,54 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
+import org.bukkit.event.player.PlayerChangedWorldEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.scheduler.BukkitTask;
 
-import java.util.HashMap;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.List;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.IdentityHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+import java.util.concurrent.CopyOnWriteArrayList;
 
+/**
+ * Реестр открытых экранов и обработчик ввода.
+ *
+ * <p>Всё состояние менеджера используется только из основного потока сервера
+ * (события Bukkit, задачи планировщика, команды), поэтому синхронизация не нужна.</p>
+ */
 public class UIManager implements Listener {
-    // PRIVATE screens (existing behavior)
-    private final Map<Player, ScreenInstance> privateScreens = new ConcurrentHashMap<>();
-    private final Map<Player, BukkitTask> privateUpdateTasks = new ConcurrentHashMap<>();
+    // PRIVATE screens: ключ - UUID игрока, чтобы не удерживать объект Player
+    // и не зависеть от того, тот же ли это экземпляр после перезахода
+    private final Map<UUID, ScreenInstance> privateScreens = new HashMap<>();
+    private final Map<UUID, ScreenTicker> privateUpdateTasks = new HashMap<>();
     
-    // PUBLIC screens (new)
-    private final List<GlobalScreenInstance> publicScreens = new ArrayList<>();
-    private final Map<GlobalScreenInstance, BukkitTask> publicUpdateTasks = new ConcurrentHashMap<>();
+    // PUBLIC screens. Список обходится в обработчиках событий, а скрипт по клику может
+    // открыть или закрыть экран, поэтому используется copy-on-write: обход всегда
+    // идёт по снимку и не ломается при изменении списка.
+    private final List<GlobalScreenInstance> publicScreens = new CopyOnWriteArrayList<>();
+    private final Map<GlobalScreenInstance, ScreenTicker> publicUpdateTasks = new IdentityHashMap<>();
+    
+    // Одна задача планировщика на все экраны вместо отдельной задачи на каждый экран
+    private final List<ScreenTicker> tickers = new ArrayList<>();
+    private BukkitTask tickTask;
+    private boolean tickersDirty = false;
+
+    /** Обновление одного экрана со своим периодом (tick_rate). */
+    private static final class ScreenTicker {
+        final Runnable update;
+        final int period;
+        int countdown = 1; // первое обновление - на ближайшем тике
+        boolean cancelled = false;
+
+        ScreenTicker(Runnable update, int period) {
+            this.update = update;
+            this.period = period;
+        }
+    }
     
     private ScreenRegistry screenRegistry;
     private LuaEngine luaEngine;
@@ -56,7 +86,7 @@ public class UIManager implements Listener {
     }
 
     public ScreenInstance getActiveScreen(Player player) {
-        return privateScreens.get(player);
+        return privateScreens.get(player.getUniqueId());
     }
 
     // -------------------------------------------------------------------------
@@ -77,7 +107,7 @@ public class UIManager implements Listener {
     public boolean switchScreen(Player player, String screenId) {
         Location existingLocation = null;
         float[] existingOrientation = null;
-        ScreenInstance current = privateScreens.get(player);
+        ScreenInstance current = getActiveScreen(player);
         if (current != null) {
             existingLocation = current.getLocation();
             existingOrientation = current.getScreenOrientation(); // Сохраняем ориентацию
@@ -142,7 +172,7 @@ public class UIManager implements Listener {
      * Закрыть экран игрока (вызывается из кнопки / Lua).
      */
     public void closeScreen(Player player) {
-        ScreenInstance screen = privateScreens.get(player);
+        ScreenInstance screen = getActiveScreen(player);
         if (screen != null) {
             // Вызываем tryClose для правильного порядка cleanup
             screen.tryClose();
@@ -154,10 +184,12 @@ public class UIManager implements Listener {
      * Используется только из tryClose() и для принудительного закрытия.
      */
     public void forceCloseScreen(Player player) {
-        ScreenInstance screen = privateScreens.get(player);
+        ScreenInstance screen = getActiveScreen(player);
         if (screen != null) {
-            screen.remove();
+            // Сначала снимаем регистрацию: если удаление сущностей бросит исключение,
+            // в реестре не останется "мёртвый" экран с работающей задачей обновления
             unregisterScreen(player);
+            screen.remove();
         }
     }
 
@@ -214,8 +246,8 @@ public class UIManager implements Listener {
      */
     public void closeGlobalScreen(GlobalScreenInstance screen) {
         if (screen != null) {
-            screen.remove();
             unregisterPublicScreen(screen);
+            screen.remove();
         }
     }
 
@@ -262,13 +294,14 @@ public class UIManager implements Listener {
     // -------------------------------------------------------------------------
 
     public void registerScreen(Player player, ScreenInstance screenInstance) {
-        privateScreens.put(player, screenInstance);
-        startUpdateTaskForScreen(player, screenInstance);
+        privateScreens.put(player.getUniqueId(), screenInstance);
+        startUpdateTaskForScreen(player.getUniqueId(), screenInstance);
     }
 
     public void unregisterScreen(Player player) {
-        privateScreens.remove(player);
-        stopUpdateTaskForScreen(player);
+        UUID playerId = player.getUniqueId();
+        privateScreens.remove(playerId);
+        stopUpdateTaskForScreen(playerId);
     }
 
     public void registerPublicScreen(GlobalScreenInstance screenInstance) {
@@ -287,41 +320,13 @@ public class UIManager implements Listener {
 
     @EventHandler
     public void onPlayerInteract(PlayerInteractEvent event) {
-        Player player = event.getPlayer();
-        
-        // Step 1: PRIVATE screen logic (updated to use interaction_radius)
-        ScreenInstance personal = privateScreens.get(player);
-        if (personal != null) {
-            if (event.getAction() == Action.LEFT_CLICK_AIR
-                    || event.getAction() == Action.LEFT_CLICK_BLOCK) {
-                
-                // Проверяем interaction_radius перед обработкой клика
-                if (personal.checkPlayerInInteractionRange()) {
-                    Widget nearest = getNearestHovered(personal);
-                    if (nearest != null) {
-                        event.setCancelled(true);
-                        fireClickEvent(player, nearest);
-                        return;
-                    }
-                } else {
-                    // Click ignored - player out of interaction range
-                }
-            }
+        if (event.getAction() != Action.LEFT_CLICK_AIR
+                && event.getAction() != Action.LEFT_CLICK_BLOCK) {
+            return;
         }
-
-        // Step 2: public screens
-        if (event.getAction() == Action.LEFT_CLICK_AIR
-                || event.getAction() == Action.LEFT_CLICK_BLOCK) {
-            for (GlobalScreenInstance global : publicScreens) {
-                if (!global.getNearbyPlayers().contains(player)) continue;
-                
-                Widget hovered = global.getHoveredWidgetFor(player);
-                if (hovered != null) {
-                    event.setCancelled(true);
-                    global.handleClickBy(player);
-                    return;
-                }
-            }
+        
+        if (handleLeftClick(event.getPlayer())) {
+            event.setCancelled(true);
         }
     }
 
@@ -329,28 +334,40 @@ public class UIManager implements Listener {
     public void onEntityAttack(EntityDamageByEntityEvent event) {
         if (!(event.getDamager() instanceof Player player)) return;
         
-        // Step 1: existing private screen logic (unchanged)
-        ScreenInstance personal = privateScreens.get(player);
-        if (personal != null) {
-            Widget nearest = getNearestHovered(personal);
+        if (handleLeftClick(player)) {
+            event.setCancelled(true);
+        }
+    }
+
+    /**
+     * Общая обработка левого клика (по воздуху, блоку или сущности).
+     *
+     * @return true, если клик пришёлся на виджет и исходное событие нужно отменить
+     */
+    private boolean handleLeftClick(Player player) {
+        // Быстрый выход: без открытых экранов событие нас не касается
+        if (privateScreens.isEmpty() && publicScreens.isEmpty()) return false;
+        
+        // Step 1: PRIVATE screen (с учётом interaction_radius - одинаково для всех видов клика)
+        ScreenInstance personal = privateScreens.get(player.getUniqueId());
+        if (personal != null && personal.checkPlayerInInteractionRange()) {
+            Widget nearest = personal.getNearestHoveredWidget();
             if (nearest != null) {
-                event.setCancelled(true);
                 fireClickEvent(player, nearest);
-                return;
+                return true;
             }
         }
 
         // Step 2: public screens
         for (GlobalScreenInstance global : publicScreens) {
-            if (!global.getNearbyPlayers().contains(player)) continue;
+            if (!global.isNearby(player)) continue;
             
-            Widget hovered = global.getHoveredWidgetFor(player);
-            if (hovered != null) {
-                event.setCancelled(true);
+            if (global.getHoveredWidgetFor(player) != null) {
                 global.handleClickBy(player);
-                return;
+                return true;
             }
         }
+        return false;
     }
 
     private void fireClickEvent(Player player, Widget widget) {
@@ -361,67 +378,81 @@ public class UIManager implements Listener {
         }
     }
 
-    private Widget getNearestHovered(ScreenInstance screen) {
-        Widget nearest = null;
-        double nearestDist = Double.MAX_VALUE;
-        for (Widget widget : screen.children) {
-            if (!widget.isHovered()) continue;
-            Location loc = widget.getLocation();
-            if (loc == null) continue;
-            double dist = screen.viewer.getEyeLocation().distance(loc);
-            if (dist < nearestDist) {
-                nearestDist = dist;
-                nearest = widget;
-            }
-        }
-        return nearest;
-    }
-
     // -------------------------------------------------------------------------
     // Update loop
     // -------------------------------------------------------------------------
 
-    private void startUpdateTaskForScreen(Player player, ScreenInstance screenInstance) {
-        // Останавливаем предыдущую задачу если есть
-        stopUpdateTaskForScreen(player);
+    private void startUpdateTaskForScreen(UUID playerId, ScreenInstance screenInstance) {
+        // Останавливаем предыдущее обновление если есть
+        stopUpdateTaskForScreen(playerId);
         
-        // Получаем tick_rate из определения экрана
-        int tickRate = screenInstance.getDefinition().getTickRate();
-        
-        // Создаем новую задачу обновления для этого экрана
-        BukkitTask task = Bukkit.getScheduler().runTaskTimer(DisplayLib.getInstance(), () -> {
-            ScreenInstance screen = privateScreens.get(player);
-            if (screen != null) {
-                screen.update();
+        privateUpdateTasks.put(playerId, startTicker(screenInstance.getDefinition().getTickRate(), () -> {
+            // Обновляем только если этот экран всё ещё активен у игрока
+            if (privateScreens.get(playerId) == screenInstance) {
+                screenInstance.update();
             }
-        }, 0L, tickRate);
-        
-        privateUpdateTasks.put(player, task);
+        }));
     }
 
-    private void stopUpdateTaskForScreen(Player player) {
-        BukkitTask task = privateUpdateTasks.remove(player);
-        if (task != null && !task.isCancelled()) {
-            task.cancel();
-        }
+    private void stopUpdateTaskForScreen(UUID playerId) {
+        stopTicker(privateUpdateTasks.remove(playerId));
     }
 
     private void startUpdateTaskForPublicScreen(GlobalScreenInstance screenInstance) {
-        // Получаем tick_rate из определения экрана
-        int tickRate = screenInstance.getDefinition().getTickRate();
-        
-        // Создаем новую задачу обновления для этого глобального экрана
-        BukkitTask task = Bukkit.getScheduler().runTaskTimer(DisplayLib.getInstance(), () -> {
-            screenInstance.update();
-        }, 0L, tickRate);
-        
-        publicUpdateTasks.put(screenInstance, task);
+        publicUpdateTasks.put(screenInstance,
+                startTicker(screenInstance.getDefinition().getTickRate(), screenInstance::update));
     }
 
     private void stopUpdateTaskForPublicScreen(GlobalScreenInstance screenInstance) {
-        BukkitTask task = publicUpdateTasks.remove(screenInstance);
-        if (task != null && !task.isCancelled()) {
-            task.cancel();
+        stopTicker(publicUpdateTasks.remove(screenInstance));
+    }
+
+    private ScreenTicker startTicker(int tickRate, Runnable update) {
+        ScreenTicker ticker = new ScreenTicker(update, Math.max(1, tickRate));
+        tickers.add(ticker);
+        
+        // Общая задача работает, только пока есть хотя бы один экран
+        if (tickTask == null) {
+            tickTask = Bukkit.getScheduler().runTaskTimer(DisplayLib.getInstance(), this::tickScreens, 0L, 1L);
+        }
+        return ticker;
+    }
+
+    private void stopTicker(ScreenTicker ticker) {
+        if (ticker != null) {
+            // Из списка убирается после обхода: остановка может прийти изнутри обновления экрана
+            ticker.cancelled = true;
+            tickersDirty = true;
+        }
+    }
+
+    private void tickScreens() {
+        // Обход по индексу: во время обновления экраны могут открываться (добавляются в конец) и закрываться
+        for (int i = 0; i < tickers.size(); i++) {
+            ScreenTicker ticker = tickers.get(i);
+            if (ticker.cancelled || --ticker.countdown > 0) continue;
+            
+            ticker.countdown = ticker.period;
+            try {
+                ticker.update.run();
+            } catch (Exception e) {
+                // Ошибка одного экрана не должна останавливать обновление остальных
+                DisplayLib.getInstance().getLogger().log(java.util.logging.Level.WARNING, "Error updating screen", e);
+            }
+        }
+        
+        if (tickersDirty) {
+            tickersDirty = false;
+            for (int i = tickers.size() - 1; i >= 0; i--) {
+                if (tickers.get(i).cancelled) {
+                    tickers.remove(i);
+                }
+            }
+        }
+        
+        if (tickers.isEmpty() && tickTask != null) {
+            tickTask.cancel();
+            tickTask = null;
         }
     }
 
@@ -436,61 +467,62 @@ public class UIManager implements Listener {
         // Очищаем storage данные игрока
         StorageAPI.clearPlayerData(player.getUniqueId());
         
-        // Закрываем личный экран
-        forceCloseScreen(player);
-        
-        // Убираем игрока из публичных экранов
-        for (GlobalScreenInstance global : publicScreens) {
-            global.getNearbyPlayers().remove(player);
-            // Очищаем hover состояния для этого игрока
-            Widget hoveredWidget = global.getHoveredWidgetFor(player);
-            if (hoveredWidget != null) {
-                player.clearTitle();
-            }
-        }
+        releasePlayer(player);
     }
 
     @EventHandler(priority = EventPriority.HIGHEST)
     public void onPlayerDeath(PlayerDeathEvent event) {
-        Player player = event.getEntity();
-        
-        // Закрываем личный экран
+        releasePlayer(event.getEntity());
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR)
+    public void onPlayerChangedWorld(PlayerChangedWorldEvent event) {
+        // Экран остался в прежнем мире - игроку он больше недоступен
+        releasePlayer(event.getPlayer());
+    }
+
+    /**
+     * Закрыть личный экран игрока и убрать игрока из состояния публичных экранов.
+     */
+    private void releasePlayer(Player player) {
         forceCloseScreen(player);
         
-        // Убираем игрока из публичных экранов
         for (GlobalScreenInstance global : publicScreens) {
-            global.getNearbyPlayers().remove(player);
-            Widget hoveredWidget = global.getHoveredWidgetFor(player);
-            if (hoveredWidget != null) {
-                player.clearTitle();
-            }
+            global.removePlayer(player);
         }
     }
 
     public void cleanup() {
         // Cleanup private screens
-        new HashMap<>(privateScreens).forEach((player, screen) -> {
-            if (screen != null) screen.remove();
-            unregisterScreen(player);
-        });
+        for (ScreenInstance screen : new ArrayList<>(privateScreens.values())) {
+            try {
+                screen.remove();
+            } catch (Exception e) {
+                DisplayLib.getInstance().getLogger().warning("Failed to remove screen '" + screen.getScreenId() + "': " + e.getMessage());
+            }
+        }
+        privateScreens.clear();
         
         // Cleanup public screens
-        new ArrayList<>(publicScreens).forEach(this::closeGlobalScreen);
-        
-        // Останавливаем все оставшиеся задачи обновления
-        privateUpdateTasks.values().forEach(task -> {
-            if (task != null && !task.isCancelled()) {
-                task.cancel();
+        for (GlobalScreenInstance screen : publicScreens) {
+            try {
+                screen.remove();
+            } catch (Exception e) {
+                DisplayLib.getInstance().getLogger().warning("Failed to remove public screen '" + screen.getScreenId() + "': " + e.getMessage());
             }
-        });
+        }
+        publicScreens.clear();
+        
+        // Останавливаем обновление экранов
         privateUpdateTasks.clear();
-        
-        publicUpdateTasks.values().forEach(task -> {
-            if (task != null && !task.isCancelled()) {
-                task.cancel();
-            }
-        });
         publicUpdateTasks.clear();
+        tickers.forEach(ticker -> ticker.cancelled = true);
+        tickers.clear();
+        tickersDirty = false;
+        if (tickTask != null) {
+            tickTask.cancel();
+            tickTask = null;
+        }
     }
 
     public boolean hasActiveScreens() {

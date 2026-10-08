@@ -9,22 +9,40 @@ public class PointDetection {
     }
 
     public static boolean lookingAtPoint(@NotNull Vector eye, @NotNull Vector direction, Vector point, double horizontalTolerance, double verticalTolerance) {
-        // Быстрая проверка: точка за спиной?
-        double dx = point.getX() - eye.getX();
-        double dy = point.getY() - eye.getY();
-        double dz = point.getZ() - eye.getZ();
-        
-        double dotProduct = dx * direction.getX() + dy * direction.getY() + dz * direction.getZ();
-        if (dotProduct < 0) {
-            return false; // Точка за спиной
-        }
-        
-        double pointDistance = Math.sqrt(dx*dx + dy*dy + dz*dz);
-        Vector lookingAtPoint = eye.clone().add(direction.clone().multiply(pointDistance));
+        return lookingAtPoint(eye.getX(), eye.getY(), eye.getZ(),
+                direction.getX(), direction.getY(), direction.getZ(),
+                point.getX(), point.getY(), point.getZ(),
+                horizontalTolerance, verticalTolerance);
+    }
 
-        double horizontalDist = Math.sqrt(Math.pow(lookingAtPoint.getX() - point.getX(), 2) + Math.pow(lookingAtPoint.getZ() - point.getZ(), 2));
-        double verticalDist = Math.abs(lookingAtPoint.getY() - point.getY());
-        
+    /**
+     * Вариант без объектов: используется в горячем цикле обновления экранов,
+     * чтобы не создавать Vector на каждый виджет и каждый тик.
+     */
+    public static boolean lookingAtPoint(double eyeX, double eyeY, double eyeZ,
+                                         double dirX, double dirY, double dirZ,
+                                         double pointX, double pointY, double pointZ,
+                                         double horizontalTolerance, double verticalTolerance) {
+        double dx = pointX - eyeX;
+        double dy = pointY - eyeY;
+        double dz = pointZ - eyeZ;
+
+        // Быстрая проверка: точка за спиной?
+        double dotProduct = dx * dirX + dy * dirY + dz * dirZ;
+        if (dotProduct < 0) {
+            return false;
+        }
+
+        double pointDistance = Math.sqrt(dx * dx + dy * dy + dz * dz);
+
+        // Точка на луче взгляда на том же расстоянии, что и цель
+        double hx = eyeX + dirX * pointDistance - pointX;
+        double hy = eyeY + dirY * pointDistance - pointY;
+        double hz = eyeZ + dirZ * pointDistance - pointZ;
+
+        double horizontalDist = Math.sqrt(hx * hx + hz * hz);
+        double verticalDist = Math.abs(hy);
+
         return horizontalDist < horizontalTolerance && verticalDist < verticalTolerance;
     }
 }
