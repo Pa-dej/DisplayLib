@@ -38,7 +38,7 @@ import java.util.List;
  * ├── scripts/          # Lua скрипты
  * │   ├── main_menu.lua
  * │   └── common.lua
- * └── config.yml        # Основная конфигурация
+ * └── config.yml        # Настройки плагина (hot-reload, test-listeners)
  * </pre>
  * 
  * <h2>Команды:</h2>
@@ -58,11 +58,20 @@ import java.util.List;
 public final class DisplayLib extends JavaPlugin {
 
     public static final List<DisplayParticle> DISPLAY_PARTICLES = new ArrayList<>();
+    
+    /** Экземпляр плагина; кэшируется, так как getInstance() вызывается из горячих путей */
+    private static DisplayLib instance;
+    
     private ScreenRegistry screenRegistry;
     private LuaEngine luaEngine;
 
     @Override
     public void onEnable() {
+        instance = this;
+        
+        // config.yml: hot-reload, test-listeners
+        saveDefaultConfig();
+        
         // Инициализация новой системы экранов
         screenRegistry = new ScreenRegistry(this);
         screenRegistry.initialize();
@@ -78,16 +87,12 @@ public final class DisplayLib extends JavaPlugin {
         getCommand("displaylib").setExecutor(commandExecutor);
         getCommand("displaylib").setTabCompleter(commandExecutor);
 
-        getServer().getPluginManager().registerEvents(new ApplyHighlightToBlockTest(), this);
-        getServer().getPluginManager().registerEvents(new CreateDisplayParticleFirstTest(), this);
-        getServer().getPluginManager().registerEvents(new CreateDisplayParticleSecondTest(), this);
-        getServer().getPluginManager().registerEvents(new CreateDisplayParticleThirdTest(), this);
-        getServer().getPluginManager().registerEvents(new CreateTestUI(), this);
-        getServer().getPluginManager().registerEvents(new GizmoTest(), this);
-        getServer().getPluginManager().registerEvents(new PointDetectFirstTest(), this);
-        getServer().getPluginManager().registerEvents(new PointDetectSecondTest(), this);
-        getServer().getPluginManager().registerEvents(new RotationRelativeToCenterPointTest(), this);
-        getServer().getPluginManager().registerEvents(new SmoothMotionAndRotationTest(), this);
+        // Демонстрационные слушатели (пакет test_events) реагируют на каждый клик каждого игрока,
+        // поэтому в обычной работе выключены. Включаются в config.yml: test-listeners: true
+        if (getConfig().getBoolean("test-listeners", false)) {
+            registerTestListeners();
+            getLogger().info("Test listeners enabled (test-listeners: true)");
+        }
 
         Highlight.removeAllSelections();
         Highlight.startColorUpdateTask();
@@ -110,10 +115,26 @@ public final class DisplayLib extends JavaPlugin {
         }
 
         DISPLAY_PARTICLES.clear();
+        instance = null;
     }
 
     public static JavaPlugin getInstance() {
-        return JavaPlugin.getPlugin(DisplayLib.class);
+        DisplayLib plugin = instance;
+        return plugin != null ? plugin : JavaPlugin.getPlugin(DisplayLib.class);
+    }
+    
+    private void registerTestListeners() {
+        var pluginManager = getServer().getPluginManager();
+        pluginManager.registerEvents(new ApplyHighlightToBlockTest(), this);
+        pluginManager.registerEvents(new CreateDisplayParticleFirstTest(), this);
+        pluginManager.registerEvents(new CreateDisplayParticleSecondTest(), this);
+        pluginManager.registerEvents(new CreateDisplayParticleThirdTest(), this);
+        pluginManager.registerEvents(new CreateTestUI(), this);
+        pluginManager.registerEvents(new GizmoTest(), this);
+        pluginManager.registerEvents(new PointDetectFirstTest(), this);
+        pluginManager.registerEvents(new PointDetectSecondTest(), this);
+        pluginManager.registerEvents(new RotationRelativeToCenterPointTest(), this);
+        pluginManager.registerEvents(new SmoothMotionAndRotationTest(), this);
     }
     
     public ScreenRegistry getScreenRegistry() {

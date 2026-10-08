@@ -1,13 +1,7 @@
 package padej.displayLib.ui;
 
-import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.format.TextColor;
-import org.bukkit.Color;
 import org.bukkit.Location;
-import org.bukkit.Material;
 import org.bukkit.entity.Player;
-import org.joml.Vector3f;
-import padej.displayLib.DisplayLib;
 import padej.displayLib.config.ScreenDefinition;
 import padej.displayLib.config.WidgetDefinition;
 import padej.displayLib.lua.LuaContext;
@@ -30,6 +24,9 @@ public class ScreenInstance extends WidgetManager {
     private final LuaEngine luaEngine;
     private LuaContext luaContext;
     
+    /** Lua-файл экрана (scripts.file) или null */
+    private final String scriptFile;
+    
     /** Быстрый доступ к виджетам по id из YAML */
     private final Map<String, Widget> widgetById = new HashMap<>();
     
@@ -37,31 +34,63 @@ public class ScreenInstance extends WidgetManager {
     private final float screenYaw;
     private final float screenPitch;
     
+    /** Квадраты радиусов из YAML (значение <= 0 означает "без ограничения") */
+    private final double interactionRadiusSq;
+    private final double closeDistanceSq;
+    
+    /** Переиспользуемый объект для проверки расстояния до зрителя */
+    private final Location viewerScratch = new Location(null, 0, 0, 0);
+    
     /** Флаг предотвращения рекурсии при закрытии */
     private boolean isClosing = false;
-    
-    /** Последнее состояние interaction range для отладки */
-    private boolean lastInteractionState = true;
-    
-    /** Смещение виджетов по глубине относительно фона для избежания Z-fighting */
-    private static final float WIDGET_DEPTH_OFFSET = 0.001f;
-    
-    /** Увеличенное смещение для ItemDisplay виджетов */
-    private static final float ITEM_WIDGET_DEPTH_OFFSET = 0.01f;
 
+    /**
+     * Экран, повёрнутый лицом к игроку (ориентация вычисляется один раз).
+     */
     public ScreenInstance(String screenId, ScreenDefinition definition,
                           Player viewer, Location location, LuaEngine luaEngine) {
+        this(screenId, definition, viewer, location, facingOrientation(viewer, location), luaEngine);
+    }
+    
+    /**
+     * Конструктор с заданной ориентацией (для переключения экранов)
+     */
+    public ScreenInstance(String screenId, ScreenDefinition definition,
+                          Player viewer, Location location, float yaw, float pitch, LuaEngine luaEngine) {
+        this(screenId, definition, viewer, location, new float[]{yaw, pitch}, luaEngine);
+    }
+
+    private ScreenInstance(String screenId, ScreenDefinition definition,
+                           Player viewer, Location location, float[] orientation, LuaEngine luaEngine) {
         super(viewer, location);
         this.screenId = screenId;
         this.definition = definition;
         this.luaEngine = luaEngine;
+        this.screenYaw = orientation[0];
+        this.screenPitch = orientation[1];
+        
+        Map<String, String> scripts = definition.getScripts();
+        this.scriptFile = scripts != null ? scripts.get("file") : null;
+        
+        double interactionRadius = definition.getInteractionRadius();
+        this.interactionRadiusSq = interactionRadius > 0 ? interactionRadius * interactionRadius : -1;
+        double closeDistance = definition.getCloseDistance();
+        this.closeDistanceSq = closeDistance > 0 ? closeDistance * closeDistance : -1;
         
         // Создаем Lua контекст
         if (luaEngine != null) {
             this.luaContext = luaEngine.createContext(this, viewer);
         }
+
+        spawnBackground();
+        spawnWidgets();
         
-        // Вычисляем единую ориентацию экрана один раз
+        // Вызываем on_open после создания всех виджетов
+        callLifecycleFunction("on_open");
+    }
+
+    /** Ориентация (yaw, pitch) экрана в точке location, обращённого к игроку. */
+    private static float[] facingOrientation(Player viewer, Location location) {
         Location viewerLoc = viewer.getLocation().add(0, viewer.getHeight() / 2, 0);
         double dx = viewerLoc.getX() - location.getX();
         double dy = viewerLoc.getY() - location.getY();
@@ -70,40 +99,7 @@ public class ScreenInstance extends WidgetManager {
         double yaw = Math.atan2(dz, dx);
         double pitch = Math.atan2(dy, Math.sqrt(dx * dx + dz * dz));
 
-        this.screenYaw = (float) Math.toDegrees(yaw) - 90;
-        this.screenPitch = (float) Math.toDegrees(-pitch);
-
-        spawnBackground();
-        spawnWidgets();
-        
-        // Вызываем on_open после создания всех виджетов
-        callLuaFunction("on_open");
-    }
-    
-    /**
-     * Конструктор с заданной ориентацией (для переключения экранов)
-     */
-    public ScreenInstance(String screenId, ScreenDefinition definition,
-                          Player viewer, Location location, float yaw, float pitch, LuaEngine luaEngine) {
-        super(viewer, location);
-        this.screenId = screenId;
-        this.definition = definition;
-        this.luaEngine = luaEngine;
-        
-        // Создаем Lua контекст
-        if (luaEngine != null) {
-            this.luaContext = luaEngine.createContext(this, viewer);
-        }
-        
-        // Используем переданную ориентацию
-        this.screenYaw = yaw;
-        this.screenPitch = pitch;
-
-        spawnBackground();
-        spawnWidgets();
-        
-        // Вызываем on_open после создания всех виджетов
-        callLuaFunction("on_open");
+        return new float[]{(float) Math.toDegrees(yaw) - 90, (float) Math.toDegrees(-pitch)};
     }
 
     // -------------------------------------------------------------------------
@@ -114,35 +110,12 @@ public class ScreenInstance extends WidgetManager {
         ScreenDefinition.BackgroundDefinition bg = definition.getBackground();
         if (bg == null) return;
 
-        int[] c = bg.getColor();
-        float[] s = bg.getScale();
-        float[] p = bg.getPosition() != null ? bg.getPosition() : new float[]{0.0f, 0.0f, 0.0f};
-        float[] tr = bg.getTranslation() != null ? bg.getTranslation() : new float[]{0.0f, 0.0f, 0.0f};
-
-        // Вычисляем финальную позицию
-        Location backgroundLocation = resolveLocation(p);
-
-        TextDisplayButtonConfig cfg = new TextDisplayButtonConfig(
-                Component.text(bg.getText()),
-                Component.text(bg.getText()),
-                null  // Убираем onClick для фона
-        )
-                .setScale(s[0], s[1], s[2])
-                .setBackgroundColor(Color.fromRGB(c[0], c[1], c[2]))
-                .setBackgroundAlpha(bg.getAlpha())
-                .setHoveredBackgroundColor(Color.fromRGB(c[0], c[1], c[2]))  // Тот же цвет для hover
-                .setHoveredBackgroundAlpha(bg.getAlpha())  // Та же прозрачность для hover
-                .setTolerance(0.0, 0.0)  // Убираем толерантность - нельзя кликнуть
-                .setPosition(new WidgetPosition(0, 0, 0))
-                .setTranslation(padej.displayLib.utils.TransformationUtil.createAlignedTranslation(s[0], tr));
-
-        // Фон создается с учетом position из YAML (используем уже вычисленную позицию)
-        TextDisplayButtonWidget backgroundWidget = TextDisplayButtonWidget.create(backgroundLocation, viewer, cfg);
+        // Фон создается с учетом position из YAML
+        TextDisplayButtonWidget backgroundWidget = TextDisplayButtonWidget.create(
+                ScreenSupport.backgroundLocation(location, bg), viewer, ScreenSupport.backgroundConfig(bg));
         
         // Сохраняем единую ориентацию экрана
-        if (backgroundWidget != null) {
-            backgroundWidget.saveRotation(screenYaw, screenPitch);
-        }
+        backgroundWidget.saveRotation(screenYaw, screenPitch);
         
         addDrawableChild(backgroundWidget);
     }
@@ -162,148 +135,28 @@ public class ScreenInstance extends WidgetManager {
     }
 
     private Widget buildWidget(WidgetDefinition def) {
-        Location widgetLoc = resolveLocation(def.getPosition());
-        return switch (def.getType()) {
-            case TEXT_BUTTON -> buildTextWidget(def, widgetLoc);
-            case ITEM_BUTTON -> buildItemWidget(def, null); // Позиция вычисляется внутри buildItemWidget
-        };
-    }
-
-    // -------------------------------------------------------------------------
-    // Widget builders
-    // -------------------------------------------------------------------------
-
-    private TextDisplayButtonWidget buildTextWidget(WidgetDefinition def, Location loc) {
-        int[] bg = def.getBackgroundColor();
-        int[] hbg = def.getHoveredBackgroundColor();
-        float[] s = def.getScale();
-        float[] t = def.getTolerance();
-        float[] tr = def.getTranslation();
-
         // Определяем onClick только если действие не NONE
-        Runnable onClickAction = null;
-        if (def.getOnClick() != null && def.getOnClick().getAction() != WidgetDefinition.ClickAction.ActionType.NONE) {
-            onClickAction = () -> handleClick(def);
-        }
+        Runnable onClick = ScreenSupport.hasClickAction(def) ? () -> handleClick(def) : null;
 
-        // Определяем текст - может быть обычной строкой или форматированным JSON
-        Component textComponent;
-        if (def.getFormattedText() != null) {
-            textComponent = parseFormattedText(def.getFormattedText());
-        } else {
-            textComponent = Component.text(def.getText() != null ? def.getText() : "");
-        }
-        
-        // Определяем hoveredText - может быть обычной строкой или форматированным JSON
-        Component hoveredTextComponent;
-        if (def.getFormattedHoveredText() != null) {
-            hoveredTextComponent = parseFormattedText(def.getFormattedHoveredText());
-        } else if (def.getHoveredText() != null && !def.getHoveredText().isEmpty()) {
-            hoveredTextComponent = Component.text(def.getHoveredText());
-        } else {
-            hoveredTextComponent = textComponent; // Используем обычный текст как fallback
-        }
-
-        TextDisplayButtonConfig cfg = new TextDisplayButtonConfig(
-                textComponent,
-                hoveredTextComponent,
-                onClickAction
-        )
-                .setScale(s[0], s[1], s[2])
-                .setTolerance(t[0], t[1])
-                .setTranslation(new Vector3f(tr[0], tr[1], tr[2]))
-                .setBackgroundColor(Color.fromRGB(bg[0], bg[1], bg[2]))
-                .setBackgroundAlpha(def.getBackgroundAlpha())
-                .setHoveredBackgroundColor(Color.fromRGB(hbg[0], hbg[1], hbg[2]))
-                .setHoveredBackgroundAlpha(def.getHoveredBackgroundAlpha())
-                .setTextAlignment(convertAlignment(def.getAlignment()))
-                .setPosition(new WidgetPosition(0, 0, 0)); // Позиция уже вычислена в resolveLocation()
-
-        if (def.getTooltip() != null) {
-            Component tooltipComponent = parseFormattedText(def.getTooltip());
-            cfg.setTooltip(tooltipComponent);
-            cfg.setTooltipDelay(def.getTooltipDelay());
-        }
-        
-        // Добавляем поддержку новой системы анимации hover
-        if (def.getHoverAnimation() != null) {
-            cfg.setHoverAnimation(def.getHoverAnimation());
-        }
-
-        TextDisplayButtonWidget widget = TextDisplayButtonWidget.create(loc, viewer, cfg);
-        
-        // Сохраняем единую ориентацию экрана (как у фона)
-        if (widget != null) {
-            widget.saveRotation(screenYaw, screenPitch);
-        }
-        
-        return widget;
-    }
-
-    private ItemDisplayButtonWidget buildItemWidget(WidgetDefinition def, Location loc) {
-        Material material;
-        try {
-            String materialName = def.getMaterial().toUpperCase();
-            // Handle common material name variations
-            if ("CARROTS".equals(materialName)) {
-                materialName = "CARROT";
+        switch (def.getType()) {
+            case TEXT_BUTTON -> {
+                Location loc = ScreenSupport.resolveLocation(location, def.getPosition(), ScreenSupport.WIDGET_DEPTH_OFFSET);
+                TextDisplayButtonWidget widget = TextDisplayButtonWidget.create(
+                        loc, viewer, ScreenSupport.textConfig(def, onClick, true));
+                // Сохраняем единую ориентацию экрана (как у фона)
+                widget.saveRotation(screenYaw, screenPitch);
+                return widget;
             }
-            material = Material.valueOf(materialName);
-            // Verify the material is actually an item
-            if (!material.isItem()) {
-                DisplayLib.getInstance().getLogger().warning("Material " + materialName + " is not an item, using STONE instead");
-                material = Material.STONE;
+            case ITEM_BUTTON -> {
+                // Используем увеличенное смещение для ItemDisplay виджетов
+                Location loc = ScreenSupport.resolveLocation(location, def.getPosition(), ScreenSupport.ITEM_WIDGET_DEPTH_OFFSET);
+                ItemDisplayButtonWidget widget = ItemDisplayButtonWidget.create(
+                        loc, viewer, ScreenSupport.itemConfig(def, onClick, true));
+                widget.saveRotation(screenYaw, screenPitch);
+                return widget;
             }
-        } catch (Exception e) {
-            DisplayLib.getInstance().getLogger().warning("Invalid material: " + def.getMaterial() + ", using STONE instead. Error: " + e.getMessage());
-            material = Material.STONE;
         }
-
-        float[] s = def.getScale();
-        float[] t = def.getTolerance();
-        float[] tr = def.getTranslation();
-
-        // Определяем onClick только если действие не NONE
-        Runnable onClickAction = null;
-        if (def.getOnClick() != null && def.getOnClick().getAction() != WidgetDefinition.ClickAction.ActionType.NONE) {
-            onClickAction = () -> handleClick(def);
-        }
-
-        // Используем увеличенное смещение для ItemDisplay виджетов
-        Location itemLoc = resolveLocation(def.getPosition(), ITEM_WIDGET_DEPTH_OFFSET);
-
-        ItemDisplayButtonConfig cfg = new ItemDisplayButtonConfig(material, onClickAction)
-                .setScale(s[0], s[1], s[2])
-                .setTolerance(t[0], t[1])
-                .setTranslation(new Vector3f(tr[0], tr[1], tr[2]))
-                .setGlowOnHover(def.isGlowOnHover())
-                .setDisplayTransform(org.bukkit.entity.ItemDisplay.ItemDisplayTransform.GUI) // Используем GUI transform
-                .setPosition(new WidgetPosition(0, 0, 0)); // Позиция уже вычислена в resolveLocation()
-
-        if (def.getGlowColor() != null) {
-            int[] gc = def.getGlowColor();
-            cfg.setGlowColor(Color.fromRGB(gc[0], gc[1], gc[2]));
-        }
-
-        if (def.getTooltip() != null) {
-            Component tooltipComponent = parseFormattedText(def.getTooltip());
-            cfg.setTooltip(tooltipComponent)
-                    .setTooltipDelay(def.getTooltipDelay());
-        }
-        
-        // Добавляем поддержку новой системы анимации hover
-        if (def.getHoverAnimation() != null) {
-            cfg.setHoverAnimation(def.getHoverAnimation());
-        }
-
-        ItemDisplayButtonWidget widget = ItemDisplayButtonWidget.create(itemLoc, viewer, cfg);
-        
-        // Сохраняем единую ориентацию экрана (как у фона)
-        if (widget != null) {
-            widget.saveRotation(screenYaw, screenPitch);
-        }
-        
-        return widget;
+        return null;
     }
 
     // -------------------------------------------------------------------------
@@ -338,28 +191,6 @@ public class ScreenInstance extends WidgetManager {
     }
 
     // -------------------------------------------------------------------------
-    // Location helper
-    // -------------------------------------------------------------------------
-
-    private Location resolveLocation(float[] pos) {
-        return resolveLocation(pos, WIDGET_DEPTH_OFFSET); // Виджеты чуть впереди фона
-    }
-    
-    private Location resolveLocation(float[] pos, float depthOffset) {
-        if (pos == null || pos.length < 3) return location.clone();
-
-        Location base = location.clone();
-        var dir = base.getDirection();
-        var right = dir.getCrossProduct(new org.bukkit.util.Vector(0, 1, 0)).normalize();
-        var up = right.getCrossProduct(dir).normalize();
-
-        base.add(right.multiply(pos[0]));
-        base.add(up.multiply(pos[1]));
-        base.add(dir.multiply(pos[2] - depthOffset)); // Виджеты ближе к игроку для избежания Z-fighting
-        return base;
-    }
-
-    // -------------------------------------------------------------------------
     // WidgetManager contract
     // -------------------------------------------------------------------------
 
@@ -368,38 +199,38 @@ public class ScreenInstance extends WidgetManager {
         return definition;
     }
     
+    /**
+     * Квадрат расстояния от зрителя до экрана;
+     * бесконечность, если зритель оказался в другом мире
+     * (Location#distanceSquared в этом случае бросает исключение).
+     */
+    private double viewerDistanceSquared() {
+        viewer.getLocation(viewerScratch);
+        double result = viewerScratch.getWorld() == location.getWorld()
+                ? viewerScratch.distanceSquared(location)
+                : Double.POSITIVE_INFINITY;
+        viewerScratch.setWorld(null);
+        return result;
+    }
+    
     @Override
     protected boolean isPlayerInInteractionRange() {
         // Проверяем interaction_radius для оптимизации hover detection
-        double interactionRadius = definition.getInteractionRadius();
-        if (interactionRadius > 0) {
-            double distanceSq = viewer.getLocation().distanceSquared(location);
-            double distance = Math.sqrt(distanceSq);
-            boolean inRange = distanceSq <= interactionRadius * interactionRadius;
-            
-            // Update state tracking
-            lastInteractionState = inRange;
-            
-            return inRange;
-        }
-        return true; // Если радиус не ограничен, всегда в зоне взаимодействия
+        double distanceSq = viewerDistanceSquared();
+        if (distanceSq == Double.POSITIVE_INFINITY) return false; // другой мир
+        
+        // Если радиус не ограничен, всегда в зоне взаимодействия
+        return interactionRadiusSq <= 0 || distanceSq <= interactionRadiusSq;
     }
     
     @Override
     protected boolean isPlayerInRange() {
-        double distanceSq = viewer.getLocation().distanceSquared(location);
-        double distance = Math.sqrt(distanceSq);
-        
         // Для isPlayerInRange проверяем ТОЛЬКО close_distance (автозакрытие)
         // interaction_radius проверяется отдельно в isPlayerInInteractionRange
-        double closeDistance = definition.getCloseDistance();
-        boolean result = true;
+        double distanceSq = viewerDistanceSquared();
+        if (distanceSq == Double.POSITIVE_INFINITY) return false; // другой мир - экран закрывается
         
-        if (closeDistance > 0) {
-            result = distanceSq <= closeDistance * closeDistance;
-        }
-        
-        return result;
+        return closeDistanceSq <= 0 || distanceSq <= closeDistanceSq;
     }
 
     @Override
@@ -408,14 +239,26 @@ public class ScreenInstance extends WidgetManager {
         isClosing = true;
         
         // Вызываем on_close перед закрытием
-        callLuaFunction("on_close");
+        callLifecycleFunction("on_close");
         
-        // Очищаем Lua контекст
+        // Lua контекст очищается в remove()
+        UIManager.getInstance().forceCloseScreen(viewer);
+    }
+
+    /**
+     * Удалить сущности экрана и освободить Lua контекст.
+     *
+     * <p>Контекст очищается здесь, а не только в {@link #tryClose()}, потому что экран
+     * удаляется и в обход tryClose: при переключении экранов, выходе или смерти игрока,
+     * выключении плагина. Иначе таймеры скрипта (timer.every и т.п.) продолжали бы
+     * работать после исчезновения экрана и удерживали его в памяти.</p>
+     */
+    @Override
+    public void remove() {
         if (luaContext != null) {
             luaContext.cleanup();
         }
-        
-        UIManager.getInstance().forceCloseScreen(viewer);
+        super.remove();
     }
 
     // -------------------------------------------------------------------------
@@ -457,39 +300,28 @@ public class ScreenInstance extends WidgetManager {
     // -------------------------------------------------------------------------
     
     /**
-     * Вызвать Lua функцию экрана
+     * Вызвать необязательную Lua функцию жизненного цикла (on_open / on_close)
      */
-    private void callLuaFunction(String functionName) {
-        if (luaEngine == null || luaContext == null) return;
-        
-        Map<String, String> scripts = definition.getScripts();
-        if (scripts == null) return;
-        
-        String scriptFile = scripts.get("file");
-        if (scriptFile != null) {
-            luaEngine.callFunction(luaContext, scriptFile, functionName);
-        }
+    private void callLifecycleFunction(String functionName) {
+        if (luaEngine == null || luaContext == null || scriptFile == null) return;
+        luaEngine.callOptionalFunction(luaContext, scriptFile, functionName);
     }
     
     /**
      * Вызвать Lua функцию с установленным widget контекстом
      */
     private void callLuaFunctionWithWidget(String functionName, WidgetDefinition widgetDef) {
-        if (luaEngine == null || luaContext == null) return;
+        if (luaEngine == null || luaContext == null || scriptFile == null) return;
         
-        Map<String, String> scripts = definition.getScripts();
-        if (scripts == null) return;
+        // Устанавливаем widget в глобальный контекст
+        Widget widget = widgetDef.getId() != null ? widgetById.get(widgetDef.getId()) : null;
+        if (widget != null) {
+            luaContext.getGlobals().set("widget", new WidgetAPI(widget));
+        }
         
-        String scriptFile = scripts.get("file");
-        if (scriptFile != null) {
-            // Устанавливаем widget в глобальный контекст
-            Widget widget = widgetById.get(widgetDef.getId());
-            if (widget != null) {
-                luaContext.getGlobals().set("widget", new WidgetAPI(widget));
-            }
-            
+        try {
             luaEngine.callFunction(luaContext, scriptFile, functionName);
-            
+        } finally {
             // Очищаем widget из контекста
             luaContext.getGlobals().set("widget", LuaValue.NIL);
         }
@@ -500,93 +332,5 @@ public class ScreenInstance extends WidgetManager {
      */
     public LuaContext getLuaContext() {
         return luaContext;
-    }
-    
-    /**
-     * Конвертирует наш TextAlignment в Bukkit TextDisplay.TextAlignment
-     */
-    private org.bukkit.entity.TextDisplay.TextAlignment convertAlignment(WidgetDefinition.TextAlignment alignment) {
-        if (alignment == null) {
-            return org.bukkit.entity.TextDisplay.TextAlignment.CENTER;
-        }
-        
-        return switch (alignment) {
-            case LEFT -> org.bukkit.entity.TextDisplay.TextAlignment.LEFT;
-            case CENTERED -> org.bukkit.entity.TextDisplay.TextAlignment.CENTER;
-            case RIGHT -> org.bukkit.entity.TextDisplay.TextAlignment.RIGHT;
-        };
-    }
-    
-    /**
-     * Конвертирует JSON массив форматированного текста в Adventure Component
-     */
-    /**
-     * Парсит форматированный текст из YAML конфигурации в Adventure Component.
-     * 
-     * <p>Поддерживает два формата:</p>
-     * <ul>
-     * <li><b>Простая строка:</b> возвращает Component.text(строка)</li>
-     * <li><b>Массив объектов:</b> обрабатывает каждый объект с полями text и color</li>
-     * </ul>
-     * 
-     * <p>Поддерживаемые поля в объектах:</p>
-     * <ul>
-     * <li><b>text</b> - текст компонента (обязательное)</li>
-     * <li><b>color</b> - цвет текста (hex "#FF0000" или именованный "red", "blue" и т.д.)</li>
-     * </ul>
-     * 
-     * @param formattedText объект из YAML (String или List&lt;Map&gt;)
-     * @return Adventure Component для отображения
-     */
-    @SuppressWarnings("unchecked")
-    private Component parseFormattedText(Object formattedText) {
-        if (formattedText == null) {
-            return Component.empty();
-        }
-        
-        if (formattedText instanceof String) {
-            return Component.text((String) formattedText);
-        }
-        
-        if (!(formattedText instanceof java.util.List)) {
-            return Component.text(formattedText.toString());
-        }
-        
-        java.util.List<Object> textParts = (java.util.List<Object>) formattedText;
-        net.kyori.adventure.text.TextComponent.Builder builder = Component.text();
-        
-        for (Object part : textParts) {
-            if (part instanceof String) {
-                // Простая строка без форматирования
-                builder.append(Component.text((String) part));
-            } else if (part instanceof Map) {
-                // Объект с форматированием - поддерживаем только text и color
-                Map<String, Object> partMap = (Map<String, Object>) part;
-                String text = (String) partMap.getOrDefault("text", "");
-                
-                net.kyori.adventure.text.TextComponent.Builder partBuilder = 
-                    Component.text().content(text);
-                
-                // Применяем только цвет
-                String color = (String) partMap.get("color");
-                if (color != null) {
-                    try {
-                        if (color.startsWith("#")) {
-                            // Hex цвет
-                            partBuilder.color(net.kyori.adventure.text.format.TextColor.fromHexString(color));
-                        } else {
-                            // Именованный цвет
-                            partBuilder.color(net.kyori.adventure.text.format.NamedTextColor.NAMES.value(color.toLowerCase()));
-                        }
-                    } catch (Exception e) {
-                        // Если цвет не распознан, игнорируем
-                    }
-                }
-                
-                builder.append(partBuilder.build());
-            }
-        }
-        
-        return builder.build();
     }
 }

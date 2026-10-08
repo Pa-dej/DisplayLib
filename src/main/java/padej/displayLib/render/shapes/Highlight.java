@@ -124,6 +124,8 @@ public class Highlight {
         new BukkitRunnable() {
             @Override
             public void run() {
+                // Нет подсветок - нечего пересчитывать
+                if (blockPosDisplays.isEmpty()) return;
                 updateGradientColor();
                 updateAllDisplaysColor();
             }

@@ -9,6 +9,7 @@ import padej.displayLib.ui.widgets.Widget;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.entity.Player;
+import padej.displayLib.utils.ViewRay;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -23,6 +24,9 @@ public abstract class WidgetManager {
     
     // Throttling для проверки расстояния
     private int rangeCheckTimer = 0;
+    
+    // Переиспользуемый луч взгляда зрителя (без аллокаций в цикле обновления)
+    private final ViewRay viewRay = new ViewRay();
     
     public WidgetManager(Player viewer, Location location) {
         this.viewer = viewer;
@@ -76,19 +80,22 @@ public abstract class WidgetManager {
         
         // Debug logging removed to prevent console spam
         
-        // Обновляем виджеты
-        for (Widget widget : children) {
-            if (playerInInteractionRange) {
-                // Обычное обновление с hover detection
-                widget.update();
-            } else {
-                // Игрок вне радиуса взаимодействия - принудительно сбрасываем hover состояния
+        if (playerInInteractionRange) {
+            // Луч взгляда вычисляется один раз на всё обновление и передаётся виджетам
+            viewRay.set(viewer);
+            // Индексный обход: обработчики могут менять список виджетов во время обновления,
+            // а итератор ArrayList в этом случае бросил бы ConcurrentModificationException
+            for (int i = 0; i < children.size(); i++) {
+                children.get(i).update(viewRay);
+            }
+        } else {
+            // Игрок вне радиуса взаимодействия - сбрасываем hover.
+            // clearHover() сам проверяет сохранённое состояние, поэтому повторный
+            // расчёт наведения (isHovered) здесь не нужен.
+            for (int i = 0; i < children.size(); i++) {
+                Widget widget = children.get(i);
                 if (widget.isValid()) {
-                    // Clear hover state without debug logging
-                    if (widget.isHovered()) {
-                        widget.clearHover();
-                    }
-                    // Минимальное обновление без hover detection не нужно
+                    widget.clearHover();
                 }
             }
         }
@@ -122,21 +129,27 @@ public abstract class WidgetManager {
         return getNearestHoveredWidget() != null;
     }
 
-    private Widget getNearestHoveredWidget() {
+    /**
+     * Ближайший к глазам зрителя виджет, на который он сейчас смотрит.
+     * Наведение пересчитывается в момент вызова, поэтому клик точен при любом tick_rate.
+     * Ближайший определяется по расстоянию до точки попадания взгляда в виджет.
+     */
+    public Widget getNearestHoveredWidget() {
+        if (viewer == null) return null;
+
+        viewRay.set(viewer);
+
         Widget nearestWidget = null;
         double nearestDistance = Double.MAX_VALUE;
 
-        for (Widget widget : children) {
-            if (widget.isHovered()) {
-                Location widgetLoc = widget.getLocation();
+        for (int i = 0; i < children.size(); i++) {
+            Widget widget = children.get(i);
+            if (widget == null) continue;
 
-                if (widgetLoc != null) {
-                    double distance = viewer.getEyeLocation().distance(widgetLoc);
-                    if (distance < nearestDistance) {
-                        nearestDistance = distance;
-                        nearestWidget = widget;
-                    }
-                }
+            double distance = widget.hitDistance(viewRay);
+            if (distance >= 0.0 && distance < nearestDistance) {
+                nearestDistance = distance;
+                nearestWidget = widget;
             }
         }
         return nearestWidget;

@@ -7,9 +7,8 @@ import org.luaj.vm2.*;
 import org.luaj.vm2.lib.ThreeArgFunction;
 import org.luaj.vm2.lib.TwoArgFunction;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * Lua API для работы с таймерами.
@@ -22,7 +21,9 @@ import java.util.concurrent.atomic.AtomicInteger;
  * <p><b>Типы таймеров:</b></p>
  * <ul>
  * <li><b>timer.after(ticks, function)</b> - Выполнить функцию через указанное время</li>
- * <li><b>timer.repeat(ticks, function)</b> - Повторять функцию каждые N тиков</li>
+ * <li><b>timer.every(ticks, function)</b> - Повторять функцию каждые N тиков
+ *     (то же, что {@code timer["repeat"](ticks, function)}; запись {@code timer.repeat(...)}
+ *     в Lua невозможна, так как {@code repeat} - зарезервированное слово)</li>
  * <li><b>timer.times(period, count, function)</b> - Выполнить функцию N раз с интервалом</li>
  * <li><b>timer.cancel(timerId)</b> - Отменить таймер по ID</li>
  * </ul>
@@ -43,7 +44,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  * end)
  * 
  * -- Повторяющееся действие (каждую секунду)
- * local countdownId = timer.repeat(20, function()
+ * local countdownId = timer.every(20, function()
  *     local count = screen.data("countdown") or 10
  *     if count > 0 then
  *         player.message("Осталось: " .. count)
@@ -64,7 +65,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  * local animationFrames = {".", "..", "...", "...."}
  * local frameIndex = 1
  * 
- * timer.repeat(10, function()  -- Каждые 0.5 секунды
+ * timer.every(10, function()  -- Каждые 0.5 секунды
  *     local button = screen.widget("loading_button")
  *     if button then
  *         button.text("Загрузка" .. animationFrames[frameIndex])
@@ -90,7 +91,15 @@ import java.util.concurrent.atomic.AtomicInteger;
  */
 public class TimerAPI extends LuaTable {
     private final DisplayLib plugin;
-    private final List<BukkitTask> activeTasks = new ArrayList<>();
+
+    /**
+     * Активные таймеры по ID задачи. Завершившиеся таймеры удаляются сразу,
+     * поэтому у долго живущих (публичных) экранов таблица не растёт бесконечно.
+     */
+    private final Map<Integer, BukkitTask> activeTasks = new HashMap<>();
+
+    /** Экран закрыт: новые таймеры больше не создаются (иначе их некому было бы отменить). */
+    private boolean closed = false;
     
     public TimerAPI(DisplayLib plugin) {
         this.plugin = plugin;
@@ -99,72 +108,68 @@ public class TimerAPI extends LuaTable {
         set("after", new TwoArgFunction() {
             @Override
             public LuaValue call(LuaValue ticks, LuaValue function) {
-                long delay = ticks.checklong();
+                long delay = Math.max(0L, ticks.checklong());
                 LuaFunction func = function.checkfunction();
+                if (closed) return LuaValue.valueOf(-1);
                 
+                final int[] id = new int[1];
                 BukkitTask task = Bukkit.getScheduler().runTaskLater(plugin, () -> {
-                    try {
-                        func.call();
-                    } catch (Exception e) {
-                        plugin.getLogger().warning("Error in timer callback: " + e.getMessage());
-                    }
+                    // Одноразовый таймер отработал - больше не держим ссылку на него
+                    activeTasks.remove(id[0]);
+                    runCallback(func, LuaValue.NONE);
                 }, delay);
                 
-                activeTasks.add(task);
-                return LuaValue.valueOf(task.getTaskId());
+                id[0] = task.getTaskId();
+                activeTasks.put(id[0], task);
+                return LuaValue.valueOf(id[0]);
             }
         });
         
         // repeat(ticks, function) -> returns timer id
-        set("repeat", new TwoArgFunction() {
+        LuaValue repeat = new TwoArgFunction() {
             @Override
             public LuaValue call(LuaValue ticks, LuaValue function) {
-                long period = ticks.checklong();
+                long period = Math.max(1L, ticks.checklong());
                 LuaFunction func = function.checkfunction();
+                if (closed) return LuaValue.valueOf(-1);
                 
-                BukkitTask task = Bukkit.getScheduler().runTaskTimer(plugin, () -> {
-                    try {
-                        func.call();
-                    } catch (Exception e) {
-                        plugin.getLogger().warning("Error in timer callback: " + e.getMessage());
-                    }
-                }, 0L, period);
+                BukkitTask task = Bukkit.getScheduler().runTaskTimer(plugin,
+                        () -> runCallback(func, LuaValue.NONE), 0L, period);
                 
-                activeTasks.add(task);
+                activeTasks.put(task.getTaskId(), task);
                 return LuaValue.valueOf(task.getTaskId());
             }
-        });
+        };
+        set("repeat", repeat);
+        // "repeat" - зарезервированное слово Lua, поэтому timer.repeat(...) не компилируется;
+        // timer.every(...) - то же самое с обычным синтаксисом вызова
+        set("every", repeat);
         
         // times(period, count, function(i))
         set("times", new ThreeArgFunction() {
             @Override
             public LuaValue call(LuaValue period, LuaValue count, LuaValue function) {
-                long periodTicks = period.checklong();
+                long periodTicks = Math.max(1L, period.checklong());
                 int maxCount = count.checkint();
                 LuaFunction func = function.checkfunction();
+                if (closed) return LuaValue.valueOf(-1);
                 
-                AtomicInteger counter = new AtomicInteger(0);
-                
-                // Используем массив для хранения ссылки на таск
+                final int[] counter = {0};
                 final BukkitTask[] taskRef = new BukkitTask[1];
                 
                 taskRef[0] = Bukkit.getScheduler().runTaskTimer(plugin, () -> {
-                    int current = counter.incrementAndGet();
+                    int current = ++counter[0];
                     if (current > maxCount) {
                         // Отменяем таймер изнутри
                         taskRef[0].cancel();
-                        activeTasks.remove(taskRef[0]);
+                        activeTasks.remove(taskRef[0].getTaskId());
                         return;
                     }
                     
-                    try {
-                        func.call(LuaValue.valueOf(current));
-                    } catch (Exception e) {
-                        plugin.getLogger().warning("Error in timer callback: " + e.getMessage());
-                    }
+                    runCallback(func, LuaValue.valueOf(current));
                 }, 0L, periodTicks);
                 
-                activeTasks.add(taskRef[0]);
+                activeTasks.put(taskRef[0].getTaskId(), taskRef[0]);
                 return LuaValue.valueOf(taskRef[0].getTaskId());
             }
         });
@@ -173,27 +178,33 @@ public class TimerAPI extends LuaTable {
         set("cancel", new org.luaj.vm2.lib.OneArgFunction() {
             @Override
             public LuaValue call(LuaValue timerId) {
-                int id = timerId.checkint();
-                activeTasks.removeIf(task -> {
-                    if (task.getTaskId() == id) {
-                        task.cancel();
-                        return true;
-                    }
-                    return false;
-                });
+                BukkitTask task = activeTasks.remove(timerId.checkint());
+                if (task != null) {
+                    task.cancel();
+                }
                 return LuaValue.NIL;
             }
         });
     }
     
+    private void runCallback(LuaFunction func, Varargs args) {
+        try {
+            func.invoke(args);
+        } catch (Exception e) {
+            plugin.getLogger().warning("Error in timer callback: " + e.getMessage());
+        } catch (StackOverflowError e) {
+            plugin.getLogger().warning("Stack overflow in timer callback");
+        }
+    }
+    
     /**
-     * Отменить все активные таймеры (при закрытии экрана)
+     * Отменить все активные таймеры (при закрытии экрана).
+     * После этого вызова новые таймеры не создаются.
      */
     public void cancelAllTimers() {
-        for (BukkitTask task : activeTasks) {
-            if (!task.isCancelled()) {
-                task.cancel();
-            }
+        closed = true;
+        for (BukkitTask task : activeTasks.values()) {
+            task.cancel();
         }
         activeTasks.clear();
     }

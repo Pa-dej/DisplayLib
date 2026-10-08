@@ -1,36 +1,36 @@
 package padej.displayLib.ui;
 
-import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.format.TextColor;
 import org.bukkit.Bukkit;
-import org.bukkit.Color;
 import org.bukkit.Location;
-import org.bukkit.Material;
+import org.bukkit.World;
 import org.bukkit.entity.Player;
-import org.bukkit.util.Vector;
-import org.joml.Vector3f;
-import padej.displayLib.DisplayLib;
 import padej.displayLib.config.ScreenDefinition;
 import padej.displayLib.config.WidgetDefinition;
-import padej.displayLib.lua.LuaContext;
 import padej.displayLib.lua.GlobalLuaContext;
 import padej.displayLib.lua.LuaEngine;
-import padej.displayLib.lua.api.WidgetAPI;
 import padej.displayLib.lua.api.PlayerAPI;
+import padej.displayLib.lua.api.WidgetAPI;
 import padej.displayLib.ui.widgets.*;
-import padej.displayLib.utils.PointDetection;
-
-import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
+import padej.displayLib.utils.ViewRay;
+import org.luaj.vm2.Globals;
 import org.luaj.vm2.LuaValue;
 
-import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.IdentityHashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
 
 /**
  * Публичный экран без владельца, фиксированный в мире.
  * Любой игрок поблизости может взаимодействовать.
  * Hover визуалы отключены, работают только tooltips.
+ *
+ * <p>Все методы вызываются только из основного потока сервера.</p>
  */
 public class GlobalScreenInstance {
     private final String screenId;
@@ -41,13 +41,19 @@ public class GlobalScreenInstance {
     private final LuaEngine luaEngine;
     private GlobalLuaContext luaContext;
     
+    /** Lua-файл экрана (scripts.file) или null */
+    private final String scriptFile;
+    
     /** Все виджеты экрана */
     private final List<Widget> children = new ArrayList<>();
     
     /** Быстрый доступ к виджетам по id */
     private final Map<String, Widget> widgetById = new HashMap<>();
     
-    /** Радиус взаимодействия в квадрате для оптимизации */
+    /** Определение виджета по самому виджету (для обработки клика без перебора) */
+    private final Map<Widget, WidgetDefinition> definitionByWidget = new IdentityHashMap<>();
+    
+    /** Радиус взаимодействия в квадрате; значение <= 0 означает "без ограничения" */
     private final double radiusSq;
     
     /** Интервал проверки расстояния в тиках */
@@ -58,13 +64,16 @@ public class GlobalScreenInstance {
     
     /** Игроки поблизости (обновляется каждые rangeCheckInterval тиков) */
     private final List<Player> nearbyPlayers = new ArrayList<>();
+    private final Set<UUID> nearbyPlayerIds = new HashSet<>();
     
-    /** Какие игроки наводятся на какой виджет */
-    private final Map<Widget, Set<Player>> widgetHoveredBy = new ConcurrentHashMap<>();
+    /** На какой виджет наведён каждый игрок (по UUID, чтобы не удерживать объекты Player) */
+    private final Map<UUID, Widget> hoveredByPlayer = new HashMap<>();
     
-    /** Смещение виджетов по глубине относительно фона */
-    private static final float WIDGET_DEPTH_OFFSET = 0.001f;
-    private static final float ITEM_WIDGET_DEPTH_OFFSET = 0.01f;
+    /** Переиспользуемые объекты для цикла обновления */
+    private final ViewRay viewRay = new ViewRay();
+    private final Location playerScratch = new Location(null, 0, 0, 0);
+    
+    private boolean removed = false;
 
     public GlobalScreenInstance(String screenId, ScreenDefinition definition,
                                Location location, float yaw, float pitch, LuaEngine luaEngine) {
@@ -75,18 +84,24 @@ public class GlobalScreenInstance {
         this.screenPitch = pitch;
         this.luaEngine = luaEngine;
         
+        Map<String, String> scripts = definition.getScripts();
+        this.scriptFile = scripts != null ? scripts.get("file") : null;
+        
         // Для публичных экранов создаем постоянный контекст без игрока
         // Игрок будет устанавливаться временно при каждом вызове функции
-        this.luaContext = luaEngine.createGlobalContext(this, null);
+        if (luaEngine != null) {
+            this.luaContext = luaEngine.createGlobalContext(this, null);
+        }
         
-        this.radiusSq = definition.getInteractionRadius() * definition.getInteractionRadius();
+        double radius = definition.getInteractionRadius();
+        this.radiusSq = radius > 0 ? radius * radius : -1;
         this.rangeCheckInterval = definition.getRangeCheckInterval();
         
         spawnBackground();
         spawnWidgets();
         
         // Вызываем on_open без контекста игрока
-        callLuaFunction("on_open", null);
+        callLuaFunction("on_open", null, null, false);
     }
 
     // -------------------------------------------------------------------------
@@ -94,6 +109,8 @@ public class GlobalScreenInstance {
     // -------------------------------------------------------------------------
 
     public void update() {
+        if (removed) return;
+        
         // Фаза 1: обновление кеша nearbyPlayers (каждые rangeCheckInterval тиков)
         rangeCheckTimer++;
         if (rangeCheckTimer >= rangeCheckInterval) {
@@ -106,10 +123,16 @@ public class GlobalScreenInstance {
     }
 
     public void remove() {
+        if (removed) return;
+        removed = true;
+        
         // Очищаем все tooltips
         for (Player player : nearbyPlayers) {
             player.clearTitle();
         }
+        nearbyPlayers.clear();
+        nearbyPlayerIds.clear();
+        hoveredByPlayer.clear();
         
         // Удаляем все виджеты
         for (Widget widget : new ArrayList<>(children)) {
@@ -117,10 +140,10 @@ public class GlobalScreenInstance {
         }
         children.clear();
         widgetById.clear();
-        widgetHoveredBy.clear();
+        definitionByWidget.clear();
         
         // Вызываем on_close без контекста игрока
-        callLuaFunction("on_close", null);
+        callLuaFunction("on_close", null, null, false);
         
         // Очищаем Lua контекст
         if (luaContext != null) {
@@ -130,52 +153,23 @@ public class GlobalScreenInstance {
     }
 
     public void handleClickBy(Player player) {
-        // Для публичных экранов проверяем все виджеты, а не только тот на который наведен игрок
-        Widget clickedWidget = null;
-        
         // Сначала проверяем hover (для совместимости и точности)
-        Widget hoveredWidget = getHoveredWidgetFor(player);
-        if (hoveredWidget != null) {
-            clickedWidget = hoveredWidget;
-        } else {
-            // Если игрок не наведен ни на что, проверяем геометрически все виджеты
-            for (Widget widget : children) {
-                if (isPlayerLookingAtWidget(player, widget)) {
-                    clickedWidget = widget;
-                    break; // Берем первый найденный виджет
-                }
-            }
+        Widget clickedWidget = getHoveredWidgetFor(player);
+        
+        if (clickedWidget == null) {
+            // Если наведение ещё не обновилось, проверяем взгляд игрока прямо сейчас
+            clickedWidget = findWidgetUnder(viewRay.set(player));
         }
         
         if (clickedWidget != null) {
-            // Находим определение виджета для получения onClick действия
-            WidgetDefinition widgetDef = findWidgetDefinition(clickedWidget);
+            WidgetDefinition widgetDef = definitionByWidget.get(clickedWidget);
             if (widgetDef != null && widgetDef.getOnClick() != null) {
-                handleClick(widgetDef, player);
+                handleClick(widgetDef, clickedWidget, player);
             }
         }
     }
 
-    private WidgetDefinition findWidgetDefinition(Widget widget) {
-        if (definition.getWidgets() == null) return null;
-        
-        // Ищем определение виджета по ID
-        for (Map.Entry<String, Widget> entry : widgetById.entrySet()) {
-            if (entry.getValue() == widget) {
-                String widgetId = entry.getKey();
-                // Находим определение с таким ID
-                for (WidgetDefinition def : definition.getWidgets()) {
-                    if (widgetId.equals(def.getId())) {
-                        return def;
-                    }
-                }
-                break;
-            }
-        }
-        return null;
-    }
-
-    private void handleClick(WidgetDefinition def, Player player) {
+    private void handleClick(WidgetDefinition def, Widget widget, Player player) {
         WidgetDefinition.ClickAction action = def.getOnClick();
         if (action == null) return;
 
@@ -183,15 +177,13 @@ public class GlobalScreenInstance {
             case NONE -> {}
             case SWITCH_SCREEN -> {
                 // Для публичных экранов SWITCH_SCREEN не имеет смысла
-                // Можно логировать предупреждение
             }
             case CLOSE_SCREEN -> {
                 // Публичные экраны не закрываются по клику
-                // Можно логировать предупреждение
             }
             case RUN_SCRIPT -> {
                 if (action.getFunction() != null) {
-                    callLuaFunctionWithPlayer(action.getFunction(), def, player);
+                    callLuaFunction(action.getFunction(), player, widget, true);
                 }
             }
         }
@@ -209,17 +201,32 @@ public class GlobalScreenInstance {
         return location.clone();
     }
 
+    /** Копия списка игроков поблизости. Для проверки одного игрока используйте {@link #isNearby(Player)}. */
     public List<Player> getNearbyPlayers() {
         return new ArrayList<>(nearbyPlayers);
     }
 
+    /** Находится ли игрок в радиусе взаимодействия (по последнему обновлению списка). */
+    public boolean isNearby(Player player) {
+        return nearbyPlayerIds.contains(player.getUniqueId());
+    }
+
     public Widget getHoveredWidgetFor(Player player) {
-        for (Map.Entry<Widget, Set<Player>> entry : widgetHoveredBy.entrySet()) {
-            if (entry.getValue().contains(player)) {
-                return entry.getKey();
-            }
+        return hoveredByPlayer.get(player.getUniqueId());
+    }
+
+    /**
+     * Забыть игрока (выход с сервера, смерть): убрать из списка ближайших и сбросить наведение.
+     * Без этого объект игрока оставался бы в состоянии экрана после выхода.
+     */
+    public void removePlayer(Player player) {
+        UUID id = player.getUniqueId();
+        if (nearbyPlayerIds.remove(id)) {
+            nearbyPlayers.remove(player);
         }
-        return null;
+        if (hoveredByPlayer.remove(id) != null) {
+            player.clearTitle();
+        }
     }
 
     public ScreenDefinition getDefinition() {
@@ -234,35 +241,12 @@ public class GlobalScreenInstance {
         ScreenDefinition.BackgroundDefinition bg = definition.getBackground();
         if (bg == null) return;
 
-        int[] c = bg.getColor();
-        float[] s = bg.getScale();
-        float[] p = bg.getPosition() != null ? bg.getPosition() : new float[]{0.0f, 0.0f, 0.0f};
-        float[] tr = bg.getTranslation() != null ? bg.getTranslation() : new float[]{0.0f, 0.0f, 0.0f};
-
-        Location backgroundLocation = resolveLocation(p);
-
         // Создаем фон без viewer (используем null)
-        TextDisplayButtonConfig cfg = new TextDisplayButtonConfig(
-                Component.text(bg.getText()),
-                Component.text(bg.getText()),
-                null
-        )
-                .setScale(s[0], s[1], s[2])
-                .setBackgroundColor(Color.fromRGB(c[0], c[1], c[2]))
-                .setBackgroundAlpha(bg.getAlpha())
-                .setHoveredBackgroundColor(Color.fromRGB(c[0], c[1], c[2]))
-                .setHoveredBackgroundAlpha(bg.getAlpha())
-                .setTolerance(0.0, 0.0)
-                .setPosition(new WidgetPosition(0, 0, 0))
-                .setTranslation(padej.displayLib.utils.TransformationUtil.createAlignedTranslation(s[0], tr));
-
-        TextDisplayButtonWidget backgroundWidget = TextDisplayButtonWidget.create(backgroundLocation, null, cfg);
+        TextDisplayButtonWidget backgroundWidget = TextDisplayButtonWidget.create(
+                ScreenSupport.backgroundLocation(location, bg), null, ScreenSupport.backgroundConfig(bg));
+        backgroundWidget.saveRotation(screenYaw, screenPitch);
         
-        if (backgroundWidget != null) {
-            backgroundWidget.saveRotation(screenYaw, screenPitch);
-        }
-        
-        children.add(backgroundWidget);
+        addChild(backgroundWidget, null);
     }
 
     private void spawnWidgets() {
@@ -272,357 +256,129 @@ public class GlobalScreenInstance {
             Widget widget = buildWidget(def);
             if (widget == null) continue;
 
-            children.add(widget);
+            addChild(widget, def);
             if (def.getId() != null) {
                 widgetById.put(def.getId(), widget);
             }
         }
     }
 
+    private void addChild(Widget widget, WidgetDefinition def) {
+        children.add(widget);
+        if (def != null) {
+            definitionByWidget.put(widget, def);
+        }
+    }
+
     private Widget buildWidget(WidgetDefinition def) {
-        Location widgetLoc = resolveLocation(def.getPosition());
-        return switch (def.getType()) {
-            case TEXT_BUTTON -> buildTextWidget(def, widgetLoc);
-            case ITEM_BUTTON -> buildItemWidget(def);
-        };
-    }
-
-    private TextDisplayButtonWidget buildTextWidget(WidgetDefinition def, Location loc) {
-        int[] bg = def.getBackgroundColor();
-        int[] hbg = def.getHoveredBackgroundColor();
-        float[] s = def.getScale();
-        float[] t = def.getTolerance();
-        float[] tr = def.getTranslation();
-
-        // Для публичных экранов НЕ создаем onClick действие в виджете
-        // Обработка будет через handleClickBy
-        Runnable onClickAction = null;
-
-        Component textComponent;
-        if (def.getFormattedText() != null) {
-            textComponent = parseFormattedText(def.getFormattedText());
-        } else {
-            textComponent = Component.text(def.getText() != null ? def.getText() : "");
-        }
-        
-        Component hoveredTextComponent;
-        if (def.getFormattedHoveredText() != null) {
-            hoveredTextComponent = parseFormattedText(def.getFormattedHoveredText());
-        } else if (def.getHoveredText() != null && !def.getHoveredText().isEmpty()) {
-            hoveredTextComponent = Component.text(def.getHoveredText());
-        } else {
-            hoveredTextComponent = textComponent;
-        }
-
-        TextDisplayButtonConfig cfg = new TextDisplayButtonConfig(
-                textComponent,
-                hoveredTextComponent,
-                onClickAction
-        )
-                .setScale(s[0], s[1], s[2])
-                .setTolerance(t[0], t[1])
-                .setTranslation(new Vector3f(tr[0], tr[1], tr[2]))
-                .setBackgroundColor(Color.fromRGB(bg[0], bg[1], bg[2]))
-                .setBackgroundAlpha(def.getBackgroundAlpha())
-                .setHoveredBackgroundColor(Color.fromRGB(hbg[0], hbg[1], hbg[2]))
-                .setHoveredBackgroundAlpha(def.getHoveredBackgroundAlpha())
-                .setTextAlignment(convertAlignment(def.getAlignment()))
-                .setPosition(new WidgetPosition(0, 0, 0));
-
-        if (def.getTooltip() != null) {
-            Component tooltipComponent = parseFormattedText(def.getTooltip());
-            cfg.setTooltip(tooltipComponent);
-            cfg.setTooltipDelay(def.getTooltipDelay());
-        }
-
-        TextDisplayButtonWidget widget = TextDisplayButtonWidget.create(loc, null, cfg);
-        
-        if (widget != null) {
-            widget.saveRotation(screenYaw, screenPitch);
-        }
-        
-        return widget;
-    }
-
-    private ItemDisplayButtonWidget buildItemWidget(WidgetDefinition def) {
-        Material material;
-        try {
-            String materialName = def.getMaterial().toUpperCase();
-            // Handle common material name variations
-            if ("CARROTS".equals(materialName)) {
-                materialName = "CARROT";
+        // Для публичных экранов НЕ создаем onClick действие в виджете:
+        // обработка идёт через handleClickBy. Hover-анимации также отключены.
+        switch (def.getType()) {
+            case TEXT_BUTTON -> {
+                Location loc = ScreenSupport.resolveLocation(location, def.getPosition(), ScreenSupport.WIDGET_DEPTH_OFFSET);
+                TextDisplayButtonWidget widget = TextDisplayButtonWidget.create(
+                        loc, null, ScreenSupport.textConfig(def, null, false));
+                widget.saveRotation(screenYaw, screenPitch);
+                return widget;
             }
-            material = Material.valueOf(materialName);
-            // Verify the material is actually an item
-            if (!material.isItem()) {
-                DisplayLib.getInstance().getLogger().warning("Material " + materialName + " is not an item, using STONE instead");
-                material = Material.STONE;
-            }
-        } catch (Exception e) {
-            DisplayLib.getInstance().getLogger().warning("Invalid material: " + def.getMaterial() + ", using STONE instead. Error: " + e.getMessage());
-            material = Material.STONE;
-        }
-
-        float[] s = def.getScale();
-        float[] t = def.getTolerance();
-        float[] tr = def.getTranslation();
-
-        // Для глобальных экранов НЕ создаем onClick действие в виджете
-        Runnable onClickAction = null;
-
-        Location itemLoc = resolveLocation(def.getPosition(), ITEM_WIDGET_DEPTH_OFFSET);
-
-        ItemDisplayButtonConfig cfg = new ItemDisplayButtonConfig(material, onClickAction)
-                .setScale(s[0], s[1], s[2])
-                .setTolerance(t[0], t[1])
-                .setTranslation(new Vector3f(tr[0], tr[1], tr[2]))
-                .setGlowOnHover(def.isGlowOnHover())
-                .setDisplayTransform(org.bukkit.entity.ItemDisplay.ItemDisplayTransform.GUI)
-                .setPosition(new WidgetPosition(0, 0, 0));
-
-        if (def.getGlowColor() != null) {
-            int[] gc = def.getGlowColor();
-            cfg.setGlowColor(Color.fromRGB(gc[0], gc[1], gc[2]));
-        }
-
-        if (def.getTooltip() != null) {
-            Component tooltipComponent = parseFormattedText(def.getTooltip());
-            cfg.setTooltip(tooltipComponent)
-                    .setTooltipDelay(def.getTooltipDelay());
-        }
-
-        ItemDisplayButtonWidget widget = ItemDisplayButtonWidget.create(itemLoc, null, cfg);
-        
-        if (widget != null) {
-            widget.saveRotation(screenYaw, screenPitch);
-        }
-        
-        return widget;
-    }
-
-    // -------------------------------------------------------------------------
-    // Helper methods
-    // -------------------------------------------------------------------------
-
-    private Location resolveLocation(float[] pos) {
-        return resolveLocation(pos, WIDGET_DEPTH_OFFSET);
-    }
-    
-    private Location resolveLocation(float[] pos, float depthOffset) {
-        if (pos == null || pos.length < 3) return location.clone();
-
-        Location base = location.clone();
-        var dir = base.getDirection();
-        var right = dir.getCrossProduct(new Vector(0, 1, 0)).normalize();
-        var up = right.getCrossProduct(dir).normalize();
-
-        base.add(right.multiply(pos[0]));
-        base.add(up.multiply(pos[1]));
-        base.add(dir.multiply(pos[2] - depthOffset));
-        return base;
-    }
-
-    private org.bukkit.entity.TextDisplay.TextAlignment convertAlignment(WidgetDefinition.TextAlignment alignment) {
-        if (alignment == null) {
-            return org.bukkit.entity.TextDisplay.TextAlignment.CENTER;
-        }
-        
-        return switch (alignment) {
-            case LEFT -> org.bukkit.entity.TextDisplay.TextAlignment.LEFT;
-            case CENTERED -> org.bukkit.entity.TextDisplay.TextAlignment.CENTER;
-            case RIGHT -> org.bukkit.entity.TextDisplay.TextAlignment.RIGHT;
-        };
-    }
-
-    /**
-     * Парсит форматированный текст из YAML конфигурации в Adventure Component.
-     * 
-     * <p>Поддерживает два формата:</p>
-     * <ul>
-     * <li><b>Простая строка:</b> возвращает Component.text(строка)</li>
-     * <li><b>Массив объектов:</b> обрабатывает каждый объект с полями text и color</li>
-     * </ul>
-     * 
-     * <p>Поддерживаемые поля в объектах:</p>
-     * <ul>
-     * <li><b>text</b> - текст компонента (обязательное)</li>
-     * <li><b>color</b> - цвет текста (hex "#FF0000" или именованный "red", "blue" и т.д.)</li>
-     * </ul>
-     * 
-     * @param formattedText объект из YAML (String или List&lt;Map&gt;)
-     * @return Adventure Component для отображения
-     */
-    @SuppressWarnings("unchecked")
-    private Component parseFormattedText(Object formattedText) {
-        if (formattedText == null) {
-            return Component.empty();
-        }
-        
-        if (formattedText instanceof String) {
-            return Component.text((String) formattedText);
-        }
-        
-        if (!(formattedText instanceof java.util.List)) {
-            return Component.text(formattedText.toString());
-        }
-        
-        java.util.List<Object> textParts = (java.util.List<Object>) formattedText;
-        net.kyori.adventure.text.TextComponent.Builder builder = Component.text();
-        
-        for (Object part : textParts) {
-            if (part instanceof String) {
-                builder.append(Component.text((String) part));
-            } else if (part instanceof Map) {
-                Map<String, Object> partMap = (Map<String, Object>) part;
-                String text = (String) partMap.getOrDefault("text", "");
-                
-                net.kyori.adventure.text.TextComponent.Builder partBuilder = 
-                    Component.text().content(text);
-                
-                // Применяем только цвет
-                String color = (String) partMap.get("color");
-                if (color != null) {
-                    try {
-                        if (color.startsWith("#")) {
-                            partBuilder.color(net.kyori.adventure.text.format.TextColor.fromHexString(color));
-                        } else {
-                            partBuilder.color(net.kyori.adventure.text.format.NamedTextColor.NAMES.value(color.toLowerCase()));
-                        }
-                    } catch (Exception e) {
-                        // Ignore invalid colors
-                    }
-                }
-                
-                builder.append(partBuilder.build());
+            case ITEM_BUTTON -> {
+                Location loc = ScreenSupport.resolveLocation(location, def.getPosition(), ScreenSupport.ITEM_WIDGET_DEPTH_OFFSET);
+                ItemDisplayButtonWidget widget = ItemDisplayButtonWidget.create(
+                        loc, null, ScreenSupport.itemConfig(def, null, false));
+                widget.saveRotation(screenYaw, screenPitch);
+                return widget;
             }
         }
-        
-        return builder.build();
+        return null;
     }
 
     private void refreshNearbyPlayers() {
         nearbyPlayers.clear();
+        nearbyPlayerIds.clear();
         
-        // Очищаем hover состояния для игроков, которые больше не рядом
-        Set<Player> playersToRemove = new HashSet<>();
-        for (Map.Entry<Widget, Set<Player>> entry : widgetHoveredBy.entrySet()) {
-            for (Player player : entry.getValue()) {
-                if (player.getLocation().distanceSquared(location) > radiusSq) {
-                    playersToRemove.add(player);
-                }
+        // Находим игроков поблизости
+        World world = location.getWorld();
+        for (Player player : Bukkit.getOnlinePlayers()) {
+            player.getLocation(playerScratch);
+            // Сравнение миров обязательно до distanceSquared: между мирами оно бросает исключение
+            if (playerScratch.getWorld() == world
+                    && (radiusSq <= 0 || playerScratch.distanceSquared(location) <= radiusSq)) {
+                nearbyPlayers.add(player);
+                nearbyPlayerIds.add(player.getUniqueId());
             }
         }
+        playerScratch.setWorld(null);
         
-        for (Player player : playersToRemove) {
-            // Очищаем tooltip и hover состояния
-            player.clearTitle();
-            clearPlayerHover(player);
-        }
-        
-        // Находим новых игроков поблизости
-        for (Player player : Bukkit.getOnlinePlayers()) {
-            if (player.getWorld().equals(location.getWorld()) && 
-                player.getLocation().distanceSquared(location) <= radiusSq) {
-                nearbyPlayers.add(player);
+        // Очищаем hover состояния для игроков, которые больше не рядом
+        if (!hoveredByPlayer.isEmpty()) {
+            Iterator<UUID> iterator = hoveredByPlayer.keySet().iterator();
+            while (iterator.hasNext()) {
+                UUID id = iterator.next();
+                if (nearbyPlayerIds.contains(id)) continue;
+                
+                iterator.remove();
+                Player player = Bukkit.getPlayer(id);
+                if (player != null) {
+                    player.clearTitle();
+                }
             }
         }
     }
 
     private void updateHoverDetection() {
-        for (Player player : nearbyPlayers) {
-            // Direction gate: проверяем, смотрит ли игрок в сторону экрана
-            Vector toScreen = location.toVector().subtract(player.getEyeLocation().toVector()).normalize();
-            if (player.getEyeLocation().getDirection().dot(toScreen) < 0.3) {
-                // Игрок не смотрит на экран, очищаем его hover состояния
-                clearPlayerHover(player);
-                continue;
-            }
-
-            // Находим ближайший виджет, на который смотрит игрок
-            Widget closestWidget = null;
-            double closestDistance = Double.MAX_VALUE;
-
-            for (Widget widget : children) {
-                if (isPlayerLookingAtWidget(player, widget)) {
-                    double distance = player.getEyeLocation().distance(widget.getLocation());
-                    if (distance < closestDistance) {
-                        closestDistance = distance;
-                        closestWidget = widget;
-                    }
-                }
-            }
-
-            // Обновляем hover состояния
-            updatePlayerHover(player, closestWidget);
+        for (int i = 0; i < nearbyPlayers.size(); i++) {
+            Player player = nearbyPlayers.get(i);
+            
+            // Луч взгляда вычисляется один раз на игрока и используется для всех виджетов
+            updatePlayerHover(player, findWidgetUnder(viewRay.set(player)));
         }
     }
 
-    private boolean isPlayerLookingAtWidget(Player player, Widget widget) {
-        if (widget.getLocation() == null) return false;
+    /**
+     * Ближайший к игроку виджет, в зону наведения которого попадает луч взгляда.
+     * Зона каждого виджета - прямоугольник в его плоскости с полуразмерами tolerance из YAML.
+     */
+    private Widget findWidgetUnder(ViewRay ray) {
+        if (ray.getWorld() != location.getWorld()) return null;
         
-        Vector eye = player.getEyeLocation().toVector();
-        Vector direction = player.getEyeLocation().getDirection();
-        Vector widgetPos = widget.getLocation().toVector();
-        
-        // Используем tolerance по умолчанию
-        double hTolerance = 0.06;
-        double vTolerance = 0.06;
-        
-        return PointDetection.lookingAtPoint(eye, direction, widgetPos, hTolerance, vTolerance);
+        Widget closestWidget = null;
+        double closestDistance = Double.MAX_VALUE;
+
+        for (int i = 0; i < children.size(); i++) {
+            Widget widget = children.get(i);
+            double distance = widget.hitDistance(ray);
+            if (distance >= 0.0 && distance < closestDistance) {
+                closestDistance = distance;
+                closestWidget = widget;
+            }
+        }
+        return closestWidget;
     }
 
     private void updatePlayerHover(Player player, Widget newHoveredWidget) {
-        // Находим виджет, на который игрок наводился ранее
-        Widget previousWidget = null;
-        for (Map.Entry<Widget, Set<Player>> entry : widgetHoveredBy.entrySet()) {
-            if (entry.getValue().contains(player)) {
-                previousWidget = entry.getKey();
-                break;
-            }
+        if (newHoveredWidget == null) {
+            clearPlayerHover(player);
+            return;
         }
+        
+        Widget previousWidget = hoveredByPlayer.put(player.getUniqueId(), newHoveredWidget);
 
         // Если hover не изменился, ничего не делаем
         if (previousWidget == newHoveredWidget) {
             return;
         }
 
-        // Убираем tooltip с предыдущего виджета
+        // Убираем tooltip с предыдущего виджета и показываем tooltip нового
         if (previousWidget != null) {
             hideTooltipFromWidget(previousWidget, player);
-            Set<Player> playersOnPrevious = widgetHoveredBy.get(previousWidget);
-            if (playersOnPrevious != null) {
-                playersOnPrevious.remove(player);
-                if (playersOnPrevious.isEmpty()) {
-                    widgetHoveredBy.remove(previousWidget);
-                }
-            }
         }
-
-        // Показываем tooltip на новом виджете
-        if (newHoveredWidget != null) {
-            widgetHoveredBy.computeIfAbsent(newHoveredWidget, k -> ConcurrentHashMap.newKeySet()).add(player);
-            showTooltipFromWidget(newHoveredWidget, player);
-        }
+        showTooltipFromWidget(newHoveredWidget, player);
     }
 
     private void clearPlayerHover(Player player) {
-        Widget hoveredWidget = null;
-        for (Map.Entry<Widget, Set<Player>> entry : widgetHoveredBy.entrySet()) {
-            if (entry.getValue().contains(player)) {
-                hoveredWidget = entry.getKey();
-                break;
-            }
-        }
-        
+        Widget hoveredWidget = hoveredByPlayer.remove(player.getUniqueId());
         if (hoveredWidget != null) {
             hideTooltipFromWidget(hoveredWidget, player);
-            Set<Player> playersOnWidget = widgetHoveredBy.get(hoveredWidget);
-            if (playersOnWidget != null) {
-                playersOnWidget.remove(player);
-                if (playersOnWidget.isEmpty()) {
-                    widgetHoveredBy.remove(hoveredWidget);
-                }
-            }
         }
     }
 
@@ -642,71 +398,36 @@ public class GlobalScreenInstance {
         }
     }
 
-    private void callLuaFunction(String functionName, Player player) {
-        if (luaEngine == null || luaContext == null) return;
+    /**
+     * Вызвать Lua функцию экрана.
+     *
+     * @param player   игрок, доступный скрипту как глобал {@code player} на время вызова; null для on_open / on_close
+     * @param widget   виджет, доступный как глобал {@code widget} на время вызова; может быть null
+     * @param required писать ли предупреждение в лог, если функции нет в скрипте
+     */
+    private void callLuaFunction(String functionName, Player player, Widget widget, boolean required) {
+        if (luaEngine == null || luaContext == null || scriptFile == null) return;
         
-        Map<String, String> scripts = definition.getScripts();
-        if (scripts == null) return;
+        // Контекст запоминаем локально: скрипт может закрыть экран, и поле обнулится
+        GlobalLuaContext context = luaContext;
+        Globals globals = context.getGlobals();
         
-        String scriptFile = scripts.get("file");
-        if (scriptFile != null) {
-            try {
-                if (player != null) {
-                    // Временно устанавливаем игрока в постоянный контекст
-                    PlayerAPI oldPlayerAPI = luaContext.getPlayerAPI();
-                    PlayerAPI tempPlayerAPI = new PlayerAPI(player);
-                    luaContext.getGlobals().set("player", tempPlayerAPI);
-                    
-                    luaEngine.callFunction(luaContext, scriptFile, functionName);
-                    
-                    // Восстанавливаем предыдущий player API
-                    if (oldPlayerAPI != null) {
-                        luaContext.getGlobals().set("player", oldPlayerAPI);
-                    } else {
-                        luaContext.getGlobals().set("player", LuaValue.NIL);
-                    }
-                } else {
-                    // Вызов без игрока (on_open, on_close)
-                    // Убеждаемся что player API установлен как nil для безопасности
-                    luaContext.getGlobals().set("player", LuaValue.NIL);
-                    luaEngine.callFunction(luaContext, scriptFile, functionName);
-                }
-            } catch (Exception e) {
-                DisplayLib.getInstance().getLogger().warning("Error calling Lua function " + functionName + " in " + scriptFile + ": " + e.getMessage());
-            }
+        // Временно устанавливаем игрока и виджет в постоянный контекст
+        globals.set("player", player != null ? new PlayerAPI(player) : LuaValue.NIL);
+        if (widget != null) {
+            globals.set("widget", new WidgetAPI(widget));
         }
-    }
-    
-    private void callLuaFunctionWithPlayer(String functionName, WidgetDefinition widgetDef, Player player) {
-        if (luaEngine == null || player == null || luaContext == null) return;
         
-        Map<String, String> scripts = definition.getScripts();
-        if (scripts == null) return;
-        
-        String scriptFile = scripts.get("file");
-        if (scriptFile != null) {
-            // Временно устанавливаем игрока в постоянный контекст
-            PlayerAPI oldPlayerAPI = luaContext.getPlayerAPI();
-            PlayerAPI tempPlayerAPI = new PlayerAPI(player);
-            luaContext.getGlobals().set("player", tempPlayerAPI);
-            
-            // Устанавливаем widget в глобальный контекст
-            Widget widget = widgetById.get(widgetDef.getId());
-            if (widget != null) {
-                luaContext.getGlobals().set("widget", new WidgetAPI(widget));
-            }
-            
-            luaEngine.callFunction(luaContext, scriptFile, functionName);
-            
-            // Очищаем widget из контекста
-            luaContext.getGlobals().set("widget", LuaValue.NIL);
-            
-            // Восстанавливаем предыдущий player API (или убираем если его не было)
-            if (oldPlayerAPI != null) {
-                luaContext.getGlobals().set("player", oldPlayerAPI);
+        try {
+            if (required) {
+                luaEngine.callFunction(context, scriptFile, functionName);
             } else {
-                luaContext.getGlobals().set("player", LuaValue.NIL);
+                luaEngine.callOptionalFunction(context, scriptFile, functionName);
             }
+        } finally {
+            // Вне вызова у публичного экрана нет ни игрока, ни виджета
+            globals.set("widget", LuaValue.NIL);
+            globals.set("player", LuaValue.NIL);
         }
     }
 }
