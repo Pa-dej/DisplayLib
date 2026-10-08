@@ -548,4 +548,7 @@ public class HoverAnimation {
     
     public HoverAnimation[] getEffects() { return effects; }
     public HoverAnimation setEffects(HoverAnimation[] effects) { this.effects = effects; return this; }
+    
+    public float[] getTranslation() { return translation; }
+    public HoverAnimation setTranslation(float[] translation) { this.translation = translation; return this; }
 }

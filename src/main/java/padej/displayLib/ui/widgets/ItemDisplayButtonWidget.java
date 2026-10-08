@@ -362,7 +362,7 @@ public class ItemDisplayButtonWidget implements Widget {
         return position;
     }
     
-    // Методы для Lua API
+    // Методы для API скриптов
     @Override
     public boolean isVisible() {
         return visible && display != null && !display.isDead();

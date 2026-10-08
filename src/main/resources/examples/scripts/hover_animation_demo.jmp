@@ -1,0 +1,186 @@
+// Демонстрация системы анимации hover (скрипт DisplayLib на Jumper, .jmp)
+// Показывает различные реакции на клики по анимированным виджетам
+
+// Id периодического таймера (замена Lua on_tick)
+dyn update_timer_id = null;
+
+void onOpen() {
+    log.info("Демонстрация hover анимаций открыта для " + player.name());
+    player.message("🎭 Добро пожаловать в демонстрацию hover анимаций!");
+    player.message("Наведите курсор на виджеты чтобы увидеть анимации");
+    player.sound("ENTITY_EXPERIENCE_ORB_PICKUP", 1.0, 1.2);
+
+    // Автоматическое обновление каждые 5 секунд (100 тиков)
+    update_timer_id = timer.every(100, () -> periodicUpdate());
+}
+
+void onClose() {
+    log.info("Демонстрация hover анимаций закрыта");
+    if (update_timer_id != null) {
+        timer.cancel(update_timer_id);
+    }
+    player.message("До свидания! 👋");
+}
+
+// === ОБРАБОТЧИКИ ПРЕДУСТАНОВОК ===
+
+void onBounceClick(dyn widget, dyn player) {
+    player.message("🏀 Bounce эффект! Подпрыгивание с отскоком");
+    player.sound("BLOCK_SLIME_BLOCK_PLACE", 1.0, 1.5);
+
+    // Показываем информацию об анимации
+    player.message("Настройки: preset=BOUNCE, duration=8, intensity=1.15, easing=BOUNCE");
+}
+
+void onScaleClick(dyn widget, dyn player) {
+    player.message("📏 Scale эффект! Плавное увеличение размера");
+    player.sound("BLOCK_ANVIL_PLACE", 0.5, 2.0);
+
+    player.message("Настройки: preset=SCALE, duration=6, intensity=1.25, easing=EASE_OUT");
+}
+
+void onLiftClick(dyn widget, dyn player) {
+    player.message("⬆️ Lift эффект! Поднятие виджета вверх");
+    player.sound("ENTITY_PHANTOM_FLAP", 1.0, 1.8);
+
+    player.message("Настройки: preset=LIFT, duration=8, intensity=1.5, easing=EASE_IN_OUT");
+}
+
+void onPulseClick(dyn widget, dyn player) {
+    player.message("💓 Pulse эффект! Ритмичная пульсация");
+    player.sound("BLOCK_NOTE_BLOCK_BELL", 1.0, 1.0);
+
+    player.message("Настройки: preset=PULSE, duration=12, intensity=1.3, easing=EASE_IN_OUT");
+}
+
+void onSpinClick(dyn widget, dyn player) {
+    player.message("🔄 Spin эффект! Поворот с эластичностью");
+    player.sound("BLOCK_BAMBOO_WOOD_BUTTON_CLICK_ON", 1.0, 0.8);
+
+    player.message("Настройки: preset=SPIN, duration=10, intensity=1.0, easing=ELASTIC");
+}
+
+// === ОБРАБОТЧИКИ НАСТРАИВАЕМЫХ АНИМАЦИЙ ===
+
+// Временно меняет текст кнопки и возвращает исходный через delay тиков
+void flash_text(dyn btn, dyn clicked_text, dyn original_text, dyn delay) {
+    if (btn != null) {
+        btn.text(clicked_text);
+        timer.after(delay, () -> btn.text(original_text));
+    }
+}
+
+void onCustomScaleClick(dyn widget, dyn player) {
+    player.message("📐 Настраиваемое масштабирование!");
+    player.message("Растягивание: X=1.4, Y=1.1, Z=1.0");
+    player.sound("BLOCK_BAMBOO_WOOD_PRESSURE_PLATE_CLICK_ON", 1.0, 1.2);
+
+    // Демонстрируем изменение виджета через API
+    flash_text(screen.widget("custom_scale_btn"), "📐 Clicked!", "📐 Custom Scale", 40);
+}
+
+void onTranslateClick(dyn widget, dyn player) {
+    player.message("➡️ Смещение позиции!");
+    player.message("Offset: X=0.05, Y=0.03, Z=0.0");
+    player.sound("ENTITY_ITEM_PICKUP", 1.0, 1.5);
+
+    flash_text(screen.widget("translate_btn"), "➡️ Moved!", "➡️ Translate", 40);
+}
+
+void onRotateClick(dyn widget, dyn player) {
+    player.message("🔄 Поворот виджета!");
+    player.message("Rotation: Y=25°, easing=ELASTIC");
+    player.sound("BLOCK_BAMBOO_WOOD_TRAPDOOR_OPEN", 1.0, 1.0);
+
+    flash_text(screen.widget("rotate_btn"), "🔄 Rotated!", "🔄 Rotate", 40);
+}
+
+void onCombinedClick(dyn widget, dyn player) {
+    player.message("🎭 Комбинированная анимация!");
+    player.message("Scale + Translate + Rotate одновременно");
+    player.sound("BLOCK_AMETHYST_BLOCK_CHIME", 1.0, 1.2);
+
+    dyn btn = screen.widget("combined_btn");
+    if (btn != null) {
+        btn.text("🎭 Amazing!");
+        btn.bgColor(255, 215, 0); // Золотой цвет
+        timer.after(60, () -> {
+            btn.text("🎭 Combined");
+            btn.bgColor(150, 50, 100); // Возвращаем исходный цвет
+        });
+    }
+}
+
+// === ОБРАБОТЧИКИ ПРЕДМЕТОВ ===
+
+void onSwordClick(dyn widget, dyn player) {
+    player.message("⚔️ Алмазный меч выбран!");
+    player.message("Анимация: SCALE с BOUNCE эффектом");
+    player.sound("ITEM_ARMOR_EQUIP_DIAMOND", 1.0, 1.0);
+
+    // Увеличиваем счетчик кликов
+    int clicks = (screen.data("sword_clicks") || 0) + 1;
+    screen.data("sword_clicks", clicks);
+
+    player.message("Кликов по мечу: " + clicks);
+}
+
+void onGemClick(dyn widget, dyn player) {
+    player.message("💎 Изумруд собран!");
+    player.message("Анимация: ROTATE с зацикливанием");
+    player.sound("BLOCK_AMETHYST_CLUSTER_BREAK", 1.0, 1.5);
+
+    // Эффект частиц (эмуляция)
+    player.message("✨ Магические частицы! ✨");
+}
+
+void onPotionClick(dyn widget, dyn player) {
+    player.message("🧪 Зелье использовано!");
+    player.message("Анимация: TRANSLATE с левитацией (3 цикла)");
+    player.sound("ENTITY_GENERIC_DRINK", 1.0, 1.2);
+
+    // Эффект лечения (эмуляция)
+    player.message("💚 +5 HP восстановлено!");
+}
+
+// === ДОПОЛНИТЕЛЬНЫЕ ФУНКЦИИ ===
+
+// Функция для демонстрации динамического изменения анимаций
+void toggleAnimationSpeed() {
+    boolean fast_mode = !(screen.data("fast_mode") || false);
+    screen.data("fast_mode", fast_mode);
+
+    if (fast_mode) {
+        player.message("⚡ Быстрый режим анимаций включен!");
+        player.message("(В реальной реализации можно динамически менять duration)");
+    } else {
+        player.message("🐌 Обычная скорость анимаций");
+    }
+}
+
+// Функция для показа статистики
+void showAnimationStats() {
+    dyn sword_clicks = screen.data("sword_clicks") || 0;
+
+    player.message("📊 Статистика демонстрации:");
+    player.message("• Кликов по мечу: " + sword_clicks);
+    player.message("• Всего виджетов: 21");
+    player.message("• Типов анимаций: 6");
+    player.message("• Типов easing: 6");
+}
+
+// Периодические эффекты (вызывается таймером каждые 5 секунд)
+void periodicUpdate() {
+    // TODO: нет в API - game.getOnlinePlayers() недоступен, число игроков онлайн узнать нельзя.
+    // В Lua здесь показывалось сообщение "👥 Онлайн игроков: N", если игроков больше одного.
+    log.warn("hover_animation_demo: подсчёт игроков онлайн недоступен в API скриптов");
+}
+
+// Функция для сброса демонстрации
+void resetDemo() {
+    screen.data("sword_clicks", 0);
+    screen.data("fast_mode", false);
+
+    player.message("🔄 Демонстрация сброшена!");
+    player.sound("BLOCK_ANVIL_USE", 0.8, 1.0);
+}

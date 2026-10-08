@@ -1,0 +1,479 @@
+// Comprehensive Script API Demo
+// Полная демонстрация всех возможностей Script API (скрипт DisplayLib на Jumper, .jmp)
+
+// Глобальные переменные для демо
+dyn rnd = new java.util.Random();
+dyn timer_ids = [];
+dyn text_variants = ["Изменяемый текст", "Новый текст!", "Jumper работает!", "DisplayLib API", "Демонстрация"];
+int text_index = 0;
+boolean animation_active = false;
+boolean repeat_timer_active = false;
+dyn repeat_timer_id = null;
+int repeat_count = 0;
+
+// =============================================================================
+// Lifecycle функции
+// =============================================================================
+
+void onOpen() {
+    log.info("=== Script Demo opened ===");
+    log.info("Demo opened for " + player.name());
+
+    // Приветствие
+    player.message("§6Добро пожаловать в полную демонстрацию Script API!");
+    player.sound("ui.button.click", 1.0, 1.0);
+
+    // Инициализация счетчика
+    update_counter();
+
+    // Показываем уведомление
+    show_notification("§aДемо загружено!", 3);
+
+    log.info("=== Script Demo initialization completed ===");
+}
+
+void onClose() {
+    log.info("Script Demo closed");
+
+    // Отменяем все активные таймеры
+    cancel_all_timers();
+
+    // Прощальное сообщение только если игрок доступен
+    if (player != null) {
+        log.info("Script Demo closed for " + player.name());
+        player.message("§7Спасибо за тестирование Script API!");
+        player.sound("block.note_block.chime", 1.0, 0.8);
+    }
+}
+
+// =============================================================================
+// Player API демонстрация
+// =============================================================================
+
+void btn_heal_click(dyn widget, dyn player) {
+    log.info("Player heal requested");
+    dyn old_health = player.health();
+    player.health(20);
+
+    player.message("§a❤ Здоровье восстановлено! (" + old_health + " → 20)");
+    player.sound("entity.player.levelup", 1.0, 1.0);
+
+    show_notification("§aИсцеление!", 2);
+    log.info("Player healed: " + old_health + " -> 20");
+}
+
+void btn_gamemode_click(dyn widget, dyn player) {
+    dyn current = player.gamemode();
+    dyn modes = ["survival", "creative", "adventure", "spectator"];
+    dyn mode_names = {
+        survival: "§2Выживание",
+        creative: "§6Творчество",
+        adventure: "§5Приключение",
+        spectator: "§7Наблюдатель"
+    };
+
+    // Находим следующий режим (по кругу)
+    dyn next_mode = "survival";
+    int idx = modes.indexOf(current);
+    if (idx >= 0) {
+        next_mode = modes[(idx + 1) % modes.length];
+    }
+
+    player.gamemode(next_mode);
+    player.message("§bРежим: " + mode_names[current] + " §7→ " + mode_names[next_mode]);
+    player.sound("block.note_block.pling", 1.0, 1.5);
+
+    show_notification("§bРежим изменен!", 2);
+    log.info("Gamemode changed: " + current + " -> " + next_mode);
+}
+
+// Один отложенный звук: параметры функции свои у каждого вызова, в отличие от переменных цикла
+void play_later(dyn player, int delay, String sound, double pitch) {
+    timer.after(delay, () -> player.sound(sound, 1.0, pitch));
+}
+
+// Один шаг обратного отсчёта одноразового таймера
+void countdown_step(dyn player, dyn status, int step) {
+    int left = 5 - step;
+    double pitch = 1.0 + step * 0.1;
+    timer_ids.push(timer.after(step * 20, () -> {
+        if (status != null) {
+            status.text("Таймер: " + left + " секунд...");
+        }
+        player.sound("block.note_block.pling", 1.0, pitch);
+    }));
+}
+
+void btn_sound_click(dyn widget, dyn player) {
+    // Демонстрация различных звуков
+    dyn sounds = [
+        "block.note_block.harp",
+        "block.note_block.bass",
+        "block.note_block.bell",
+        "block.note_block.chime",
+        "block.note_block.flute"
+    ];
+
+    dyn pitches = [1.0, 1.2, 1.5, 0.8, 0.5];
+
+    // Воспроизводим последовательность звуков. Замыкание захватывает переменную, а не её
+    // значение, и тело цикла не создаёт свежих переменных на итерацию - поэтому каждый шаг
+    // планируется через функцию: её параметры свои у каждого вызова.
+    for (int i = 0; i < sounds.length; i++) {
+        play_later(player, (i + 1) * 5, sounds[i], pitches[i]);
+    }
+
+    player.message("§d♪ Музыкальная демонстрация!");
+    show_notification("§d♪ Звуки!", 3);
+    log.info("Sound demo played for " + player.name());
+}
+
+// =============================================================================
+// Storage API демонстрация
+// =============================================================================
+
+void btn_increment_click(dyn widget, dyn player) {
+    log.info("Counter increment requested");
+    int counter = storage.get("counter", 0) + 1;
+    storage.set("counter", counter);
+
+    update_counter();
+    player.sound("block.note_block.harp", 1.0, 1.0 + counter * 0.02);
+    player.message("§a+1 Счетчик: " + counter);
+
+    // Особые достижения
+    if (counter == 10) {
+        player.message("§6🎉 Первая десятка!");
+        player.sound("entity.player.levelup", 1.0, 1.0);
+        show_notification("§6Достижение: 10!", 3);
+    } else if (counter == 50) {
+        player.message("§5✨ Полсотни!");
+        player.sound("entity.firework_rocket.blast", 1.0, 1.0);
+        show_notification("§5Достижение: 50!", 3);
+    } else if (counter == 100) {
+        player.message("§c🔥 СОТНЯ! 🔥");
+        player.sound("entity.ender_dragon.death", 0.5, 2.0);
+        show_notification("§c🔥 СОТНЯ! 🔥", 5);
+    }
+
+    log.info("Counter incremented to: " + counter);
+}
+
+void btn_decrement_click(dyn widget, dyn player) {
+    log.info("Counter decrement requested");
+    int counter = storage.get("counter", 0);
+
+    if (counter > 0) {
+        counter--;
+        storage.set("counter", counter);
+
+        update_counter();
+        player.sound("block.note_block.bass", 1.0, 0.8);
+        player.message("§c-1 Счетчик: " + counter);
+
+        if (counter == 0) {
+            show_notification("§7Сброшено до нуля", 2);
+        }
+    } else {
+        player.message("§cСчетчик уже равен нулю!");
+        player.sound("block.anvil.hit", 0.5, 0.5);
+        show_notification("§cНельзя меньше нуля!", 2);
+    }
+
+    log.info("Counter decremented to: " + counter);
+}
+
+void btn_reset_click(dyn widget, dyn player) {
+    log.info("Counter reset requested");
+    int old_counter = storage.get("counter", 0);
+    storage.set("counter", 0);
+
+    update_counter();
+    player.sound("block.anvil.use", 1.0, 1.0);
+    player.message("§7Счетчик сброшен с " + old_counter + " до 0");
+    show_notification("§7Счетчик сброшен!", 2);
+
+    log.info("Counter reset from " + old_counter + " to 0");
+}
+
+void update_counter() {
+    int counter = storage.get("counter", 0);
+    dyn label = screen.widget("counter_label");
+
+    if (label != null) {
+        dyn counter_text = "Счетчик: " + counter;
+        label.text(counter_text);
+        label.hoveredText(counter_text + " (Storage API)");
+
+        // Динамические цвета в зависимости от значения
+        if (counter == 0) {
+            label.bgColor(40, 80, 40);  // зеленый
+        } else if (counter < 10) {
+            label.bgColor(80, 80, 40);  // желтый
+        } else if (counter < 25) {
+            label.bgColor(80, 40, 80);  // фиолетовый
+        } else if (counter < 50) {
+            label.bgColor(40, 80, 80);  // голубой
+        } else {
+            label.bgColor(80, 40, 40);  // красный
+        }
+    }
+}
+
+// =============================================================================
+// Widget API демонстрация
+// =============================================================================
+
+void btn_change_text_click(dyn widget, dyn player) {
+    log.info("Text change requested");
+    dyn demo_text = screen.widget("demo_text");
+    if (demo_text != null) {
+        text_index = (text_index + 1) % text_variants.length;
+
+        dyn new_text = text_variants[text_index];
+        demo_text.text(new_text);
+        demo_text.hoveredText(new_text + " (Widget API)");
+
+        // Меняем цвет фона в зависимости от текста
+        dyn colors = [
+            [80, 60, 120], // фиолетовый
+            [60, 120, 80], // зеленый
+            [120, 80, 60], // оранжевый
+            [60, 80, 120], // синий
+            [120, 60, 80]  // розовый
+        ];
+
+        dyn color = colors[text_index];
+        demo_text.bgColor(color[0], color[1], color[2]);
+
+        player.sound("block.note_block.chime", 1.0, 1.0 + (text_index + 1) * 0.1);
+        player.message("§bТекст: " + new_text);
+        show_notification("§bТекст изменен!", 2);
+
+        log.info("Text changed to: " + new_text);
+    }
+}
+
+void btn_toggle_visibility_click(dyn widget, dyn player) {
+    log.info("Visibility toggle requested");
+    dyn demo_text = screen.widget("demo_text");
+    if (demo_text != null) {
+        boolean visible = demo_text.visible();
+        demo_text.visible(!visible);
+
+        if (visible) {
+            player.message("§7Текст скрыт");
+            show_notification("§7Скрыто", 1);
+        } else {
+            player.message("§aТекст показан");
+            show_notification("§aПоказано", 1);
+        }
+
+        player.sound("entity.enderman.teleport", 0.5, 1.5);
+        log.info("Text visibility toggled to: " + !visible);
+    }
+}
+
+void btn_change_color_click(dyn widget, dyn player) {
+    log.info("Color change requested");
+    dyn demo_text = screen.widget("demo_text");
+    if (demo_text != null) {
+        // Случайные цвета
+        int r = 40 + rnd.nextInt(81);
+        int g = 40 + rnd.nextInt(81);
+        int b = 40 + rnd.nextInt(81);
+
+        demo_text.bgColor(r, g, b);
+
+        player.sound("block.note_block.bit", 1.0, (80 + rnd.nextInt(71)) / 100.0);
+        player.message("§bЦвет изменен на RGB(" + r + ", " + g + ", " + b + ")");
+        show_notification("§bНовый цвет!", 2);
+
+        log.info("Color changed to RGB(" + r + ", " + g + ", " + b + ")");
+    }
+}
+
+// =============================================================================
+// Timer API демонстрация
+// =============================================================================
+
+void btn_timer_once_click(dyn widget, dyn player) {
+    log.info("One-time timer requested");
+    dyn status = screen.widget("timer_status");
+
+    if (status != null) {
+        status.text("Таймер: 5 секунд...");
+        status.bgColor(100, 80, 60);
+    }
+
+    player.message("§eЗапущен одноразовый таймер на 5 секунд");
+    player.sound("block.note_block.pling", 1.0, 1.0);
+    show_notification("§eТаймер запущен!", 2);
+
+    // Обратный отсчет (каждый шаг - через функцию, см. комментарий в btn_sound_click)
+    for (int i = 1; i <= 4; i++) {
+        countdown_step(player, status, i);
+    }
+
+    // Завершение
+    timer_ids.push(timer.after(100, () -> {
+        if (status != null) {
+            status.text("Готов к запуску");
+            status.bgColor(80, 80, 60);
+        }
+        player.message("§a✓ Одноразовый таймер завершен!");
+        player.sound("entity.player.levelup", 1.0, 1.0);
+        show_notification("§a✓ Таймер завершен!", 3);
+        log.info("One-time timer completed");
+    }));
+
+    log.info("One-time timer started (5 seconds)");
+}
+
+void btn_timer_repeat_click(dyn widget, dyn player) {
+    dyn status = screen.widget("timer_status");
+
+    // Повторный клик останавливает повторяющийся таймер
+    if (repeat_timer_active) {
+        log.info("Repeating timer stop requested");
+        timer.cancel(repeat_timer_id);
+        repeat_timer_active = false;
+        repeat_timer_id = null;
+
+        if (status != null) {
+            status.text("Готов к запуску");
+            status.bgColor(80, 80, 60);
+        }
+
+        player.message("§cПовторяющийся таймер остановлен (тиков: " + repeat_count + ")");
+        player.sound("block.note_block.bass", 1.0, 0.6);
+        show_notification("§cТаймер остановлен", 2);
+        log.info("Repeating timer stopped after " + repeat_count + " ticks");
+        return;
+    }
+
+    log.info("Repeating timer requested");
+    repeat_count = 0;
+    repeat_timer_active = true;
+
+    if (status != null) {
+        status.text("Повтор: 0");
+        status.bgColor(60, 100, 80);
+    }
+
+    // Каждую секунду увеличиваем счетчик, пока не остановят
+    repeat_timer_id = timer.every(20, () -> {
+        repeat_count++;
+        if (status != null) {
+            status.text("Повтор: " + repeat_count);
+        }
+        player.sound("block.note_block.hat", 0.6, 1.0 + (repeat_count % 5) * 0.1);
+
+        if (repeat_count % 5 == 0) {
+            player.message("§eПовторяющийся таймер: " + repeat_count + " срабатываний");
+        }
+    });
+    timer_ids.push(repeat_timer_id);
+
+    player.message("§eЗапущен повторяющийся таймер (1 с). Нажмите ещё раз, чтобы остановить");
+    player.sound("block.note_block.pling", 1.0, 1.2);
+    show_notification("§eПовтор запущен!", 2);
+    log.info("Repeating timer started");
+}
+
+void btn_timer_animation_click(dyn widget, dyn player) {
+    if (animation_active) {
+        player.message("§cАнимация уже выполняется!");
+        player.sound("block.anvil.hit", 0.5, 0.5);
+        return;
+    }
+
+    log.info("Timer animation requested");
+    dyn status = screen.widget("timer_status");
+    dyn demo_text = screen.widget("demo_text");
+    animation_active = true;
+
+    if (status != null) {
+        status.text("Анимация...");
+        status.bgColor(100, 60, 100);
+    }
+
+    player.message("§dЗапущена анимация через timer.times()");
+    player.sound("entity.firework_rocket.launch", 1.0, 1.0);
+    show_notification("§dАнимация!", 2);
+
+    // Переливание цветов: 10 шагов по 4 тика
+    dyn colors = [
+        [120, 40, 40], [120, 80, 40], [120, 120, 40], [40, 120, 40], [40, 120, 120],
+        [40, 40, 120], [80, 40, 120], [120, 40, 120], [120, 40, 80], [80, 80, 80]
+    ];
+    timer_ids.push(timer.times(4, colors.length, i -> {
+        dyn color = colors[i - 1];
+        if (demo_text != null) {
+            demo_text.bgColor(color[0], color[1], color[2]);
+            demo_text.bgAlpha(100 + i * 10);
+        }
+        if (status != null) {
+            status.text("Анимация: " + i + "/" + colors.length);
+        }
+        player.sound("block.note_block.bit", 0.5, 0.5 + i * 0.1);
+    }));
+
+    // Завершение анимации
+    timer_ids.push(timer.after(4 * colors.length + 5, () -> {
+        animation_active = false;
+        if (demo_text != null) {
+            demo_text.bgColor(80, 60, 120);
+            demo_text.bgAlpha(150);
+        }
+        if (status != null) {
+            status.text("Готов к запуску");
+            status.bgColor(80, 80, 60);
+        }
+        player.message("§a✓ Анимация завершена!");
+        player.sound("entity.player.levelup", 1.0, 1.2);
+        show_notification("§a✓ Анимация завершена!", 3);
+        log.info("Timer animation completed");
+    }));
+
+    log.info("Timer animation started");
+}
+
+// Отменяет все таймеры, запущенные демо
+void cancel_all_timers() {
+    for (dyn id : timer_ids) {
+        timer.cancel(id);
+    }
+    timer_ids = [];
+    repeat_timer_active = false;
+    repeat_timer_id = null;
+    animation_active = false;
+    log.info("All demo timers cancelled");
+}
+
+// =============================================================================
+// Уведомления
+// =============================================================================
+
+// Показывает уведомление на duration секунд с анимацией появления/исчезновения
+void show_notification(dyn text, dyn duration) {
+    dyn notification = screen.widget("notification");
+    if (notification == null) {
+        return;
+    }
+
+    notification.text(text);
+    notification.visible(true);
+    notification.bgAlpha(0);
+
+    // Анимация появления
+    timer.times(5, 3, i -> notification.bgAlpha(i * 40));
+
+    // Скрыть через duration секунд
+    timer.after((duration || 3) * 20, () -> {
+        // Анимация исчезновения
+        timer.times(5, 3, i -> notification.bgAlpha(200 - i * 40));
+
+        timer.after(15, () -> notification.visible(false));
+    });
+}

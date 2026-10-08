@@ -4,7 +4,7 @@ plugins {
 }
 
 group = "padej"
-version = "1.21.11+2.0.0"
+version = "1.21.11+3.0.0"
 
 repositories {
     mavenCentral()
@@ -12,19 +12,18 @@ repositories {
         name = "papermc-repo"
         url = uri("https://repo.papermc.io/repository/maven-public/")
     }
+    maven {
+        name = "jitpack"
+        url = uri("https://jitpack.io")
+    }
 }
 
 dependencies {
     compileOnly("io.papermc.paper:paper-api:1.21.11-R0.1-SNAPSHOT")
 
-    // Authlib для TextureCube (скины игроков)
-    implementation("com.mojang:authlib:1.5.21") {
-        exclude(group = "org.apache.logging.log4j", module = "log4j-core")
-        exclude(group = "log4j", module = "log4j")
-    }
-
-    implementation("commons-io:commons-io:2.15.1")
-    implementation("org.luaj:luaj-jse:3.0.1")
+    // Jumper: язык скриптов (.jmp), конфигов (.jmc) и политик доступа (.jma).
+    // Без зависимостей, вшивается в JAR. Версия - тег релиза https://github.com/jumper-lang/jumper/releases
+    implementation("com.github.jumper-lang:jumper:v0.11.0")
 }
 
 tasks {
@@ -61,7 +60,7 @@ tasks {
             copy {
                 from("src/main/resources/examples/screens")
                 into("${serverPluginDir}\\screens")
-                include("*.yml", "*.yaml")
+                include("**/*.jmc")
                 duplicatesStrategy = DuplicatesStrategy.INCLUDE
             }
             
@@ -69,7 +68,7 @@ tasks {
             copy {
                 from("src/main/resources/examples/scripts")
                 into("${serverPluginDir}\\scripts")
-                include("*.lua")
+                include("**/*.jmp")
                 duplicatesStrategy = DuplicatesStrategy.INCLUDE
             }
             
@@ -93,7 +92,7 @@ tasks {
             copy {
                 from("src/main/resources/examples/screens")
                 into("${serverPluginDir}\\screens")
-                include("*.yml", "*.yaml")
+                include("**/*.jmc")
                 duplicatesStrategy = DuplicatesStrategy.INCLUDE
             }
             
@@ -101,7 +100,7 @@ tasks {
             copy {
                 from("src/main/resources/examples/scripts")
                 into("${serverPluginDir}\\scripts")
-                include("*.lua")
+                include("**/*.jmp")
                 duplicatesStrategy = DuplicatesStrategy.INCLUDE
             }
             
@@ -144,7 +143,7 @@ tasks {
         
         // Включаем только основные пакеты
         include("**/config/**")
-        include("**/lua/api/**")
+        include("**/script/api/**")
         include("**/ui/**")
         include("**/DisplayLib.java")
         

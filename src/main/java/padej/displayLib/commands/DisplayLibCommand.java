@@ -317,8 +317,8 @@ public class DisplayLibCommand implements CommandExecutor, TabCompleter {
                 }
                 
                 plugin.getScreenRegistry().reloadAll();
-                plugin.getLuaEngine().clearCache();
-                sender.sendMessage("§aЭкраны и скрипты перезагружены");
+                plugin.getScriptEngine().reload();
+                sender.sendMessage("§aЭкраны, политика и скрипты перезагружены");
             }
             
             case "list" -> {
@@ -335,9 +335,14 @@ public class DisplayLibCommand implements CommandExecutor, TabCompleter {
                     return true;
                 }
                 
-                plugin.getScreenRegistry().getScreenLoader().createExampleScreensManually();
+                int count = plugin.extractExamples();
+                if (count < 0) {
+                    sender.sendMessage("§cНе удалось выгрузить примеры, смотрите консоль");
+                    return true;
+                }
                 plugin.getScreenRegistry().reloadAll();
-                sender.sendMessage("§aПримеры экранов созданы и загружены");
+                plugin.getScriptEngine().reload();
+                sender.sendMessage("§aВыгружено файлов примеров: " + count + ", экраны перезагружены");
             }
             
             default -> {

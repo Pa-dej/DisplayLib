@@ -6,19 +6,19 @@ import org.bukkit.World;
 import org.bukkit.entity.Player;
 import padej.displayLib.config.ScreenDefinition;
 import padej.displayLib.config.WidgetDefinition;
-import padej.displayLib.lua.GlobalLuaContext;
-import padej.displayLib.lua.LuaEngine;
-import padej.displayLib.lua.api.PlayerAPI;
+import padej.displayLib.DisplayLib;
+import padej.displayLib.script.JumperEngine;
+import padej.displayLib.script.ScriptContext;
+import padej.displayLib.script.api.ScreenAPI;
 import padej.displayLib.ui.widgets.*;
 import padej.displayLib.utils.ViewRay;
-import org.luaj.vm2.Globals;
-import org.luaj.vm2.LuaValue;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.IdentityHashMap;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -31,23 +31,22 @@ import java.util.UUID;
  *
  * <p>Все методы вызываются только из основного потока сервера.</p>
  */
-public class GlobalScreenInstance {
+public class GlobalScreenInstance implements ScreenAPI.Host {
     private final String screenId;
     private final ScreenDefinition definition;
     private final Location location;
     private final float screenYaw;
     private final float screenPitch;
-    private final LuaEngine luaEngine;
-    private GlobalLuaContext luaContext;
+    private ScriptContext scriptContext;
     
-    /** Lua-файл экрана (scripts.file) или null */
+    /** Файл скрипта экрана (поле script в .jmc) или null */
     private final String scriptFile;
     
     /** Все виджеты экрана */
     private final List<Widget> children = new ArrayList<>();
     
-    /** Быстрый доступ к виджетам по id */
-    private final Map<String, Widget> widgetById = new HashMap<>();
+    /** Быстрый доступ к виджетам по id (порядок объявления сохраняется) */
+    private final Map<String, Widget> widgetById = new LinkedHashMap<>();
     
     /** Определение виджета по самому виджету (для обработки клика без перебора) */
     private final Map<Widget, WidgetDefinition> definitionByWidget = new IdentityHashMap<>();
@@ -68,9 +67,6 @@ public class GlobalScreenInstance {
     /** На какой виджет наведён каждый игрок (по UUID, чтобы не удерживать объекты Player) */
     private final Map<UUID, Widget> hoveredByPlayer = new HashMap<>();
     
-    /** Lua-обёртки игроков, кликавших по экрану (удаляются, когда игрок уходит) */
-    private final Map<UUID, PlayerAPI> playerApis = new HashMap<>();
-    
     /** Переиспользуемые объекты для цикла обновления */
     private final ViewRay viewRay = new ViewRay();
     private final Location playerScratch = new Location(null, 0, 0, 0);
@@ -78,22 +74,17 @@ public class GlobalScreenInstance {
     private boolean removed = false;
 
     public GlobalScreenInstance(String screenId, ScreenDefinition definition,
-                               Location location, float yaw, float pitch, LuaEngine luaEngine) {
+                               Location location, float yaw, float pitch, JumperEngine engine) {
         this.screenId = screenId;
         this.definition = definition;
         this.location = location.clone();
         this.screenYaw = yaw;
         this.screenPitch = pitch;
-        this.luaEngine = luaEngine;
+        this.scriptFile = definition.getScript();
         
-        Map<String, String> scripts = definition.getScripts();
-        this.scriptFile = scripts != null ? scripts.get("file") : null;
-        
-        // Для публичных экранов создаем постоянный контекст без игрока
-        // Игрок будет устанавливаться временно при каждом вызове функции
-        if (luaEngine != null) {
-            this.luaContext = luaEngine.createGlobalContext(this, null);
-        }
+        // У публичного экрана нет владельца: глобал player равен null,
+        // кликнувший игрок приходит аргументом обработчика
+        this.scriptContext = new ScriptContext((DisplayLib) DisplayLib.getInstance(), engine, this, null, scriptFile);
         
         double radius = definition.getInteractionRadius();
         this.radiusSq = radius > 0 ? radius * radius : -1;
@@ -102,8 +93,8 @@ public class GlobalScreenInstance {
         spawnBackground();
         spawnWidgets();
         
-        // Вызываем on_open без контекста игрока
-        callLuaFunction("on_open", null, null, false);
+        // onOpen без игрока
+        scriptContext.callHook(ScriptContext.HOOK_OPEN);
     }
 
     // -------------------------------------------------------------------------
@@ -143,7 +134,6 @@ public class GlobalScreenInstance {
         nearbyPlayers.clear();
         nearbyPlayerIds.clear();
         hoveredByPlayer.clear();
-        playerApis.clear();
         
         // Удаляем все виджеты
         for (Widget widget : new ArrayList<>(children)) {
@@ -153,13 +143,12 @@ public class GlobalScreenInstance {
         widgetById.clear();
         definitionByWidget.clear();
         
-        // Вызываем on_close без контекста игрока
-        callLuaFunction("on_close", null, null, false);
-        
-        // Очищаем Lua контекст
-        if (luaContext != null) {
-            luaContext.cleanup();
-            luaContext = null;
+        // onClose без игрока, затем очистка контекста (таймеры, обёртки)
+        ScriptContext context = scriptContext;
+        if (context != null) {
+            context.callHook(ScriptContext.HOOK_CLOSE);
+            context.cleanup();
+            scriptContext = null;
         }
     }
 
@@ -193,19 +182,46 @@ public class GlobalScreenInstance {
                 // Публичные экраны не закрываются по клику
             }
             case RUN_SCRIPT -> {
-                if (action.getFunction() != null) {
-                    callLuaFunction(action.getFunction(), player, widget, true);
+                if (action.getFunction() != null && scriptContext != null) {
+                    scriptContext.callClick(action.getFunction(), def.getId(), widget, player);
                 }
             }
         }
     }
 
+    @Override
     public Widget getWidget(String id) {
         return widgetById.get(id);
     }
 
+    @Override
+    public Map<String, Widget> getWidgets() {
+        return Map.copyOf(widgetById);
+    }
+
+    @Override
     public String getScreenId() {
         return screenId;
+    }
+
+    @Override
+    public boolean isPublic() {
+        return true;
+    }
+
+    /** Публичный экран не закрывается из скрипта: он общий для всех игроков. */
+    @Override
+    public void closeFromScript() {
+    }
+
+    /** Публичный экран не переключается из скрипта. */
+    @Override
+    public void switchFromScript(String screenId) {
+    }
+
+    /** Скриптовое окружение экрана (для Java API других плагинов); null после удаления */
+    public ScriptContext getScriptContext() {
+        return scriptContext;
     }
 
     public Location getLocation() {
@@ -238,7 +254,9 @@ public class GlobalScreenInstance {
         if (hoveredByPlayer.remove(id) != null) {
             player.clearTitle();
         }
-        playerApis.remove(id);
+        if (scriptContext != null) {
+            scriptContext.forgetPlayer(id);
+        }
     }
 
     public ScreenDefinition getDefinition() {
@@ -407,41 +425,6 @@ public class GlobalScreenInstance {
             textWidget.hideTooltipFrom(player);
         } else if (widget instanceof ItemDisplayButtonWidget itemWidget) {
             itemWidget.hideTooltipFrom(player);
-        }
-    }
-
-    /**
-     * Вызвать Lua функцию экрана.
-     *
-     * @param player   игрок, доступный скрипту как глобал {@code player} на время вызова; null для on_open / on_close
-     * @param widget   виджет, доступный как глобал {@code widget} на время вызова; может быть null
-     * @param required писать ли предупреждение в лог, если функции нет в скрипте
-     */
-    private void callLuaFunction(String functionName, Player player, Widget widget, boolean required) {
-        if (luaEngine == null || luaContext == null || scriptFile == null) return;
-        
-        // Контекст запоминаем локально: скрипт может закрыть экран, и поле обнулится
-        GlobalLuaContext context = luaContext;
-        Globals globals = context.getGlobals();
-        
-        // Временно устанавливаем игрока и виджет в постоянный контекст
-        globals.set("player", player != null
-                ? playerApis.computeIfAbsent(player.getUniqueId(), id -> new PlayerAPI(player))
-                : LuaValue.NIL);
-        if (widget != null) {
-            globals.set("widget", context.widgetApi(widget));
-        }
-        
-        try {
-            if (required) {
-                luaEngine.callFunction(context, scriptFile, functionName);
-            } else {
-                luaEngine.callOptionalFunction(context, scriptFile, functionName);
-            }
-        } finally {
-            // Вне вызова у публичного экрана нет ни игрока, ни виджета
-            globals.set("widget", LuaValue.NIL);
-            globals.set("player", LuaValue.NIL);
         }
     }
 }

@@ -1,0 +1,412 @@
+// Widget API Demo: демонстрация всех функций Widget API (скрипт DisplayLib на Jumper, .jmp)
+
+dyn rnd = new java.util.Random();
+
+int textIndex = 0;
+int colorIndex = 0;
+dyn animationTimer = null;   // id цветовой анимации (null - не запущена)
+
+// Случайный элемент массива
+dyn pick(dyn arr) {
+    return arr[rnd.nextInt(arr.length)];
+}
+
+void onOpen() {
+    log.info("=== Widget API Demo opened for " + player.name() + " ===");
+
+    // Приветственное сообщение
+    player.message("§d🎛️ Добро пожаловать в демонстрацию Widget API!");
+    player.message("§eИзучите функции для управления виджетами:");
+    player.message("§7- §etext() §7- изменение текста");
+    player.message("§7- §ehoveredText() §7- текст при наведении");
+    player.message("§7- §evisible() §7- видимость виджета");
+    player.message("§7- §eenabled() §7- активность виджета");
+    player.message("§7- §ebgColor() §7- цвет фона");
+    player.message("§7- §ebgAlpha() §7- прозрачность фона");
+    player.message("§7- §etooltip() §7- подсказка виджета");
+    player.sound("ui.button.click", 1.0, 1.0);
+}
+
+void onClose() {
+    log.info("Widget API demo closed for " + player.name());
+
+    // Отменяем анимацию, если активна
+    if (animationTimer != null) {
+        timer.cancel(animationTimer);
+        animationTimer = null;
+    }
+
+    player.message("§7Widget API demo завершен!");
+    player.sound("entity.experience_orb.pickup", 1.0, 1.0);
+}
+
+// =============================================================================
+// Управление текстом - text() и hoveredText()
+// =============================================================================
+
+void btn_change_text_click(dyn widget, dyn player) {
+    log.info("=== btn_change_text_click called ===");
+
+    dyn demoText = screen.widget("demo_text");
+    if (demoText == null) {
+        log.error("demo_text widget not found!");
+        return;
+    }
+
+    dyn texts = [
+        "Демонстрационный текст",
+        "Новый текст!",
+        "Widget API работает!",
+        "Изменяемый контент",
+        "Динамический текст",
+        "Jumper + DisplayLib"
+    ];
+
+    textIndex = (textIndex + 1) % texts.length;
+    dyn newText = texts[textIndex];
+
+    // Демонстрация widget.text()
+    demoText.text(newText);
+
+    player.message("§d📝 Текст изменен: " + newText);
+    player.message("§7Использована функция widget.text()");
+    player.sound("block.note_block.chime", 1.0, 1.0 + (textIndex + 1) * 0.1);
+
+    log.info("Text changed to: " + newText + " (index: " + textIndex + ")");
+}
+
+void btn_change_hover_click(dyn widget, dyn player) {
+    log.info("=== btn_change_hover_click called ===");
+
+    dyn demoText = screen.widget("demo_text");
+    if (demoText == null) {
+        log.error("demo_text widget not found!");
+        return;
+    }
+
+    dyn newHover = pick([
+        "Наведите мышь для подсказки",
+        "Это hover текст!",
+        "hoveredText() в действии",
+        "Подсказка изменена",
+        "Widget API демонстрация",
+        "Интерактивный элемент"
+    ]);
+
+    // Демонстрация widget.hoveredText()
+    demoText.hoveredText(newHover);
+
+    player.message("§d💭 Hover текст изменен: " + newHover);
+    player.message("§7Использована функция widget.hoveredText()");
+    player.sound("block.note_block.pling", 1.0, 1.5);
+
+    log.info("Hover text changed to: " + newHover);
+}
+
+// =============================================================================
+// Управление видимостью - visible() и enabled()
+// =============================================================================
+
+void btn_toggle_visibility_click(dyn widget, dyn player) {
+    log.info("=== btn_toggle_visibility_click called ===");
+
+    dyn demoText = screen.widget("demo_text");
+    if (demoText == null) {
+        log.error("demo_text widget not found!");
+        return;
+    }
+
+    // Демонстрация widget.visible() getter
+    boolean visible = demoText.visible();
+    log.info("Current visibility: " + visible);
+
+    // Демонстрация widget.visible() setter
+    demoText.visible(!visible);
+
+    // Проверяем, что изменение применилось
+    log.info("New visibility: " + demoText.visible());
+
+    if (visible) {
+        player.message("§7👻 Текст скрыт с помощью widget.visible(false)");
+        player.sound("entity.enderman.teleport", 0.5, 0.5);
+    } else {
+        player.message("§a✨ Текст показан с помощью widget.visible(true)");
+        player.sound("entity.enderman.teleport", 0.5, 1.5);
+    }
+
+    log.info("Text visibility toggled: " + !visible);
+}
+
+void btn_toggle_enabled_click(dyn widget, dyn player) {
+    log.info("=== btn_toggle_enabled_click called ===");
+
+    dyn demoText = screen.widget("demo_text");
+    if (demoText == null) {
+        log.error("demo_text widget not found!");
+        return;
+    }
+
+    // Демонстрация widget.enabled() getter
+    boolean enabled = demoText.enabled();
+    log.info("Current enabled state: " + enabled);
+
+    // Демонстрация widget.enabled() setter
+    demoText.enabled(!enabled);
+    log.info("New enabled state: " + demoText.enabled());
+
+    if (enabled) {
+        player.message("§c🔒 Виджет отключен с помощью widget.enabled(false)");
+        player.message("§7Виджет не будет реагировать на клики");
+        player.sound("block.iron_door.close", 1.0, 1.0);
+    } else {
+        player.message("§a🔓 Виджет включен с помощью widget.enabled(true)");
+        player.message("§7Виджет снова активен");
+        player.sound("block.iron_door.open", 1.0, 1.0);
+    }
+
+    log.info("Widget enabled state toggled: " + !enabled);
+}
+
+// =============================================================================
+// Управление цветом - bgColor() и bgAlpha()
+// =============================================================================
+
+void btn_change_color_click(dyn widget, dyn player) {
+    log.info("=== btn_change_color_click called ===");
+
+    dyn demoText = screen.widget("demo_text");
+    if (demoText == null) {
+        log.error("demo_text widget not found!");
+        return;
+    }
+
+    dyn colors = [
+        { r: 60, g: 30, b: 60, name: "Фиолетовый" },
+        { r: 80, g: 40, b: 40, name: "Красный" },
+        { r: 40, g: 80, b: 40, name: "Зеленый" },
+        { r: 40, g: 40, b: 80, name: "Синий" },
+        { r: 80, g: 80, b: 40, name: "Желтый" },
+        { r: 80, g: 40, b: 80, name: "Розовый" }
+    ];
+
+    colorIndex = (colorIndex + 1) % colors.length;
+    dyn color = colors[colorIndex];
+
+    // Демонстрация widget.bgColor()
+    demoText.bgColor(color.r, color.g, color.b);
+
+    player.message("§d🎨 Цвет фона изменен: " + color.name);
+    player.message("§7widget.bgColor(" + color.r + ", " + color.g + ", " + color.b + ")");
+    player.sound("block.note_block.harp", 1.0, 1.0 + (colorIndex + 1) * 0.1);
+
+    log.info("Background color changed to: " + color.r + ", " + color.g + ", " + color.b);
+}
+
+void btn_change_alpha_click(dyn widget, dyn player) {
+    log.info("=== btn_change_alpha_click called ===");
+
+    dyn demoText = screen.widget("demo_text");
+    if (demoText == null) {
+        log.error("demo_text widget not found!");
+        return;
+    }
+
+    dyn alphas = [50, 100, 150, 200, 255];
+    dyn alphaNames = ["Очень прозрачный", "Прозрачный", "Полупрозрачный", "Почти непрозрачный", "Непрозрачный"];
+
+    int alphaIndex = rnd.nextInt(alphas.length);
+    int alphaValue = alphas[alphaIndex];
+    dyn alphaName = alphaNames[alphaIndex];
+
+    // Демонстрация widget.bgAlpha()
+    demoText.bgAlpha(alphaValue);
+
+    player.message("§d🔍 Прозрачность изменена: " + alphaName);
+    player.message("§7widget.bgAlpha(" + alphaValue + ")");
+    player.sound("block.glass.break", 0.5, 1.0 + alphaValue / 255.0);
+
+    log.info("Background alpha changed to: " + alphaValue);
+}
+
+// =============================================================================
+// Управление tooltip - tooltip()
+// =============================================================================
+
+void btn_change_tooltip_click(dyn widget, dyn player) {
+    log.info("=== btn_change_tooltip_click called ===");
+
+    dyn newTooltip = pick([
+        "Новая подсказка!",
+        "widget.tooltip() работает",
+        "Динамический tooltip",
+        "Изменяемая подсказка",
+        "Интерактивный элемент",
+        "Tooltip обновлен"
+    ]);
+
+    // Демонстрация widget.tooltip() на самой кнопке
+    dyn button = screen.widget("btn_change_tooltip");
+    if (button == null) {
+        log.error("btn_change_tooltip widget not found!");
+        return;
+    }
+
+    button.tooltip(newTooltip);
+
+    player.message("§d🏷️ Tooltip кнопки изменен: " + newTooltip);
+    player.message("§7Использована функция widget.tooltip()");
+    player.sound("block.note_block.bell", 1.0, 1.2);
+
+    log.info("Button tooltip changed to: " + newTooltip);
+}
+
+// =============================================================================
+// Анимации - комбинированные эффекты
+// =============================================================================
+
+void btn_animate_color_click(dyn widget, dyn player) {
+    log.info("=== btn_animate_color_click called ===");
+
+    dyn demoText = screen.widget("demo_text");
+    if (demoText == null) {
+        log.error("demo_text widget not found!");
+        return;
+    }
+
+    player.message("§d🌈 Запуск цветовой анимации...");
+    player.sound("block.beacon.activate", 1.0, 1.0);
+
+    // Цветовая анимация с использованием Timer API:
+    // красный, зеленый, синий, желтый, фиолетовый, циан
+    dyn colors = [
+        [100, 50, 50], [50, 100, 50], [50, 50, 100],
+        [100, 100, 50], [100, 50, 100], [50, 100, 100]
+    ];
+
+    // Предыдущую анимацию, если она ещё идёт, останавливаем
+    if (animationTimer != null) timer.cancel(animationTimer);
+
+    int step = 0;
+    int cycles = 0;
+    animationTimer = timer.every(10, () -> {  // каждые 0.5 секунды
+        dyn color = colors[step];
+        demoText.bgColor(color[0], color[1], color[2]);
+
+        step = (step + 1) % colors.length;
+
+        // Останавливаем после 5 полных циклов (30 итераций, 15 секунд)
+        if (step == 0) {
+            cycles++;
+            if (cycles >= 5) {
+                timer.cancel(animationTimer);
+                animationTimer = null;
+                player.message("§d✨ Цветовая анимация завершена");
+            }
+        }
+    });
+
+    log.info("Color animation started");
+}
+
+void btn_animate_fade_click(dyn widget, dyn player) {
+    log.info("=== btn_animate_fade_click called ===");
+
+    dyn demoText = screen.widget("demo_text");
+    if (demoText == null) {
+        log.error("demo_text widget not found!");
+        return;
+    }
+
+    player.message("§d👻 Запуск анимации исчезновения...");
+    player.sound("entity.enderman.ambient", 1.0, 1.0);
+
+    // Анимация исчезновения: 5 шагов по 0.5 секунды
+    demoText.bgAlpha(255);
+
+    timer.times(10, 5, i -> {
+        demoText.bgAlpha(255 - i * 50);
+
+        if (i == 5) {
+            // Анимация появления после паузы в 1 секунду
+            timer.after(20, () -> {
+                player.message("§d✨ Анимация появления...");
+
+                timer.times(10, 5, j -> {
+                    demoText.bgAlpha(j * 50);
+
+                    if (j == 5) {
+                        player.message("§d🎉 Анимация завершена!");
+                        player.sound("entity.experience_orb.pickup", 1.0, 1.5);
+                    }
+                });
+            });
+        }
+    });
+
+    log.info("Fade animation started");
+}
+
+// =============================================================================
+// Комплексная демонстрация
+// =============================================================================
+
+void btn_complex_demo_click(dyn widget, dyn player) {
+    log.info("=== btn_complex_demo_click called ===");
+
+    dyn demoText = screen.widget("demo_text");
+    if (demoText == null) {
+        log.error("demo_text widget not found!");
+        return;
+    }
+
+    player.message("§d🧪 Запуск комплексной демонстрации Widget API...");
+    player.sound("block.beacon.power_select", 1.0, 1.0);
+
+    // Этап 1: Изменение текста
+    demoText.text("Комплексная демонстрация");
+    demoText.hoveredText("Демонстрация всех функций Widget API");
+
+    // Дальнейшие этапы идут с шагом в 1 секунду (20 тиков)
+    timer.after(20, () -> {
+        player.message("§71. text() и hoveredText() ✓");
+        // Этап 2: Изменение цвета
+        demoText.bgColor(100, 50, 50);
+        demoText.bgAlpha(200);
+    });
+
+    timer.after(40, () -> {
+        player.message("§72. bgColor() и bgAlpha() ✓");
+        // Этап 3: Скрытие и показ
+        demoText.visible(false);
+    });
+
+    timer.after(60, () -> {
+        player.message("§73. visible(false) ✓");
+        demoText.visible(true);
+    });
+
+    timer.after(80, () -> {
+        player.message("§74. visible(true) ✓");
+        // Этап 4: Отключение и включение
+        demoText.enabled(false);
+    });
+
+    timer.after(100, () -> {
+        player.message("§75. enabled(false) ✓");
+        demoText.enabled(true);
+    });
+
+    timer.after(120, () -> {
+        player.message("§76. enabled(true) ✓");
+
+        // Финал
+        demoText.text("Демонстрация завершена!");
+        demoText.bgColor(50, 100, 50);
+        player.message("§a🎉 Комплексная демонстрация завершена успешно!");
+        player.sound("entity.player.levelup", 1.0, 1.0);
+
+        log.info("Complex demo completed successfully");
+    });
+
+    log.info("Complex demo started");
+}

@@ -1,0 +1,112 @@
+// Продвинутая демонстрация hover-анимаций
+// Показывает сложные настройки и эффекты
+
+// Автоматические подсказки каждые 10 секунд
+dyn tips = [
+    "💡 Совет: Наведите курсор и подождите, чтобы увидеть задержки",
+    "💡 Совет: Зацикленные анимации продолжаются пока курсор наведен",
+    "💡 Совет: reverseOnExit=false оставляет виджет в измененном состоянии",
+    "💡 Совет: ELASTIC easing создает эффект пружины",
+    "💡 Совет: Комбинированные анимации могут включать разные типы",
+    "💡 Совет: duration влияет на скорость всех эффектов в комбинации"
+];
+int tip_index = 0;
+dyn tips_timer = null;
+
+void onOpen() {
+    log.info("Продвинутая демонстрация hover анимаций открыта для " + player.name());
+    player.message("🎪 Продвинутые hover анимации");
+    player.message("Изучите задержки, зацикливание и сложные комбинации");
+    player.sound("block.enchantment_table.use", 1.0, 1.0);
+
+    // Инициализируем данные (используем тики вместо системного времени)
+    screen.data("demo_started", 0);
+
+    // В Lua подсказки показывал on_tick(); в API нет покадрового колбэка -
+    // ближайшая замена: повторяющийся таймер (200 тиков = 10 секунд)
+    // TODO: нет в API (on_tick)
+    tips_timer = timer.every(200, () -> {
+        player.message(tips[tip_index]);
+        tip_index = (tip_index + 1) % tips.length;
+    });
+}
+
+void onClose() {
+    log.info("Продвинутая демонстрация закрыта");
+
+    if (tips_timer != null) {
+        timer.cancel(tips_timer);
+        tips_timer = null;
+    }
+
+    int start_ticks = screen.data("demo_started") || 0;
+    if (start_ticks > 0) {
+        player.message("Демонстрация завершена");
+    }
+}
+
+void resetDemo(dyn widget, dyn player) {
+    player.message("🔄 Демонстрация сброшена!");
+    player.message("Все анимации возвращены к исходному состоянию");
+    player.sound("block.anvil.use", 0.8, 1.2);
+
+    // В реальной реализации здесь можно было бы сбросить состояния виджетов
+    // Например, вернуть виджет "no_reverse" к исходному размеру
+    dyn no_reverse_btn = screen.widget("no_reverse");
+    if (no_reverse_btn != null) {
+        // Эмуляция сброса через изменение текста
+        no_reverse_btn.text("Сброшен!");
+        timer.after(40, () -> no_reverse_btn.text("Остается большим"));
+    }
+
+    // Считаем сбросы
+    int resets = (screen.data("reset_count") || 0) + 1;
+    screen.data("reset_count", resets);
+
+    if (resets == 1) {
+        player.message("Первый сброс выполнен");
+    } else if (resets >= 5) {
+        player.message("Вы сбрасывали демонстрацию " + resets + " раз!");
+    }
+}
+
+// Функция для демонстрации информации о задержках
+void showDelayInfo() {
+    player.message("⏰ Информация о задержках:");
+    player.message("• Мгновенно: delay = 0 тиков");
+    player.message("• 0.25 сек: delay = 5 тиков");
+    player.message("• 0.5 сек: delay = 10 тиков");
+    player.message("• 1.0 сек: delay = 20 тиков");
+    player.message("При tick_rate=4: 20 тиков = 1 секунда");
+}
+
+// Функция для демонстрации информации о зацикливании
+void showLoopInfo() {
+    player.message("🔄 Информация о зацикливании:");
+    player.message("• loop = true: включает зацикливание");
+    player.message("• loopCount = -1: бесконечные циклы");
+    player.message("• loopCount = 3: ровно 3 повтора");
+    player.message("• loopCount = 5: ровно 5 повторов");
+}
+
+// Функция для демонстрации информации о комбинациях
+void showComboInfo() {
+    player.message("🎭 Информация о комбинациях:");
+    player.message("• type = COMBINED: несколько эффектов одновременно");
+    player.message("• effects: массив отдельных анимаций");
+    player.message("• Можно комбинировать SCALE + TRANSLATE + ROTATE");
+    player.message("• Общие настройки: duration, delay, easing");
+}
+
+// Функция для показа статистики анимаций
+void showAnimationStats() {
+    player.message("📊 Статистика продвинутых анимаций:");
+    player.message("• Анимаций с задержкой: 4");
+    player.message("• Зацикленных анимаций: 3");
+    player.message("• Комбинированных анимаций: 3");
+    player.message("• Анимаций без возврата: 1");
+    player.message("• Всего виджетов: 15");
+
+    int resets = screen.data("reset_count") || 0;
+    player.message("• Количество сбросов: " + resets);
+}

@@ -1,87 +1,47 @@
 /**
- * Пакет конфигурации и загрузки YAML экранов.
+ * Конфигурация: экраны ({@code screens/*.jmc}) и настройки плагина ({@code config.jmc}).
  * 
- * <p>Содержит классы для определения структуры экранов и виджетов,
- * загрузки конфигурации из YAML файлов и управления реестром экранов.</p>
+ * <p>Файл экрана - конфиг Jumper: переменные верхнего уровня и есть конфиг.
+ * Разрешены значения, таблицы, массивы, выражения, {@code if}/{@code else} и тернарный
+ * оператор; циклов, функций и Java в конфиге нет, так что экран - это данные.</p>
  * 
  * <h2>Основные классы:</h2>
- * 
- * <h3>{@link padej.displayLib.config.ScreenDefinition}</h3>
- * <p>Представляет полное определение экрана из YAML файла, включая:</p>
  * <ul>
- * <li>Основные настройки (ID, тип, частота обновления)</li>
- * <li>Настройки взаимодействия (радиус, автозакрытие)</li>
- * <li>Определение фона</li>
- * <li>Список виджетов</li>
- * <li>Ссылки на Lua скрипты</li>
+ * <li>{@link padej.displayLib.config.ScreenDefinition} - определение экрана</li>
+ * <li>{@link padej.displayLib.config.WidgetDefinition} - определение виджета</li>
+ * <li>{@link padej.displayLib.config.HoverAnimation} - hover-анимация виджета</li>
+ * <li>{@link padej.displayLib.config.ScreenLoader} - чтение {@code .jmc} через {@code Config.load}</li>
+ * <li>{@link padej.displayLib.config.ScreenRegistry} - реестр экранов и hot reload</li>
+ * <li>{@link padej.displayLib.config.PluginConfig} - {@code config.jmc}</li>
  * </ul>
  * 
- * <h3>{@link padej.displayLib.config.WidgetDefinition}</h3>
- * <p>Определяет виджет экрана со всеми его свойствами:</p>
- * <ul>
- * <li>Тип виджета (TEXT_BUTTON, ITEM_BUTTON)</li>
- * <li>Позиция, размер, область клика</li>
- * <li>Визуальные свойства (текст, цвета, материалы)</li>
- * <li>Поведение при взаимодействии</li>
- * <li>Поддержка форматированного текста с цветами</li>
- * </ul>
- * 
- * <h3>{@link padej.displayLib.config.ScreenLoader}</h3>
- * <p>Загружает YAML файлы экранов из папки screens/ и преобразует их
- * в объекты ScreenDefinition. Поддерживает форматированный текст.</p>
- * 
- * <h3>{@link padej.displayLib.config.ScreenRegistry}</h3>
- * <p>Центральный реестр всех загруженных экранов с возможностью
- * перезагрузки и управления.</p>
- * 
- * <h2>Структура YAML файла экрана:</h2>
+ * <h2>Структура файла экрана:</h2>
  * <pre>{@code
- * # Основные настройки
- * id: "my_screen"                    # Уникальный идентификатор
- * tick_rate: 4                       # Частота обновления (1-20)
- * screen_type: PRIVATE               # PRIVATE или PUBLIC
- * interaction_radius: 5.0            # Радиус взаимодействия
- * close_distance: 10.0               # Расстояние автозакрытия
+ * String id = "my_screen";               // Уникальный идентификатор (по умолчанию - имя файла)
+ * int tickRate = 4;                      // Частота обновления (1-20)
+ * String screenType = "PRIVATE";         // PRIVATE или PUBLIC
+ * double interactionRadius = 5;          // Радиус взаимодействия
+ * double closeDistance = 10;             // Дистанция автозакрытия
  * 
- * # Фон экрана
- * background:
- *   color: [50, 50, 50]              # RGB цвет
- *   alpha: 200                       # Прозрачность
- *   scale: [10.0, 6.0, 1.0]          # Размеры
- *   position: [0.0, 0.0, 0.0]        # Смещение
+ * dyn background = { color: [50, 50, 50], alpha: 200, scale: [10, 6, 1] };
+ * String script = "my_screen.jmp";       // scripts/my_screen.jmp
  * 
- * # Lua скрипты
- * scripts:
- *   file: "my_screen.lua"            # Путь к файлу
- * 
- * # Виджеты с форматированным текстом
- * widgets:
- *   - id: "button1"
- *     type: TEXT_BUTTON
- *     text:                          # Форматированный текст
- *       - text: "Красная "
- *         color: "#FF0000"
- *       - text: "кнопка"
- *         color: "blue"
- *     tooltip:                       # Форматированный tooltip
- *       - text: "Урон: "
- *         color: "gray"
- *       - text: "25"
- *         color: "red"
- *     position: [0.0, 0.5, 0.0]
- *     onClick:
- *       action: RUN_SCRIPT
- *       function: "onButtonClick"
+ * dyn gray = "gray";                     // переменные можно переиспользовать
+ * dyn widgets = [
+ *     {
+ *         id: "button1",
+ *         type: "TEXT_BUTTON",
+ *         text: [ { text: "Красная ", color: "#FF0000" }, { text: "кнопка", color: "blue" } ],
+ *         tooltip: [ { text: "Урон: ", color: gray }, { text: "25", color: "red" } ],
+ *         position: [0, 0.5, 0],
+ *         onClick: "onButtonClick",      // void onButtonClick(dyn widget, dyn player)
+ *     },
+ *     { id: "back", type: "TEXT_BUTTON", text: "Назад", onClick: { switchTo: "main_menu" } },
+ *     { id: "exit", type: "TEXT_BUTTON", text: "Закрыть", onClick: "close" },
+ * ];
  * }</pre>
  * 
- * <h2>Форматирование текста:</h2>
- * <p>Поддерживается два формата для полей text, hoveredText, formattedText, formattedHoveredText и tooltip:</p>
- * <ul>
- * <li><b>Простая строка:</b> "Простой текст"</li>
- * <li><b>Массив объектов:</b> [{text: "Красный", color: "#FF0000"}, {text: "синий", color: "blue"}]</li>
- * </ul>
- * 
- * @author DisplayLib Team
- * @version 2.1.0
+ * <p>Имена полей - camelCase; snake_case ({@code tick_rate}, {@code screen_type}) тоже
+ * принимается, чтобы прежние YAML-экраны переносились почти без правок.</p>
  */
 package padej.displayLib.config;

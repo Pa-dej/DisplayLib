@@ -1,0 +1,100 @@
+// Приватный экран - тест радиуса взаимодействия
+// Взаимодействие: 3 блока, Автозакрытие: 20 блоков
+
+// Счетчик кликов (живёт, пока открыт экран)
+int click_count = 0;
+
+void onOpen() {
+    log.info("=== ТЕСТ ЭКРАН ОТКРЫТ ===");
+    log.info("Игрок: " + player.name());
+    log.info("Настройки: взаимодействие 3 блока, автозакрытие 20 блоков");
+    log.info("========================");
+
+    // Загружаем счетчик из storage
+    click_count = storage.get("click_count", 0);
+    update_counter_display();
+}
+
+void onClose() {
+    log.info("=== ТЕСТ ЭКРАН ЗАКРЫТ ===");
+    log.info("Игрок: " + player.name());
+    log.info("Финальный счетчик: " + click_count);
+    log.info("========================");
+
+    // Сохраняем счетчик в storage
+    storage.set("click_count", click_count);
+}
+
+// Тест взаимодействия
+void test_interaction(dyn widget, dyn player) {
+    log.info(">>> ТЕСТ ВЗАИМОДЕЙСТВИЯ вызван игроком: " + player.name());
+
+    player.message("§a✓ Взаимодействие работает! Вы находитесь в радиусе 3 блоков.");
+    player.sound("entity.experience_orb.pickup", 1.0, 1.2);
+
+    // Обновляем информацию
+    dyn info_widget = screen.widget("settings_info");
+    if (info_widget != null) {
+        info_widget.text("§aВзаимодействие работает! §7(3 блока | 20 блоков)");
+
+        // Возвращаем обычный текст через 3 секунды
+        timer.after(60, () -> info_widget.text("Взаимодействие: 3 блока | Закрытие: 20 блоков"));
+    }
+}
+
+// Увеличить счетчик
+void increment_counter(dyn widget, dyn player) {
+    click_count++;
+    log.info(">>> СЧЕТЧИК УВЕЛИЧЕН до " + click_count + " игроком: " + player.name());
+    update_counter_display();
+
+    player.message("§6Счетчик увеличен: §f" + click_count);
+    player.sound("block.note_block.harp", 1.0, 1.0 + click_count * 0.1);
+}
+
+// Сбросить счетчик
+void reset_counter(dyn widget, dyn player) {
+    int old_count = click_count;
+    click_count = 0;
+    log.info(">>> СЧЕТЧИК СБРОШЕН с " + old_count + " до 0 игроком: " + player.name());
+    update_counter_display();
+
+    player.message("§cСчетчик сброшен!");
+    player.sound("block.note_block.bass", 1.0, 0.8);
+}
+
+// Воспроизвести звук
+void play_sound(dyn widget, dyn player) {
+    log.info(">>> ЗВУК воспроизведен игроком: " + player.name());
+    player.message("§d♪ Воспроизводится звук...");
+    player.sound("block.note_block.pling", 1.0, 2.0);
+
+    // Играем мелодию
+    timer.after(5, () -> player.sound("block.note_block.pling", 1.0, 1.5));
+    timer.after(10, () -> player.sound("block.note_block.pling", 1.0, 1.8));
+    timer.after(15, () -> player.sound("block.note_block.pling", 1.0, 2.2));
+}
+
+// Обновить отображение счетчика
+void update_counter_display() {
+    dyn counter_widget = screen.widget("click_counter");
+    if (counter_widget != null) {
+        String text = "📊 Кликов: " + click_count;
+        counter_widget.text(text);
+
+        // Подсказка при наведении зависит от количества кликов
+        if (click_count == 0) {
+            counter_widget.hoveredText(text);
+        } else if (click_count < 5) {
+            counter_widget.hoveredText(text + " §7(мало)");
+        } else if (click_count < 10) {
+            counter_widget.hoveredText(text + " §e(средне)");
+        } else {
+            counter_widget.hoveredText(text + " §a(много!)");
+        }
+
+        log.info("Счетчик обновлен: " + click_count);
+    } else {
+        log.warn("Виджет счетчика не найден!");
+    }
+}

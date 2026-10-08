@@ -1,29 +1,45 @@
 package padej.displayLib.config;
 
+import me.padej.jumper.interp.Config;
+import me.padej.jumper.parser.ParseError;
+import me.padej.jumper.runtime.JTable;
+import me.padej.jumper.runtime.JmpError;
 import padej.displayLib.DisplayLib;
-import org.yaml.snakeyaml.Yaml;
 
 import java.io.IOException;
-import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.logging.Level;
 
+import static padej.displayLib.config.JmcValues.*;
+
 /**
- * Загрузчик экранов из YAML файлов
+ * Загрузчик экранов из конфигов Jumper ({@code screens/*.jmc}).
+ *
+ * <p>Файл читается через {@link Config#load(Path)}: это язык скриптов, урезанный до того,
+ * что нужно конфигу - значения, переменные, выражения, таблицы и массивы, {@code if}/{@code else},
+ * тернарный оператор. Без циклов, функций, {@code import} и без Java: файл выполняется под
+ * пустой политикой доступа, так что экран - это данные, а не код. Переменные верхнего уровня
+ * и есть конфиг; файл может вместо этого закончиться {@code return { ... };}.</p>
+ *
+ * <p>Имена полей - camelCase ({@code tickRate}, {@code screenType}); snake_case из прежних
+ * YAML-файлов ({@code tick_rate}) тоже принимается. Строки-перечисления ({@code "PRIVATE"},
+ * {@code "TEXT_BUTTON"}) не зависят от регистра.</p>
  */
 public class ScreenLoader {
+    public static final String EXTENSION = ".jmc";
+
     private final DisplayLib plugin;
     private final Path screensDirectory;
-    private final Yaml yaml;
 
     public ScreenLoader(DisplayLib plugin) {
         this.plugin = plugin;
         this.screensDirectory = plugin.getDataFolder().toPath().resolve("screens");
-        this.yaml = new Yaml();
-        
+
         try {
             Files.createDirectories(screensDirectory);
         } catch (IOException e) {
@@ -32,672 +48,438 @@ public class ScreenLoader {
     }
 
     /**
-     * Загрузить все экраны из папки screens
+     * Загрузить все экраны из папки screens (рекурсивно)
      */
     public Map<String, ScreenDefinition> loadAllScreens() {
         Map<String, ScreenDefinition> screens = new HashMap<>();
-        
+
         try {
             if (!Files.exists(screensDirectory)) {
                 return screens;
             }
-            
+
             // Files.walk держит открытые дескрипторы каталогов, пока поток не закрыт
             try (java.util.stream.Stream<Path> files = Files.walk(screensDirectory)) {
-                files.filter(path -> path.toString().endsWith(".yml") || path.toString().endsWith(".yaml"))
+                files.filter(path -> path.toString().endsWith(EXTENSION))
+                        .sorted()
                         .forEach(path -> {
-                            try {
-                                ScreenDefinition screen = loadScreenFromFile(path);
-                                if (screen != null) {
-                                    screens.put(screen.getId(), screen);
+                            ScreenDefinition screen = loadScreenFromFile(path);
+                            if (screen != null) {
+                                ScreenDefinition previous = screens.put(screen.getId(), screen);
+                                if (previous != null) {
+                                    plugin.getLogger().warning("Duplicate screen id '" + screen.getId()
+                                            + "' in " + path.getFileName() + ": the later file wins");
                                 }
-                            } catch (Exception e) {
-                                plugin.getLogger().log(Level.WARNING, "Failed to load screen: " + path, e);
                             }
                         });
             }
         } catch (IOException e) {
             plugin.getLogger().log(Level.SEVERE, "Failed to load screens", e);
         }
-        
+
         return screens;
     }
 
     /**
-     * Загрузить конкретный экран по ID
+     * Загрузить экран из файла {@code <fileId>.jmc}
      */
-    public ScreenDefinition loadScreen(String screenId) {
-        try {
-            Path screenFile = screensDirectory.resolve(screenId + ".yml");
-            if (!Files.exists(screenFile)) {
-                screenFile = screensDirectory.resolve(screenId + ".yaml");
-            }
-            
-            if (Files.exists(screenFile)) {
-                return loadScreenFromFile(screenFile);
-            }
-        } catch (Exception e) {
-            plugin.getLogger().log(Level.WARNING, "Failed to load screen: " + screenId, e);
+    public ScreenDefinition loadScreen(String fileId) {
+        Path screenFile = screensDirectory.resolve(fileId + EXTENSION);
+        if (Files.exists(screenFile)) {
+            return loadScreenFromFile(screenFile);
         }
-        
         return null;
     }
 
     /**
-     * Загрузить экран из файла
+     * Загрузить экран из файла.
+     *
+     * @return определение экрана или null, если файл не читается (причина в логе)
      */
-    private ScreenDefinition loadScreenFromFile(Path file) throws IOException {
-        try (InputStream input = Files.newInputStream(file)) {
-            // Загружаем как Map сначала для обработки
-            Map<String, Object> data = yaml.load(input);
-            
-            if (data == null) {
-                return null;
-            }
-            
-            // Создаем ScreenDefinition вручную из Map
-            ScreenDefinition screen = new ScreenDefinition();
-            
-            // Основные поля
-            if (data.containsKey("id")) {
-                screen.setId((String) data.get("id"));
-            } else {
-                // Если ID не указан в файле, используем имя файла
-                String fileName = file.getFileName().toString();
-                String id = fileName.substring(0, fileName.lastIndexOf('.'));
-                screen.setId(id);
-            }
-            
-            if (data.containsKey("tick_rate")) {
-                screen.setTickRate(((Number) data.get("tick_rate")).intValue());
-            }
-            
-            if (data.containsKey("screen_type")) {
-                String typeStr = (String) data.get("screen_type");
-                try {
-                    ScreenDefinition.ScreenType type = ScreenDefinition.ScreenType.valueOf(typeStr);
-                    screen.setScreenType(type);
-                } catch (IllegalArgumentException e) {
-                    plugin.getLogger().warning("Invalid screen_type '" + typeStr + "' in " + file + ", using PRIVATE");
-                    screen.setScreenType(ScreenDefinition.ScreenType.PRIVATE);
-                }
-            }
-            
-            if (data.containsKey("interaction_radius")) {
-                screen.setInteractionRadius(((Number) data.get("interaction_radius")).doubleValue());
-            }
-            
-            if (data.containsKey("range_check_interval")) {
-                screen.setRangeCheckInterval(((Number) data.get("range_check_interval")).intValue());
-            }
-            
-            if (data.containsKey("close_distance")) {
-                screen.setCloseDistance(((Number) data.get("close_distance")).doubleValue());
-            }
-            
-            // Background
-            if (data.containsKey("background")) {
-                Map<String, Object> bgData = (Map<String, Object>) data.get("background");
-                ScreenDefinition.BackgroundDefinition bg = new ScreenDefinition.BackgroundDefinition();
-                
-                if (bgData.containsKey("color")) {
-                    Object colorObj = bgData.get("color");
-                    if (colorObj instanceof java.util.List) {
-                        java.util.List<Number> colorList = (java.util.List<Number>) colorObj;
-                        int[] color = new int[3];
-                        for (int i = 0; i < Math.min(3, colorList.size()); i++) {
-                            color[i] = colorList.get(i).intValue();
-                        }
-                        bg.setColor(color);
-                    }
-                }
-                
-                if (bgData.containsKey("alpha")) {
-                    bg.setAlpha(((Number) bgData.get("alpha")).intValue());
-                }
-                
-                if (bgData.containsKey("scale")) {
-                    Object scaleObj = bgData.get("scale");
-                    if (scaleObj instanceof java.util.List) {
-                        java.util.List<Number> scaleList = (java.util.List<Number>) scaleObj;
-                        float[] scale = new float[3];
-                        for (int i = 0; i < Math.min(3, scaleList.size()); i++) {
-                            scale[i] = scaleList.get(i).floatValue();
-                        }
-                        bg.setScale(scale);
-                    }
-                }
-                
-                if (bgData.containsKey("position")) {
-                    Object posObj = bgData.get("position");
-                    if (posObj instanceof java.util.List) {
-                        java.util.List<Number> posList = (java.util.List<Number>) posObj;
-                        float[] position = new float[3];
-                        for (int i = 0; i < Math.min(3, posList.size()); i++) {
-                            position[i] = posList.get(i).floatValue();
-                        }
-                        bg.setPosition(position);
-                    }
-                }
-                
-                if (bgData.containsKey("text")) {
-                    bg.setText((String) bgData.get("text"));
-                }
-                
-                if (bgData.containsKey("translation")) {
-                    Object transObj = bgData.get("translation");
-                    if (transObj instanceof java.util.List) {
-                        java.util.List<Number> transList = (java.util.List<Number>) transObj;
-                        float[] translation = new float[3];
-                        for (int i = 0; i < Math.min(3, transList.size()); i++) {
-                            translation[i] = transList.get(i).floatValue();
-                        }
-                        bg.setTranslation(translation);
-                    }
-                }
-                
-                screen.setBackground(bg);
-            }
-            
-            // Scripts
-            if (data.containsKey("scripts")) {
-                Map<String, String> scripts = (Map<String, String>) data.get("scripts");
-                screen.setScripts(scripts);
-            }
-            
-            // Widgets
-            if (data.containsKey("widgets")) {
-                java.util.List<Map<String, Object>> widgetsData = (java.util.List<Map<String, Object>>) data.get("widgets");
-                java.util.List<WidgetDefinition> widgets = new java.util.ArrayList<>();
-                
-                for (Map<String, Object> widgetData : widgetsData) {
-                    WidgetDefinition widget = parseWidget(widgetData);
-                    if (widget != null) {
-                        widgets.add(widget);
-                    }
-                }
-                
-                screen.setWidgets(widgets);
-            }
-            
-            return screen;
-            
-        } catch (Exception e) {
-            plugin.getLogger().log(Level.WARNING, "Error parsing YAML file: " + file, e);
+    public ScreenDefinition loadScreenFromFile(Path file) {
+        Object data;
+        try {
+            data = Config.load(file);
+        } catch (ParseError e) {
+            plugin.getLogger().warning("Screen " + file.getFileName() + " does not parse ("
+                    + e.line + ":" + e.col + "): " + e.getMessage());
+            return null;
+        } catch (JmpError e) {
+            plugin.getLogger().warning("Screen " + file.getFileName() + " failed at line "
+                    + e.line() + ": " + e.message());
+            return null;
+        } catch (IOException | RuntimeException e) {
+            plugin.getLogger().log(Level.WARNING, "Failed to read screen " + file, e);
+            return null;
+        }
+
+        if (!(data instanceof JTable table)) {
+            plugin.getLogger().warning("Screen " + file.getFileName() + ": expected top-level variables or return { ... }, got "
+                    + (data == null ? "nothing" : data.getClass().getSimpleName()));
+            return null;
+        }
+
+        try {
+            return parseScreen(table, file);
+        } catch (RuntimeException e) {
+            plugin.getLogger().log(Level.WARNING, "Error in screen " + file.getFileName(), e);
             return null;
         }
     }
 
+    private ScreenDefinition parseScreen(JTable data, Path file) {
+        ScreenDefinition screen = new ScreenDefinition();
+
+        String id = str(data, "id");
+        if (id == null || id.isBlank()) {
+            String fileName = file.getFileName().toString();
+            id = fileName.substring(0, fileName.length() - EXTENSION.length());
+        }
+        screen.setId(id);
+
+        Integer tickRate = integer(data, "tickRate", "tick_rate");
+        if (tickRate != null) screen.setTickRate(tickRate);
+
+        String typeStr = str(data, "screenType", "screen_type", "type");
+        if (typeStr != null) {
+            ScreenDefinition.ScreenType type = enumValue(ScreenDefinition.ScreenType.class, typeStr);
+            if (type == null) {
+                plugin.getLogger().warning("Invalid screenType '" + typeStr + "' in " + file.getFileName() + ", using PRIVATE");
+                type = ScreenDefinition.ScreenType.PRIVATE;
+            }
+            screen.setScreenType(type);
+        }
+
+        Double radius = number(data, "interactionRadius", "interaction_radius");
+        if (radius != null) screen.setInteractionRadius(radius);
+
+        Integer rangeCheck = integer(data, "rangeCheckInterval", "range_check_interval");
+        if (rangeCheck != null) screen.setRangeCheckInterval(rangeCheck);
+
+        Double closeDistance = number(data, "closeDistance", "close_distance");
+        if (closeDistance != null) screen.setCloseDistance(closeDistance);
+
+        JTable bgData = table(data, "background");
+        if (bgData != null) {
+            screen.setBackground(parseBackground(bgData));
+        }
+
+        // script: "file.jmp"  (также принимается прежняя форма scripts: { file: "..." })
+        String script = str(data, "script");
+        if (script == null) {
+            JTable scripts = table(data, "scripts");
+            if (scripts != null) script = str(scripts, "file");
+        }
+        if (script != null && !script.isBlank()) {
+            screen.setScript(script.trim());
+        }
+
+        List<?> widgetsData = list(data, "widgets");
+        if (widgetsData != null) {
+            List<WidgetDefinition> widgets = new ArrayList<>(widgetsData.size());
+            int index = 0;
+            for (Object item : widgetsData) {
+                index++;
+                if (item instanceof JTable widgetTable) {
+                    WidgetDefinition widget = parseWidget(widgetTable, file, index);
+                    if (widget != null) widgets.add(widget);
+                } else {
+                    plugin.getLogger().warning("Screen " + file.getFileName() + ": widget #" + index + " is not a table");
+                }
+            }
+            screen.setWidgets(widgets);
+        }
+
+        return screen;
+    }
+
+    private ScreenDefinition.BackgroundDefinition parseBackground(JTable data) {
+        ScreenDefinition.BackgroundDefinition bg = new ScreenDefinition.BackgroundDefinition();
+
+        int[] color = ints(data, 3, "color");
+        if (color != null) bg.setColor(color);
+
+        Integer alpha = integer(data, "alpha");
+        if (alpha != null) bg.setAlpha(alpha);
+
+        float[] scale = floats(data, 3, "scale");
+        if (scale != null) bg.setScale(scale);
+
+        float[] position = floats(data, 3, "position");
+        if (position != null) bg.setPosition(position);
+
+        String text = str(data, "text");
+        if (text != null) bg.setText(text);
+
+        float[] translation = floats(data, 3, "translation");
+        if (translation != null) bg.setTranslation(translation);
+
+        return bg;
+    }
+
     /**
-     * Получить путь к папке экранов
+     * Папка экранов
      */
     public Path getScreensDirectory() {
         return screensDirectory;
     }
 
     /**
-     * Создать примеры экранов вручную (для команды examples)
+     * Разбор виджета.
+     *
+     * <p>Текстовые поля ({@code text}, {@code hoveredText}, {@code tooltip}, ...) принимают
+     * строку или массив сегментов {@code { text, color }}; массив приводится к обычным
+     * спискам и картам Java для общего разборщика форматированного текста.</p>
+     *
+     * @return определение виджета или null при ошибке
      */
-    public void createExampleScreensManually() {
-        // Базовая реализация - можно расширить позже
-        plugin.getLogger().info("Creating example screens...");
+    private WidgetDefinition parseWidget(JTable data, Path file, int index) {
+        WidgetDefinition widget = new WidgetDefinition();
+        String where = file.getFileName() + ", widget #" + index;
+
+        widget.setId(str(data, "id"));
+
+        String typeStr = str(data, "type");
+        WidgetDefinition.WidgetType type = enumValue(WidgetDefinition.WidgetType.class, typeStr);
+        if (type == null) {
+            // Тип можно не писать: предмет есть - предметная кнопка, иначе текстовая
+            if (typeStr != null) {
+                plugin.getLogger().warning(where + ": invalid widget type '" + typeStr + "'");
+                return null;
+            }
+            type = has(data, "material") ? WidgetDefinition.WidgetType.ITEM_BUTTON : WidgetDefinition.WidgetType.TEXT_BUTTON;
+        }
+        widget.setType(type);
+
+        // Текстовые поля (строка или массив сегментов)
+        Object text = get(data, "text");
+        if (text instanceof String s) {
+            widget.setText(s);
+        } else if (text != null) {
+            widget.setFormattedText(toJava(text));
+        }
+
+        Object hoveredText = get(data, "hoveredText", "hovered_text");
+        if (hoveredText instanceof String s) {
+            widget.setHoveredText(s);
+        } else if (hoveredText != null) {
+            widget.setFormattedHoveredText(toJava(hoveredText));
+        }
+
+        Object formattedText = get(data, "formattedText", "formatted_text");
+        if (formattedText != null) widget.setFormattedText(toJava(formattedText));
+
+        Object formattedHoveredText = get(data, "formattedHoveredText", "formatted_hovered_text");
+        if (formattedHoveredText != null) widget.setFormattedHoveredText(toJava(formattedHoveredText));
+
+        String material = str(data, "material");
+        if (material != null) widget.setMaterial(material.trim().toUpperCase(java.util.Locale.ROOT));
+
+        Boolean glowOnHover = bool(data, "glowOnHover", "glow_on_hover");
+        if (glowOnHover != null) widget.setGlowOnHover(glowOnHover);
+
+        int[] glowColor = ints(data, 3, "glowColor", "glow_color");
+        if (glowColor != null) widget.setGlowColor(glowColor);
+
+        float[] position = floats(data, 3, "position");
+        if (position != null) widget.setPosition(position);
+
+        float[] scale = floats(data, 3, "scale");
+        if (scale != null) widget.setScale(scale);
+
+        float[] tolerance = floats(data, 2, "tolerance");
+        if (tolerance != null) widget.setTolerance(tolerance);
+
+        float[] translation = floats(data, 3, "translation");
+        if (translation != null) widget.setTranslation(translation);
+
+        int[] backgroundColor = ints(data, 3, "backgroundColor", "background_color");
+        if (backgroundColor != null) widget.setBackgroundColor(backgroundColor);
+
+        int[] hoveredBackgroundColor = ints(data, 3, "hoveredBackgroundColor", "hovered_background_color");
+        if (hoveredBackgroundColor != null) widget.setHoveredBackgroundColor(hoveredBackgroundColor);
+
+        Integer backgroundAlpha = integer(data, "backgroundAlpha", "background_alpha");
+        if (backgroundAlpha != null) widget.setBackgroundAlpha(backgroundAlpha);
+
+        Integer hoveredBackgroundAlpha = integer(data, "hoveredBackgroundAlpha", "hovered_background_alpha");
+        if (hoveredBackgroundAlpha != null) widget.setHoveredBackgroundAlpha(hoveredBackgroundAlpha);
+
+        String alignmentStr = str(data, "alignment");
+        if (alignmentStr != null) {
+            WidgetDefinition.TextAlignment alignment = enumValue(WidgetDefinition.TextAlignment.class, alignmentStr);
+            if (alignment != null) {
+                widget.setAlignment(alignment);
+            } else {
+                plugin.getLogger().warning(where + ": invalid alignment '" + alignmentStr + "'");
+            }
+        }
+
+        Object tooltip = get(data, "tooltip");
+        if (tooltip != null) widget.setTooltip(toJava(tooltip));
+
+        int[] tooltipColor = ints(data, 3, "tooltipColor", "tooltip_color");
+        if (tooltipColor != null) widget.setTooltipColor(tooltipColor);
+
+        Integer tooltipDelay = integer(data, "tooltipDelay", "tooltip_delay");
+        if (tooltipDelay != null) widget.setTooltipDelay(tooltipDelay);
+
+        Object onClick = get(data, "onClick", "on_click", "click");
+        if (onClick != null) {
+            WidgetDefinition.ClickAction action = parseClickAction(onClick, where);
+            if (action != null) widget.setOnClick(action);
+        }
+
+        JTable hoverAnimation = table(data, "hoverAnimation", "hover_animation");
+        if (hoverAnimation != null) {
+            HoverAnimation animation = parseHoverAnimation(hoverAnimation, where);
+            if (animation != null) widget.setHoverAnimation(animation);
+        }
+
+        return widget;
     }
 
     /**
-     * Парсинг виджета из Map
+     * Действие по клику. Формы записи:
+     * <pre>
+     * onClick: "buySword"                                   // функция скрипта
+     * onClick: "close"                                       // закрыть экран
+     * onClick: { action: "RUN_SCRIPT", function: "buySword" }
+     * onClick: { switchTo: "main_menu" }
+     * onClick: { action: "SWITCH_SCREEN", target: "main_menu" }
+     * onClick: { action: "CLOSE_SCREEN" }
+     * onClick: { action: "NONE" }
+     * </pre>
      */
-    /**
-     * Парсит виджет из YAML данных.
-     * 
-     * <p>Поддерживает форматированный текст для полей text, hoveredText, formattedText, 
-     * formattedHoveredText и tooltip. Форматированный текст может быть:</p>
-     * <ul>
-     * <li><b>Простой строкой:</b> "Текст"</li>
-     * <li><b>Массивом объектов:</b> [{text: "Красный", color: "#FF0000"}, {text: "синий", color: "blue"}]</li>
-     * </ul>
-     * 
-     * <p>Если поле text содержит массив, оно автоматически сохраняется как formattedText.</p>
-     * 
-     * @param data YAML данные виджета
-     * @return объект WidgetDefinition или null при ошибке
-     */
-    private WidgetDefinition parseWidget(Map<String, Object> data) {
-        try {
-            WidgetDefinition widget = new WidgetDefinition();
-            
-            // Основные поля
-            if (data.containsKey("id")) {
-                Object idObj = data.get("id");
-                if (idObj instanceof String) {
-                    widget.setId((String) idObj);
+    private WidgetDefinition.ClickAction parseClickAction(Object onClick, String where) {
+        WidgetDefinition.ClickAction action = new WidgetDefinition.ClickAction();
+
+        if (onClick instanceof String s) {
+            String value = s.trim();
+            switch (value.toUpperCase(java.util.Locale.ROOT)) {
+                case "", "NONE" -> action.setAction(WidgetDefinition.ClickAction.ActionType.NONE);
+                case "CLOSE", "CLOSE_SCREEN" -> action.setAction(WidgetDefinition.ClickAction.ActionType.CLOSE_SCREEN);
+                default -> {
+                    action.setAction(WidgetDefinition.ClickAction.ActionType.RUN_SCRIPT);
+                    action.setFunction(value);
                 }
             }
-            
-            if (data.containsKey("type")) {
-                Object typeObj = data.get("type");
-                if (typeObj instanceof String) {
-                    String typeStr = (String) typeObj;
-                    try {
-                        WidgetDefinition.WidgetType type = WidgetDefinition.WidgetType.valueOf(typeStr);
-                        widget.setType(type);
-                    } catch (IllegalArgumentException e) {
-                        plugin.getLogger().warning("Invalid widget type: " + typeStr);
-                        return null;
-                    }
-                }
-            }
-            
-            // Текстовые поля (могут быть строкой или массивом)
-            if (data.containsKey("text")) {
-                Object textObj = data.get("text");
-                if (textObj instanceof String) {
-                    widget.setText((String) textObj);
-                } else {
-                    // Если text не строка, сохраняем как formattedText
-                    widget.setFormattedText(textObj);
-                    // Очищаем text, чтобы избежать конфликтов
-                    widget.setText(null);
-                }
-            }
-            
-            if (data.containsKey("hoveredText")) {
-                Object hoveredTextObj = data.get("hoveredText");
-                if (hoveredTextObj instanceof String) {
-                    widget.setHoveredText((String) hoveredTextObj);
-                } else {
-                    // Если hoveredText не строка, сохраняем как formattedHoveredText
-                    widget.setFormattedHoveredText(hoveredTextObj);
-                    // Очищаем hoveredText, чтобы избежать конфликтов
-                    widget.setHoveredText(null);
-                }
-            }
-            
-            // Форматированный текст (может быть массивом)
-            if (data.containsKey("formattedText")) {
-                widget.setFormattedText(data.get("formattedText"));
-            }
-            
-            if (data.containsKey("formattedHoveredText")) {
-                widget.setFormattedHoveredText(data.get("formattedHoveredText"));
-            }
-            
-            if (data.containsKey("material")) {
-                Object materialObj = data.get("material");
-                if (materialObj instanceof String) {
-                    widget.setMaterial((String) materialObj);
-                }
-            }
-            
-            // Glow settings
-            if (data.containsKey("glowOnHover")) {
-                Object glowObj = data.get("glowOnHover");
-                if (glowObj instanceof Boolean) {
-                    widget.setGlowOnHover((Boolean) glowObj);
-                }
-            }
-            
-            if (data.containsKey("glowColor")) {
-                Object colorObj = data.get("glowColor");
-                if (colorObj instanceof java.util.List) {
-                    java.util.List<Number> colorList = (java.util.List<Number>) colorObj;
-                    int[] color = new int[3];
-                    for (int i = 0; i < Math.min(3, colorList.size()); i++) {
-                        color[i] = colorList.get(i).intValue();
-                    }
-                    widget.setGlowColor(color);
-                }
-            }
-            
-            // Позиция
-            if (data.containsKey("position")) {
-                Object posObj = data.get("position");
-                if (posObj instanceof java.util.List) {
-                    java.util.List<Number> posList = (java.util.List<Number>) posObj;
-                    float[] position = new float[3];
-                    for (int i = 0; i < Math.min(3, posList.size()); i++) {
-                        position[i] = posList.get(i).floatValue();
-                    }
-                    widget.setPosition(position);
-                }
-            }
-            
-            // Масштаб
-            if (data.containsKey("scale")) {
-                Object scaleObj = data.get("scale");
-                if (scaleObj instanceof java.util.List) {
-                    java.util.List<Number> scaleList = (java.util.List<Number>) scaleObj;
-                    float[] scale = new float[3];
-                    for (int i = 0; i < Math.min(3, scaleList.size()); i++) {
-                        scale[i] = scaleList.get(i).floatValue();
-                    }
-                    widget.setScale(scale);
-                }
-            }
-            
-            // Толерантность
-            if (data.containsKey("tolerance")) {
-                Object tolObj = data.get("tolerance");
-                if (tolObj instanceof java.util.List) {
-                    java.util.List<Number> tolList = (java.util.List<Number>) tolObj;
-                    float[] tolerance = new float[2];
-                    for (int i = 0; i < Math.min(2, tolList.size()); i++) {
-                        tolerance[i] = tolList.get(i).floatValue();
-                    }
-                    widget.setTolerance(tolerance);
-                }
-            }
-            
-            // Translation
-            if (data.containsKey("translation")) {
-                Object translationObj = data.get("translation");
-                if (translationObj instanceof java.util.List) {
-                    java.util.List<Number> translationList = (java.util.List<Number>) translationObj;
-                    float[] translation = new float[3];
-                    for (int i = 0; i < Math.min(3, translationList.size()); i++) {
-                        translation[i] = translationList.get(i).floatValue();
-                    }
-                    widget.setTranslation(translation);
-                }
-            }
-            
-            // Цвета фона
-            if (data.containsKey("backgroundColor")) {
-                Object colorObj = data.get("backgroundColor");
-                if (colorObj instanceof java.util.List) {
-                    java.util.List<Number> colorList = (java.util.List<Number>) colorObj;
-                    int[] color = new int[3];
-                    for (int i = 0; i < Math.min(3, colorList.size()); i++) {
-                        color[i] = colorList.get(i).intValue();
-                    }
-                    widget.setBackgroundColor(color);
-                }
-            }
-            
-            if (data.containsKey("hoveredBackgroundColor")) {
-                Object colorObj = data.get("hoveredBackgroundColor");
-                if (colorObj instanceof java.util.List) {
-                    java.util.List<Number> colorList = (java.util.List<Number>) colorObj;
-                    int[] color = new int[3];
-                    for (int i = 0; i < Math.min(3, colorList.size()); i++) {
-                        color[i] = colorList.get(i).intValue();
-                    }
-                    widget.setHoveredBackgroundColor(color);
-                }
-            }
-            
-            // Альфа
-            if (data.containsKey("backgroundAlpha")) {
-                widget.setBackgroundAlpha(((Number) data.get("backgroundAlpha")).intValue());
-            }
-            
-            if (data.containsKey("hoveredBackgroundAlpha")) {
-                widget.setHoveredBackgroundAlpha(((Number) data.get("hoveredBackgroundAlpha")).intValue());
-            }
-            
-            // Alignment
-            if (data.containsKey("alignment")) {
-                Object alignmentObj = data.get("alignment");
-                if (alignmentObj instanceof String) {
-                    String alignmentStr = (String) alignmentObj;
-                    try {
-                        WidgetDefinition.TextAlignment alignment = WidgetDefinition.TextAlignment.valueOf(alignmentStr);
-                        widget.setAlignment(alignment);
-                    } catch (IllegalArgumentException e) {
-                        plugin.getLogger().warning("Invalid alignment: " + alignmentStr);
-                    }
-                }
-            }
-            
-            // Tooltip (может быть строкой или массивом)
-            if (data.containsKey("tooltip")) {
-                widget.setTooltip(data.get("tooltip"));
-            }
-            
-            if (data.containsKey("tooltipColor")) {
-                Object colorObj = data.get("tooltipColor");
-                if (colorObj instanceof java.util.List) {
-                    java.util.List<Number> colorList = (java.util.List<Number>) colorObj;
-                    int[] color = new int[3];
-                    for (int i = 0; i < Math.min(3, colorList.size()); i++) {
-                        color[i] = colorList.get(i).intValue();
-                    }
-                    widget.setTooltipColor(color);
-                }
-            }
-            
-            if (data.containsKey("tooltipDelay")) {
-                widget.setTooltipDelay(((Number) data.get("tooltipDelay")).intValue());
-            }
-            
-            // onClick
-            if (data.containsKey("onClick")) {
-                Object onClickObj = data.get("onClick");
-                if (onClickObj instanceof Map) {
-                    Map<String, Object> onClickData = (Map<String, Object>) onClickObj;
-                    WidgetDefinition.ClickAction clickAction = new WidgetDefinition.ClickAction();
-                    
-                    if (onClickData.containsKey("action")) {
-                        Object actionObj = onClickData.get("action");
-                        if (actionObj instanceof String) {
-                            String actionStr = (String) actionObj;
-                            try {
-                                WidgetDefinition.ClickAction.ActionType actionType = WidgetDefinition.ClickAction.ActionType.valueOf(actionStr);
-                                clickAction.setAction(actionType);
-                            } catch (IllegalArgumentException e) {
-                                plugin.getLogger().warning("Invalid onClick action: " + actionStr);
-                            }
-                        }
-                    }
-                    
-                    if (onClickData.containsKey("function")) {
-                        Object functionObj = onClickData.get("function");
-                        if (functionObj instanceof String) {
-                            clickAction.setFunction((String) functionObj);
-                        }
-                    }
-                    
-                    if (onClickData.containsKey("screen")) {
-                        Object screenObj = onClickData.get("screen");
-                        if (screenObj instanceof String) {
-                            clickAction.setTarget((String) screenObj);
-                        }
-                    }
-                    
-                    widget.setOnClick(clickAction);
-                }
-            }
-            
-            // hoverAnimation
-            if (data.containsKey("hoverAnimation")) {
-                Object hoverAnimObj = data.get("hoverAnimation");
-                if (hoverAnimObj instanceof Map) {
-                    Map<String, Object> hoverAnimData = (Map<String, Object>) hoverAnimObj;
-                    padej.displayLib.config.HoverAnimation hoverAnimation = parseHoverAnimation(hoverAnimData);
-                    if (hoverAnimation != null) {
-                        widget.setHoverAnimation(hoverAnimation);
-                    }
-                }
-            }
-            
-            return widget;
-            
-        } catch (Exception e) {
-            plugin.getLogger().log(Level.WARNING, "Error parsing widget", e);
+            return action;
+        }
+
+        if (!(onClick instanceof JTable table)) {
+            plugin.getLogger().warning(where + ": onClick must be a string or a table");
             return null;
         }
+
+        String function = str(table, "function", "call");
+        String target = str(table, "switchTo", "switch_to", "target", "screen");
+        String actionStr = str(table, "action");
+
+        WidgetDefinition.ClickAction.ActionType type;
+        if (actionStr != null) {
+            type = enumValue(WidgetDefinition.ClickAction.ActionType.class, actionStr);
+            if (type == null) {
+                plugin.getLogger().warning(where + ": invalid onClick action '" + actionStr + "'");
+                return null;
+            }
+        } else if (function != null) {
+            type = WidgetDefinition.ClickAction.ActionType.RUN_SCRIPT;
+        } else if (target != null) {
+            type = WidgetDefinition.ClickAction.ActionType.SWITCH_SCREEN;
+        } else if (Boolean.TRUE.equals(bool(table, "close"))) {
+            type = WidgetDefinition.ClickAction.ActionType.CLOSE_SCREEN;
+        } else {
+            type = WidgetDefinition.ClickAction.ActionType.NONE;
+        }
+
+        action.setAction(type);
+        action.setFunction(function);
+        action.setTarget(target);
+        return action;
     }
-    
+
     /**
-     * Парсит конфигурацию hover анимации из YAML данных
+     * Разбор hover-анимации
      */
-    private padej.displayLib.config.HoverAnimation parseHoverAnimation(Map<String, Object> data) {
-        try {
-            padej.displayLib.config.HoverAnimation animation = new padej.displayLib.config.HoverAnimation();
-            
-            // Тип анимации
-            if (data.containsKey("type")) {
-                Object typeObj = data.get("type");
-                if (typeObj instanceof String) {
-                    String typeStr = (String) typeObj;
-                    try {
-                        padej.displayLib.config.HoverAnimation.AnimationType type = 
-                            padej.displayLib.config.HoverAnimation.AnimationType.valueOf(typeStr);
-                        animation.setType(type);
-                    } catch (IllegalArgumentException e) {
-                        plugin.getLogger().warning("Invalid hover animation type: " + typeStr);
-                        return null;
-                    }
-                }
+    private HoverAnimation parseHoverAnimation(JTable data, String where) {
+        HoverAnimation animation = new HoverAnimation();
+
+        String typeStr = str(data, "type");
+        if (typeStr != null) {
+            HoverAnimation.AnimationType type = enumValue(HoverAnimation.AnimationType.class, typeStr);
+            if (type == null) {
+                plugin.getLogger().warning(where + ": invalid hover animation type '" + typeStr + "'");
+                return null;
             }
-            
-            // Длительность
-            if (data.containsKey("duration")) {
-                Object durationObj = data.get("duration");
-                if (durationObj instanceof Number) {
-                    animation.setDuration(((Number) durationObj).intValue());
-                }
-            }
-            
-            // Easing
-            if (data.containsKey("easing")) {
-                Object easingObj = data.get("easing");
-                if (easingObj instanceof String) {
-                    String easingStr = (String) easingObj;
-                    try {
-                        padej.displayLib.config.HoverAnimation.EasingType easing = 
-                            padej.displayLib.config.HoverAnimation.EasingType.valueOf(easingStr);
-                        animation.setEasing(easing);
-                    } catch (IllegalArgumentException e) {
-                        plugin.getLogger().warning("Invalid easing type: " + easingStr);
-                    }
-                }
-            }
-            
-            // Reverse on exit
-            if (data.containsKey("reverseOnExit")) {
-                Object reverseObj = data.get("reverseOnExit");
-                if (reverseObj instanceof Boolean) {
-                    animation.setReverseOnExit((Boolean) reverseObj);
-                }
-            }
-            
-            // Delay
-            if (data.containsKey("delay")) {
-                Object delayObj = data.get("delay");
-                if (delayObj instanceof Number) {
-                    animation.setDelay(((Number) delayObj).intValue());
-                }
-            }
-            
-            // Loop
-            if (data.containsKey("loop")) {
-                Object loopObj = data.get("loop");
-                if (loopObj instanceof Boolean) {
-                    animation.setLoop((Boolean) loopObj);
-                }
-            }
-            
-            // Loop count
-            if (data.containsKey("loopCount")) {
-                Object loopCountObj = data.get("loopCount");
-                if (loopCountObj instanceof Number) {
-                    animation.setLoopCount(((Number) loopCountObj).intValue());
-                }
-            }
-            
-            // Preset
-            if (data.containsKey("preset")) {
-                Object presetObj = data.get("preset");
-                if (presetObj instanceof String) {
-                    String presetStr = (String) presetObj;
-                    try {
-                        padej.displayLib.config.HoverAnimation.AnimationPreset preset = 
-                            padej.displayLib.config.HoverAnimation.AnimationPreset.valueOf(presetStr);
-                        animation.setPreset(preset);
-                    } catch (IllegalArgumentException e) {
-                        plugin.getLogger().warning("Invalid animation preset: " + presetStr);
-                    }
-                }
-            }
-            
-            // Intensity
-            if (data.containsKey("intensity")) {
-                Object intensityObj = data.get("intensity");
-                if (intensityObj instanceof Number) {
-                    animation.setIntensity(((Number) intensityObj).floatValue());
-                }
-            }
-            
-            // Scale
-            if (data.containsKey("scale")) {
-                Object scaleObj = data.get("scale");
-                if (scaleObj instanceof java.util.List) {
-                    java.util.List<Number> scaleList = (java.util.List<Number>) scaleObj;
-                    float[] scale = new float[3];
-                    for (int i = 0; i < Math.min(3, scaleList.size()); i++) {
-                        scale[i] = scaleList.get(i).floatValue();
-                    }
-                    animation.setScale(scale);
-                }
-            }
-            
-            // Offset
-            if (data.containsKey("offset")) {
-                Object offsetObj = data.get("offset");
-                if (offsetObj instanceof java.util.List) {
-                    java.util.List<Number> offsetList = (java.util.List<Number>) offsetObj;
-                    float[] offset = new float[3];
-                    for (int i = 0; i < Math.min(3, offsetList.size()); i++) {
-                        offset[i] = offsetList.get(i).floatValue();
-                    }
-                    animation.setOffset(offset);
-                }
-            }
-            
-            // Rotation
-            if (data.containsKey("rotation")) {
-                Object rotationObj = data.get("rotation");
-                if (rotationObj instanceof java.util.List) {
-                    java.util.List<Number> rotationList = (java.util.List<Number>) rotationObj;
-                    float[] rotation = new float[3];
-                    for (int i = 0; i < Math.min(3, rotationList.size()); i++) {
-                        rotation[i] = rotationList.get(i).floatValue();
-                    }
-                    animation.setRotation(rotation);
-                }
-            }
-            
-            // Axis
-            if (data.containsKey("axis")) {
-                Object axisObj = data.get("axis");
-                if (axisObj instanceof java.util.List) {
-                    java.util.List<Number> axisList = (java.util.List<Number>) axisObj;
-                    float[] axis = new float[3];
-                    for (int i = 0; i < Math.min(3, axisList.size()); i++) {
-                        axis[i] = axisList.get(i).floatValue();
-                    }
-                    animation.setAxis(axis);
-                }
-            }
-            
-            // Effects (для COMBINED типа)
-            if (data.containsKey("effects")) {
-                Object effectsObj = data.get("effects");
-                if (effectsObj instanceof java.util.List) {
-                    java.util.List<Map<String, Object>> effectsList = (java.util.List<Map<String, Object>>) effectsObj;
-                    padej.displayLib.config.HoverAnimation[] effects = new padej.displayLib.config.HoverAnimation[effectsList.size()];
-                    for (int i = 0; i < effectsList.size(); i++) {
-                        effects[i] = parseHoverAnimation(effectsList.get(i));
-                    }
-                    animation.setEffects(effects);
-                }
-            }
-            
-            return animation;
-            
-        } catch (Exception e) {
-            plugin.getLogger().log(Level.WARNING, "Error parsing hover animation", e);
-            return null;
+            animation.setType(type);
         }
+
+        Integer duration = integer(data, "duration");
+        if (duration != null) animation.setDuration(duration);
+
+        String easingStr = str(data, "easing");
+        if (easingStr != null) {
+            HoverAnimation.EasingType easing = enumValue(HoverAnimation.EasingType.class, easingStr);
+            if (easing != null) {
+                animation.setEasing(easing);
+            } else {
+                plugin.getLogger().warning(where + ": invalid easing '" + easingStr + "'");
+            }
+        }
+
+        Boolean reverseOnExit = bool(data, "reverseOnExit", "reverse_on_exit");
+        if (reverseOnExit != null) animation.setReverseOnExit(reverseOnExit);
+
+        Integer delay = integer(data, "delay");
+        if (delay != null) animation.setDelay(delay);
+
+        Boolean loop = bool(data, "loop");
+        if (loop != null) animation.setLoop(loop);
+
+        Integer loopCount = integer(data, "loopCount", "loop_count");
+        if (loopCount != null) animation.setLoopCount(loopCount);
+
+        String presetStr = str(data, "preset");
+        if (presetStr != null) {
+            HoverAnimation.AnimationPreset preset = enumValue(HoverAnimation.AnimationPreset.class, presetStr);
+            if (preset != null) {
+                animation.setPreset(preset);
+            } else {
+                plugin.getLogger().warning(where + ": invalid animation preset '" + presetStr + "'");
+            }
+        }
+
+        Double intensity = number(data, "intensity");
+        if (intensity != null) animation.setIntensity(intensity.floatValue());
+
+        float[] scale = floats(data, 3, "scale");
+        if (scale != null) animation.setScale(scale);
+
+        float[] offset = floats(data, 3, "offset");
+        if (offset != null) animation.setOffset(offset);
+
+        float[] rotation = floats(data, 3, "rotation");
+        if (rotation != null) animation.setRotation(rotation);
+
+        float[] axis = floats(data, 3, "axis");
+        if (axis != null) animation.setAxis(axis);
+
+        float[] translation = floats(data, 3, "translation");
+        if (translation != null) animation.setTranslation(translation);
+
+        List<?> effectsData = list(data, "effects");
+        if (effectsData != null) {
+            List<HoverAnimation> effects = new ArrayList<>(effectsData.size());
+            for (Object item : effectsData) {
+                if (item instanceof JTable effectTable) {
+                    HoverAnimation effect = parseHoverAnimation(effectTable, where);
+                    if (effect != null) effects.add(effect);
+                }
+            }
+            animation.setEffects(effects.toArray(new HoverAnimation[0]));
+        }
+
+        return animation;
     }
 }

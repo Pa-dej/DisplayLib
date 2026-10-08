@@ -4,12 +4,13 @@ import org.bukkit.Location;
 import org.bukkit.entity.Player;
 import padej.displayLib.config.ScreenDefinition;
 import padej.displayLib.config.WidgetDefinition;
-import padej.displayLib.lua.LuaContext;
-import padej.displayLib.lua.LuaEngine;
+import padej.displayLib.DisplayLib;
+import padej.displayLib.script.JumperEngine;
+import padej.displayLib.script.ScriptContext;
+import padej.displayLib.script.api.ScreenAPI;
 import padej.displayLib.ui.widgets.*;
-import org.luaj.vm2.LuaValue;
 
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
@@ -17,23 +18,22 @@ import java.util.Map;
  * Создаёт entity по ScreenDefinition и управляет ими.
  * Не знает ни про follow, ни про save — этого больше нет.
  */
-public class ScreenInstance extends WidgetManager {
+public class ScreenInstance extends WidgetManager implements ScreenAPI.Host {
     private final String screenId;
     private final ScreenDefinition definition;
-    private final LuaEngine luaEngine;
-    private LuaContext luaContext;
+    private final ScriptContext scriptContext;
     
-    /** Lua-файл экрана (scripts.file) или null */
+    /** Файл скрипта экрана (поле script в .jmc) или null */
     private final String scriptFile;
     
-    /** Быстрый доступ к виджетам по id из YAML */
-    private final Map<String, Widget> widgetById = new HashMap<>();
+    /** Быстрый доступ к виджетам по id из файла экрана (порядок объявления сохраняется) */
+    private final Map<String, Widget> widgetById = new LinkedHashMap<>();
     
     /** Единая ориентация для всех элементов экрана */
     private final float screenYaw;
     private final float screenPitch;
     
-    /** Квадраты радиусов из YAML (значение <= 0 означает "без ограничения") */
+    /** Квадраты радиусов из файла экрана (значение <= 0 означает "без ограничения") */
     private final double interactionRadiusSq;
     private final double closeDistanceSq;
     
@@ -47,45 +47,40 @@ public class ScreenInstance extends WidgetManager {
      * Экран, повёрнутый лицом к игроку (ориентация вычисляется один раз).
      */
     public ScreenInstance(String screenId, ScreenDefinition definition,
-                          Player viewer, Location location, LuaEngine luaEngine) {
-        this(screenId, definition, viewer, location, facingOrientation(viewer, location), luaEngine);
+                          Player viewer, Location location, JumperEngine engine) {
+        this(screenId, definition, viewer, location, facingOrientation(viewer, location), engine);
     }
     
     /**
      * Конструктор с заданной ориентацией (для переключения экранов)
      */
     public ScreenInstance(String screenId, ScreenDefinition definition,
-                          Player viewer, Location location, float yaw, float pitch, LuaEngine luaEngine) {
-        this(screenId, definition, viewer, location, new float[]{yaw, pitch}, luaEngine);
+                          Player viewer, Location location, float yaw, float pitch, JumperEngine engine) {
+        this(screenId, definition, viewer, location, new float[]{yaw, pitch}, engine);
     }
 
     private ScreenInstance(String screenId, ScreenDefinition definition,
-                           Player viewer, Location location, float[] orientation, LuaEngine luaEngine) {
+                           Player viewer, Location location, float[] orientation, JumperEngine engine) {
         super(viewer, location);
         this.screenId = screenId;
         this.definition = definition;
-        this.luaEngine = luaEngine;
         this.screenYaw = orientation[0];
         this.screenPitch = orientation[1];
-        
-        Map<String, String> scripts = definition.getScripts();
-        this.scriptFile = scripts != null ? scripts.get("file") : null;
+        this.scriptFile = definition.getScript();
         
         double interactionRadius = definition.getInteractionRadius();
         this.interactionRadiusSq = interactionRadius > 0 ? interactionRadius * interactionRadius : -1;
         double closeDistance = definition.getCloseDistance();
         this.closeDistanceSq = closeDistance > 0 ? closeDistance * closeDistance : -1;
         
-        // Создаем Lua контекст
-        if (luaEngine != null) {
-            this.luaContext = luaEngine.createContext(this, viewer);
-        }
+        // Скриптовое окружение: глобалы player/screen/storage/timer/log и сам скрипт
+        this.scriptContext = new ScriptContext((DisplayLib) DisplayLib.getInstance(), engine, this, viewer, scriptFile);
 
         spawnBackground();
         spawnWidgets();
         
-        // Вызываем on_open после создания всех виджетов
-        callLifecycleFunction("on_open");
+        // onOpen после создания всех виджетов
+        scriptContext.callHook(ScriptContext.HOOK_OPEN);
     }
 
     /** Ориентация (yaw, pitch) экрана в точке location, обращённого к игроку. */
@@ -109,7 +104,7 @@ public class ScreenInstance extends WidgetManager {
         ScreenDefinition.BackgroundDefinition bg = definition.getBackground();
         if (bg == null) return;
 
-        // Фон создается с учетом position из YAML
+        // Фон создается с учетом position из файла экрана
         TextDisplayButtonWidget backgroundWidget = TextDisplayButtonWidget.create(
                 ScreenSupport.backgroundLocation(location, bg), viewer, ScreenSupport.backgroundConfig(bg));
         
@@ -178,10 +173,11 @@ public class ScreenInstance extends WidgetManager {
 
             case CLOSE_SCREEN -> UIManager.getInstance().closeScreen(viewer);
 
-            // Lua скрипт
+            // Функция скрипта: name(widget, player)
             case RUN_SCRIPT -> {
                 if (action.getFunction() != null) {
-                    callLuaFunctionWithWidget(action.getFunction(), def);
+                    Widget widget = def.getId() != null ? widgetById.get(def.getId()) : null;
+                    scriptContext.callClick(action.getFunction(), def.getId(), widget, viewer);
                 } else {
                     viewer.sendMessage("§cScript function not specified");
                 }
@@ -237,15 +233,15 @@ public class ScreenInstance extends WidgetManager {
         if (isClosing) return;
         isClosing = true;
         
-        // Вызываем on_close перед закрытием
-        callLifecycleFunction("on_close");
+        // onClose перед закрытием
+        scriptContext.callHook(ScriptContext.HOOK_CLOSE);
         
-        // Lua контекст очищается в remove()
+        // Скриптовый контекст очищается в remove()
         UIManager.getInstance().forceCloseScreen(viewer);
     }
 
     /**
-     * Удалить сущности экрана и освободить Lua контекст.
+     * Удалить сущности экрана и освободить скриптовый контекст.
      *
      * <p>Контекст очищается здесь, а не только в {@link #tryClose()}, потому что экран
      * удаляется и в обход tryClose: при переключении экранов, выходе или смерти игрока,
@@ -254,26 +250,42 @@ public class ScreenInstance extends WidgetManager {
      */
     @Override
     public void remove() {
-        if (luaContext != null) {
-            luaContext.cleanup();
-        }
+        scriptContext.cleanup();
         super.remove();
     }
 
     // -------------------------------------------------------------------------
-    // Public API (для Lua в будущем)
+    // ScreenAPI.Host: что экран показывает скрипту
     // -------------------------------------------------------------------------
 
+    @Override
     public Widget getWidget(String id) {
         return widgetById.get(id);
     }
 
+    @Override
     public Map<String, Widget> getWidgets() {
         return Map.copyOf(widgetById);
     }
 
+    @Override
     public String getScreenId() {
         return screenId;
+    }
+
+    @Override
+    public boolean isPublic() {
+        return false;
+    }
+
+    @Override
+    public void closeFromScript() {
+        UIManager.getInstance().closeScreen(viewer);
+    }
+
+    @Override
+    public void switchFromScript(String targetId) {
+        UIManager.getInstance().switchScreen(viewer, targetId);
     }
 
     public ScreenDefinition getDefinition() {
@@ -294,42 +306,10 @@ public class ScreenInstance extends WidgetManager {
         return new float[]{screenYaw, screenPitch};
     }
     
-    // -------------------------------------------------------------------------
-    // Lua integration
-    // -------------------------------------------------------------------------
-    
     /**
-     * Вызвать необязательную Lua функцию жизненного цикла (on_open / on_close)
+     * Скриптовое окружение экрана (для Java API других плагинов)
      */
-    private void callLifecycleFunction(String functionName) {
-        if (luaEngine == null || luaContext == null || scriptFile == null) return;
-        luaEngine.callOptionalFunction(luaContext, scriptFile, functionName);
-    }
-    
-    /**
-     * Вызвать Lua функцию с установленным widget контекстом
-     */
-    private void callLuaFunctionWithWidget(String functionName, WidgetDefinition widgetDef) {
-        if (luaEngine == null || luaContext == null || scriptFile == null) return;
-        
-        // Устанавливаем widget в глобальный контекст
-        Widget widget = widgetDef.getId() != null ? widgetById.get(widgetDef.getId()) : null;
-        if (widget != null) {
-            luaContext.getGlobals().set("widget", luaContext.widgetApi(widget));
-        }
-        
-        try {
-            luaEngine.callFunction(luaContext, scriptFile, functionName);
-        } finally {
-            // Очищаем widget из контекста
-            luaContext.getGlobals().set("widget", LuaValue.NIL);
-        }
-    }
-    
-    /**
-     * Получить Lua контекст (для внешнего использования)
-     */
-    public LuaContext getLuaContext() {
-        return luaContext;
+    public ScriptContext getScriptContext() {
+        return scriptContext;
     }
 }

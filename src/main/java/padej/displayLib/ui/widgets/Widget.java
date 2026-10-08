@@ -67,7 +67,7 @@ public interface Widget {
     default void ensureSpawned() {
     }
     
-    // Методы для Lua API
+    // Методы для API скриптов
     boolean isVisible();
     void setVisible(boolean visible);
     

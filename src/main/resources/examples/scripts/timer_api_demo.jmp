@@ -1,0 +1,365 @@
+// Timer API Demo: демонстрация всех функций Timer API (скрипт DisplayLib на Jumper, .jmp)
+
+dyn repeatTimer = null;   // id повторяющегося таймера (null - не запущен)
+int repeatCounter = 0;
+
+// Вспомогательные функции: установить текст и цвет виджета, если он есть
+void setStatus(String id, dyn text, dyn r, dyn g, dyn b) {
+    dyn w = screen.widget(id);
+    if (w == null) return;
+    w.text(text);
+    if (r != null) w.bgColor(r, g, b);
+}
+
+void setText(String id, dyn text) {
+    dyn w = screen.widget(id);
+    if (w != null) w.text(text);
+}
+
+void onOpen() {
+    log.info("=== Timer API Demo opened for " + player.name() + " ===");
+
+    // Приветственное сообщение
+    player.message("§e⏰ Добро пожаловать в демонстрацию Timer API!");
+    player.message("§eИзучите функции для работы с таймерами:");
+    player.message("§7- §eafter() §7- одноразовое выполнение с задержкой");
+    player.message("§7- §eevery() §7- циклическое выполнение");
+    player.message("§7- §etimes() §7- ограниченное количество повторений");
+    player.message("§7- §ecancel() §7- отмена активных таймеров");
+    player.sound("ui.button.click", 1.0, 1.0);
+}
+
+void onClose() {
+    log.info("Timer API demo closed for " + player.name());
+
+    // Отменяем активный повторяющийся таймер
+    if (repeatTimer != null) {
+        timer.cancel(repeatTimer);
+        repeatTimer = null;
+    }
+
+    player.message("§7Timer API demo завершен!");
+    player.sound("entity.experience_orb.pickup", 1.0, 1.0);
+}
+
+// =============================================================================
+// timer.after() - Одноразовые таймеры
+// =============================================================================
+
+void btn_after_simple_click(dyn widget, dyn player) {
+    log.info("=== btn_after_simple_click called ===");
+
+    setStatus("after_status", "Ожидание 3 секунды...", 60, 60, 30);
+
+    player.message("§e⏰ Демонстрация timer.after(60) - задержка 3 секунды");
+    player.sound("block.note_block.pling", 1.0, 1.0);
+
+    // Демонстрация timer.after(): 3 секунды (60 тиков)
+    timer.after(60, () -> {
+        setStatus("after_status", "Готов к запуску", 50, 50, 25);
+
+        player.message("§a✓ timer.after() выполнен через 3 секунды!");
+        player.sound("entity.experience_orb.pickup", 1.0, 1.5);
+
+        log.info("Simple after timer completed");
+    });
+
+    log.info("Simple after timer started (3 seconds)");
+}
+
+// Один шаг обратного отсчета (отдельная функция, чтобы замыкание захватило свой step)
+void scheduleCountdownStep(dyn player, int step) {
+    int left = 5 - step;
+    timer.after(20 * step, () -> {
+        setText("after_status", "Запуск через " + left + "...");
+        player.message("§e" + left + "...");
+        player.sound("block.note_block.pling", 1.0, 1.0 + step * 0.1);
+    });
+}
+
+void btn_after_countdown_click(dyn widget, dyn player) {
+    log.info("=== btn_after_countdown_click called ===");
+
+    player.message("§e🚀 Демонстрация множественных timer.after() - обратный отсчет");
+    player.sound("block.beacon.activate", 1.0, 1.0);
+
+    setStatus("after_status", "Запуск через 5...", 80, 60, 30);
+
+    // Демонстрация множественных timer.after() для обратного отсчета: 4, 3, 2, 1 с шагом в секунду
+    for (int step = 1; step <= 4; step++) {
+        scheduleCountdownStep(player, step);
+    }
+
+    timer.after(100, () -> {  // 5 сек
+        setStatus("after_status", "Готов к запуску", 50, 50, 25);
+
+        player.message("§a🎉 Обратный отсчет завершен!");
+        player.sound("entity.firework_rocket.blast", 1.0, 1.0);
+
+        log.info("Countdown completed");
+    });
+
+    log.info("Countdown started (5 steps)");
+}
+
+// =============================================================================
+// timer.every() - Повторяющиеся таймеры
+// =============================================================================
+
+void btn_repeat_start_click(dyn widget, dyn player) {
+    log.info("=== btn_repeat_start_click called ===");
+
+    if (repeatTimer != null) {
+        player.message("§c⚠️ Повторяющийся таймер уже запущен!");
+        player.sound("block.anvil.hit", 0.5, 0.5);
+        return;
+    }
+
+    repeatCounter = 0;
+
+    player.message("§e🔄 Демонстрация timer.every(20) - каждую секунду");
+    player.sound("block.piston.extend", 1.0, 1.2);
+
+    setStatus("repeat_status", "Запущен: 0", 30, 60, 30);
+
+    // Цвета меняются циклично: зеленый, желтый, красный, синий, фиолетовый, циан
+    dyn colors = [
+        [30, 60, 30], [60, 60, 30], [60, 30, 30],
+        [30, 30, 60], [60, 30, 60], [30, 60, 60]
+    ];
+
+    // Демонстрация timer.every(): каждые 20 тиков (1 секунда)
+    repeatTimer = timer.every(20, () -> {
+        repeatCounter++;
+
+        dyn status = screen.widget("repeat_status");
+        if (status != null) {
+            status.text("Запущен: " + repeatCounter);
+            dyn color = colors[(repeatCounter - 1) % colors.length];
+            status.bgColor(color[0], color[1], color[2]);
+        }
+
+        // Звук каждые 5 итераций
+        if (repeatCounter % 5 == 0) {
+            player.message("§a🔔 Повтор #" + repeatCounter);
+            player.sound("block.bell.use", 0.5, 1.0 + repeatCounter * 0.05);
+        }
+
+        log.info("Repeat timer iteration: " + repeatCounter);
+    });
+
+    log.info("Repeat timer started");
+}
+
+void btn_repeat_stop_click(dyn widget, dyn player) {
+    log.info("=== btn_repeat_stop_click called ===");
+
+    if (repeatTimer == null) {
+        player.message("§c⚠️ Нет активного повторяющегося таймера!");
+        player.sound("block.anvil.hit", 0.5, 0.5);
+        return;
+    }
+
+    // Демонстрация timer.cancel()
+    timer.cancel(repeatTimer);
+    repeatTimer = null;
+
+    setStatus("repeat_status", "Остановлен", 50, 25, 25);
+
+    player.message("§c⏹️ Повторяющийся таймер остановлен после " + repeatCounter + " итераций");
+    player.message("§7Использована функция timer.cancel()");
+    player.sound("block.piston.contract", 1.0, 1.0);
+
+    log.info("Repeat timer cancelled after " + repeatCounter + " iterations");
+}
+
+// =============================================================================
+// timer.times() - Ограниченные повторения
+// =============================================================================
+
+// Сброс индикатора прогресса в исходное состояние
+void resetProgress() {
+    setStatus("times_progress", "Прогресс: 0/0", 50, 50, 25);
+}
+
+void btn_times_5_click(dyn widget, dyn player) {
+    log.info("=== btn_times_5_click called ===");
+
+    setStatus("times_progress", "Прогресс: 0/5", 50, 50, 25);
+
+    player.message("§e🎯 Демонстрация timer.times(20, 5) - 5 повторений каждую секунду");
+    player.sound("block.beacon.activate", 1.0, 1.0);
+
+    // Демонстрация timer.times(): каждые 20 тиков, 5 раз
+    timer.times(20, 5, i -> {
+        dyn progress = screen.widget("times_progress");
+        if (progress != null) {
+            progress.text("Прогресс: " + i + "/5");
+            // Меняем цвет от красного к зеленому
+            progress.bgColor(80 - i * 10, 20 + i * 10, 25);
+        }
+
+        player.sound("block.note_block.harp", 0.8, 0.8 + i * 0.2);
+
+        if (i == 3) {
+            player.message("§e⚡ Половина пути пройдена!");
+        } else if (i == 5) {
+            player.message("§a🎉 timer.times(20, 5) завершен!");
+            player.sound("entity.player.levelup", 1.0, 1.0);
+
+            // Сбрасываем через 2 секунды
+            timer.after(40, () -> resetProgress());
+        }
+
+        log.info("Times(5) iteration: " + i + "/5");
+    });
+
+    log.info("Times(5) timer started");
+}
+
+void btn_times_10_click(dyn widget, dyn player) {
+    log.info("=== btn_times_10_click called ===");
+
+    setStatus("times_progress", "Прогресс: 0/10", 50, 50, 25);
+
+    player.message("§e🚀 Демонстрация timer.times(10, 10) - 10 повторений каждые 0.5 секунды");
+    player.sound("block.beacon.power_select", 1.0, 1.0);
+
+    // Радужный эффект
+    dyn colors = [
+        [80, 30, 30], [80, 60, 30], [60, 80, 30], [30, 80, 30], [30, 80, 60],
+        [30, 60, 80], [30, 30, 80], [60, 30, 80], [80, 30, 60], [80, 30, 30]
+    ];
+
+    // Демонстрация timer.times() с более частыми интервалами: каждые 10 тиков, 10 раз
+    timer.times(10, 10, i -> {
+        dyn progress = screen.widget("times_progress");
+        if (progress != null) {
+            progress.text("Прогресс: " + i + "/10");
+            dyn color = colors[i - 1];
+            progress.bgColor(color[0], color[1], color[2]);
+        }
+
+        player.sound("block.note_block.chime", 0.5, 1.0 + i * 0.1);
+
+        if (i == 5) {
+            player.message("§e⚡ Половина завершена!");
+        } else if (i == 10) {
+            player.message("§a🌟 timer.times(10, 10) завершен!");
+            player.sound("entity.firework_rocket.blast", 1.0, 1.0);
+
+            // Сбрасываем через 2 секунды
+            timer.after(40, () -> resetProgress());
+        }
+
+        log.info("Times(10) iteration: " + i + "/10");
+    });
+
+    log.info("Times(10) timer started");
+}
+
+void btn_times_animation_click(dyn widget, dyn player) {
+    log.info("=== btn_times_animation_click called ===");
+
+    player.message("§e🎨 Демонстрация анимации с timer.times()");
+    player.sound("entity.firework_rocket.launch", 1.0, 1.0);
+
+    setStatus("times_progress", "Анимация: 0/8", 50, 50, 25);
+
+    // Цвета заголовка по шагам анимации
+    dyn colors = [
+        [100, 50, 50], [100, 80, 50], [80, 100, 50], [50, 100, 50],
+        [50, 100, 80], [50, 80, 100], [50, 50, 100], [80, 50, 100]
+    ];
+
+    // Анимация заголовка с timer.times(): каждые 8 тиков, 8 раз
+    timer.times(8, 8, i -> {
+        setText("times_progress", "Анимация: " + i + "/8");
+
+        dyn title = screen.widget("title");
+        if (title != null) {
+            dyn color = colors[i - 1];
+            title.bgColor(color[0], color[1], color[2]);
+            // Меняем прозрачность
+            title.bgAlpha(150 + i * 10);
+        }
+
+        player.sound("block.note_block.bell", 0.3, 1.0 + i * 0.15);
+
+        if (i == 8) {
+            player.message("§a✨ Анимация завершена!");
+
+            // Возвращаем исходный цвет
+            timer.after(20, () -> {
+                dyn t = screen.widget("title");
+                if (t != null) {
+                    t.bgColor(80, 80, 40);
+                    t.bgAlpha(200);
+                }
+                resetProgress();
+            });
+        }
+
+        log.info("Animation iteration: " + i + "/8");
+    });
+
+    log.info("Animation with times() started");
+}
+
+// =============================================================================
+// Комплексная демонстрация
+// =============================================================================
+
+void btn_complex_timer_demo_click(dyn widget, dyn player) {
+    log.info("=== btn_complex_timer_demo_click called ===");
+
+    player.message("§e🧪 Запуск комплексной демонстрации Timer API...");
+    player.sound("block.beacon.power_select", 1.0, 1.0);
+
+    // Этап 1: timer.after()
+    setStatus("after_status", "Этап 1: after()", 60, 30, 30);
+
+    timer.after(20, () -> {  // 1 сек
+        player.message("§71. timer.after() ✓");
+
+        // Этап 2: timer.times()
+        setStatus("times_progress", "Этап 2: times()", 30, 60, 30);
+
+        timer.times(10, 3, i -> {
+            setText("times_progress", "Этап 2: " + i + "/3");
+            if (i != 3) return;
+
+            player.message("§72. timer.times() ✓");
+
+            // Этап 3: timer.every()
+            setStatus("repeat_status", "Этап 3: every()", 30, 30, 60);
+
+            int demoRepeatCounter = 0;
+            repeatTimer = timer.every(15, () -> {  // используем общий repeatTimer
+                demoRepeatCounter++;
+                setText("repeat_status", "Этап 3: " + demoRepeatCounter);
+                if (demoRepeatCounter < 4) return;
+
+                if (repeatTimer != null) {
+                    timer.cancel(repeatTimer);
+                    repeatTimer = null;
+                }
+                player.message("§73. timer.every() + timer.cancel() ✓");
+
+                // Финал
+                timer.after(20, () -> {
+                    setStatus("after_status", "Готов к запуску", 50, 50, 25);
+                    setStatus("repeat_status", "Остановлен", 50, 25, 25);
+                    resetProgress();
+
+                    player.message("§a🎉 Комплексная демонстрация Timer API завершена!");
+                    player.sound("entity.player.levelup", 1.0, 1.0);
+
+                    log.info("Complex timer demo completed successfully");
+                });
+            });
+        });
+    });
+
+    log.info("Complex timer demo started");
+}

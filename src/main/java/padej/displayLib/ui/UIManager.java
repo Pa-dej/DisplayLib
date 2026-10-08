@@ -4,8 +4,8 @@ import padej.displayLib.DisplayLib;
 import padej.displayLib.api.events.DisplayClickEvent;
 import padej.displayLib.config.ScreenDefinition;
 import padej.displayLib.config.ScreenRegistry;
-import padej.displayLib.lua.LuaEngine;
-import padej.displayLib.lua.api.StorageAPI;
+import padej.displayLib.script.JumperEngine;
+import padej.displayLib.script.api.StorageAPI;
 import padej.displayLib.ui.widgets.Widget;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
@@ -66,7 +66,7 @@ public class UIManager implements Listener {
     }
     
     private ScreenRegistry screenRegistry;
-    private LuaEngine luaEngine;
+    private JumperEngine scriptEngine;
 
     private UIManager() {
         Bukkit.getPluginManager().registerEvents(this, DisplayLib.getInstance());
@@ -80,9 +80,9 @@ public class UIManager implements Listener {
         return Holder.INSTANCE;
     }
 
-    public void initialize(ScreenRegistry screenRegistry, LuaEngine luaEngine) {
+    public void initialize(ScreenRegistry screenRegistry, JumperEngine scriptEngine) {
         this.screenRegistry = screenRegistry;
-        this.luaEngine = luaEngine;
+        this.scriptEngine = scriptEngine;
     }
 
     public ScreenInstance getActiveScreen(Player player) {
@@ -155,10 +155,10 @@ public class UIManager implements Listener {
         ScreenInstance instance;
         if (yaw != null && pitch != null) {
             // Создаем с заданной ориентацией (для переключения экранов)
-            instance = new ScreenInstance(screenId, definition, player, location, yaw, pitch, luaEngine);
+            instance = new ScreenInstance(screenId, definition, player, location, yaw, pitch, scriptEngine);
         } else {
             // Создаем с автоматической ориентацией (для новых экранов)
-            instance = new ScreenInstance(screenId, definition, player, location, luaEngine);
+            instance = new ScreenInstance(screenId, definition, player, location, scriptEngine);
         }
         
         registerScreen(player, instance);
@@ -169,7 +169,7 @@ public class UIManager implements Listener {
     }
 
     /**
-     * Закрыть экран игрока (вызывается из кнопки / Lua).
+     * Закрыть экран игрока (вызывается из кнопки / скрипта).
      */
     public void closeScreen(Player player) {
         ScreenInstance screen = getActiveScreen(player);
@@ -233,7 +233,7 @@ public class UIManager implements Listener {
             closeGlobalScreen(existingScreen);
         }
 
-        GlobalScreenInstance instance = new GlobalScreenInstance(screenId, definition, location, yaw, pitch, luaEngine);
+        GlobalScreenInstance instance = new GlobalScreenInstance(screenId, definition, location, yaw, pitch, scriptEngine);
         registerPublicScreen(instance);
 
         DisplayLib.getInstance().getLogger().info(

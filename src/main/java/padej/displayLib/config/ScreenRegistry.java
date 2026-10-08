@@ -17,10 +17,9 @@ import java.util.logging.Level;
 /**
  * Реестр экранов с поддержкой hot reload.
  *
- * <p>Поток наблюдения за файлами только замечает изменения; сам разбор YAML и
- * обновление реестра выполняются в основном потоке сервера. Так загрузчик
- * (экземпляр SnakeYAML не потокобезопасен) никогда не используется из двух потоков
- * одновременно, а игровой код видит реестр только в согласованном состоянии.</p>
+ * <p>Поток наблюдения за файлами только замечает изменения; сам разбор {@code .jmc} и
+ * обновление реестра выполняются в основном потоке сервера, так что игровой код видит
+ * реестр только в согласованном состоянии.</p>
  */
 public class ScreenRegistry {
     /** Пауза для накопления событий: редакторы сохраняют файл несколькими операциями подряд */
@@ -28,6 +27,7 @@ public class ScreenRegistry {
 
     private final DisplayLib plugin;
     private final ScreenLoader screenLoader;
+    private final boolean hotReload;
     private final Map<String, ScreenDefinition> screens = new ConcurrentHashMap<>();
     
     /** Имя файла (без расширения) -> id экрана из этого файла; только основной поток */
@@ -37,8 +37,12 @@ public class ScreenRegistry {
     private Thread watchThread;
     private volatile boolean watching = false;
     
-    public ScreenRegistry(DisplayLib plugin) {
+    /**
+     * @param hotReload следить ли за папкой screens/ (config.jmc: hotReload)
+     */
+    public ScreenRegistry(DisplayLib plugin, boolean hotReload) {
         this.plugin = plugin;
+        this.hotReload = hotReload;
         this.screenLoader = new ScreenLoader(plugin);
     }
     
@@ -52,8 +56,8 @@ public class ScreenRegistry {
         
         plugin.getLogger().info("Loaded " + screens.size() + " screen(s)");
         
-        // Запускаем hot reload, если он не отключен в config.yml
-        if (isHotReloadEnabled()) {
+        // Запускаем hot reload, если он не отключен в config.jmc
+        if (hotReload) {
             startHotReload();
         }
     }
@@ -94,7 +98,7 @@ public class ScreenRegistry {
     }
     
     /**
-     * Перезагрузить экран из файла {@code <fileId>.yml} / {@code <fileId>.yaml}.
+     * Перезагрузить экран из файла {@code <fileId>.jmc}.
      * Вызывать из основного потока.
      *
      * @param fileId имя файла экрана без расширения
@@ -104,7 +108,7 @@ public class ScreenRegistry {
         String previousId = screenIdByFile.get(fileId);
         
         if (screen != null) {
-            // Экран регистрируется под id из YAML (как при полной загрузке), а не под именем файла
+            // Экран регистрируется под id из файла (как при полной загрузке), а не под именем файла
             String screenId = screen.getId() != null ? screen.getId() : fileId;
             if (previousId != null && !previousId.equals(screenId)) {
                 screens.remove(previousId);
@@ -116,8 +120,7 @@ public class ScreenRegistry {
         }
         
         Path directory = screenLoader.getScreensDirectory();
-        boolean fileExists = Files.exists(directory.resolve(fileId + ".yml"))
-                || Files.exists(directory.resolve(fileId + ".yaml"));
+        boolean fileExists = Files.exists(directory.resolve(fileId + ScreenLoader.EXTENSION));
         
         if (fileExists) {
             // Файл есть, но не читается (например, сохранён на середине правки) -
@@ -182,7 +185,7 @@ public class ScreenRegistry {
                 }
                 
                 if (!changedFiles.isEmpty() && plugin.isEnabled()) {
-                    // Разбор YAML и изменение реестра - в основном потоке
+                    // Разбор .jmc и изменение реестра - в основном потоке
                     Bukkit.getScheduler().runTask(plugin, () -> {
                         for (String fileId : changedFiles) {
                             reloadScreen(fileId);
@@ -212,11 +215,9 @@ public class ScreenRegistry {
             
             String fileName = event.context().toString();
             
-            // Обрабатываем только YAML файлы
-            if (fileName.endsWith(".yml")) {
-                changedFiles.add(fileName.substring(0, fileName.length() - ".yml".length()));
-            } else if (fileName.endsWith(".yaml")) {
-                changedFiles.add(fileName.substring(0, fileName.length() - ".yaml".length()));
+            // Обрабатываем только файлы экранов
+            if (fileName.endsWith(ScreenLoader.EXTENSION)) {
+                changedFiles.add(fileName.substring(0, fileName.length() - ScreenLoader.EXTENSION.length()));
             }
         }
     }
@@ -241,13 +242,6 @@ public class ScreenRegistry {
                 plugin.getLogger().log(Level.WARNING, "Failed to close watch service", e);
             }
         }
-    }
-    
-    /**
-     * Включён ли hot reload (config.yml, ключ {@code hot-reload}; по умолчанию включён)
-     */
-    private boolean isHotReloadEnabled() {
-        return plugin.getConfig().getBoolean("hot-reload", true);
     }
     
     /**

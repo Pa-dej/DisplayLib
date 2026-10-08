@@ -1,0 +1,23 @@
+// DisplayLib - политика доступа скриптов экранов (Jumper, .jma)
+//
+// Скрипт видит только то, что здесь открыто; всё остальное закрыто. Файл читается при
+// запуске и по /displaylib reload. Кто может писать этот файл, тот может всё.
+
+// API плагина: глобалы player, screen, storage, timer, log и виджеты
+Policy.allowPackage("padej.displayLib.script.api");
+
+// Базовые классы: String, Math, Integer... (Class, Runtime, System, Thread остаются закрыты)
+Policy.allowPackage("java.lang");
+
+// Коллекции, Random, Optional и т.д.
+Policy.allowPackage("java.util");
+
+// import "lib/util.jmp" - общие модули внутри scripts/
+Policy.allowModules();
+
+// Предел размера таблицы или массива, которые может построить скрипт
+Policy.maxTableSize(100000);
+
+// Пример: открыть скриптам Bukkit API (player.handle() и дальше). Делайте это осознанно -
+// скрипты смогут всё, что может плагин.
+// Policy.allowPackage("org.bukkit");

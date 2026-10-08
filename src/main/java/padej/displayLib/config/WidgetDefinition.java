@@ -3,7 +3,7 @@ package padej.displayLib.config;
 import java.util.Map;
 
 /**
- * Определение виджета из YAML конфигурации.
+ * Определение виджета из файла экрана ({@code .jmc}).
  * 
  * <p>Виджет - это интерактивный элемент экрана, который может отображать текст,
  * предметы и реагировать на клики игрока.</p>
@@ -14,86 +14,57 @@ import java.util.Map;
  * <li><b>ITEM_BUTTON</b> - Кнопка с отображением предмета Minecraft</li>
  * </ul>
  * 
- * <h2>Пример YAML конфигурации TEXT_BUTTON:</h2>
+ * <h2>Пример TEXT_BUTTON:</h2>
  * <pre>{@code
- * - id: "my_button"                      # Уникальный ID виджета
- *   type: TEXT_BUTTON                    # Тип виджета
- *   text: "Нажми меня"                   # Простой текст
- *   hoveredText: "Кликни!"               # Текст при наведении
- *   position: [0.0, 0.5, 0.0]           # Позиция [x, y, z]
- *   scale: [0.2, 0.2, 0.2]              # Размер [x, y, z]
- *   tolerance: [0.08, 0.08]             # Область клика [гор., верт.]
- *   backgroundColor: [50, 50, 50]        # RGB цвет фона
- *   backgroundAlpha: 180                 # Прозрачность фона
- *   hoveredBackgroundColor: [80, 80, 80] # RGB цвет при наведении
- *   hoveredBackgroundAlpha: 200          # Прозрачность при наведении
- *   alignment: CENTERED                  # Выравнивание: LEFT, CENTERED, RIGHT
- *   tooltip: "Подсказка"                 # Простая подсказка
- *   tooltipDelay: 10                     # Задержка показа в тиках
- *   onClick:                             # Действие при клике
- *     action: RUN_SCRIPT                 # Тип действия
- *     function: "onButtonClick"          # Lua функция
+ * {
+ *     id: "my_button",                       // Уникальный ID виджета
+ *     type: "TEXT_BUTTON",                   // Тип виджета
+ *     text: "Нажми меня",                    // Простой текст
+ *     hoveredText: "Кликни!",                // Текст при наведении
+ *     position: [0, 0.5, 0],                 // Позиция [x, y, z]
+ *     scale: [0.2, 0.2, 0.2],                // Размер [x, y, z]
+ *     tolerance: [0.08, 0.08],               // Зона наведения [полуширина, полувысота]
+ *     backgroundColor: [50, 50, 50],         // RGB цвет фона
+ *     backgroundAlpha: 180,                  // Прозрачность фона
+ *     hoveredBackgroundColor: [80, 80, 80],  // RGB цвет при наведении
+ *     hoveredBackgroundAlpha: 200,           // Прозрачность при наведении
+ *     alignment: "CENTERED",                 // LEFT, CENTERED, RIGHT
+ *     tooltip: "Подсказка",
+ *     tooltipDelay: 10,                      // Задержка показа в тиках
+ *     onClick: "onButtonClick",              // Функция скрипта: void onButtonClick(dyn widget, dyn player)
+ * }
  * }</pre>
  * 
- * <h2>Пример YAML конфигурации ITEM_BUTTON:</h2>
+ * <h2>Пример ITEM_BUTTON:</h2>
  * <pre>{@code
- * - id: "sword_button"
- *   type: ITEM_BUTTON
- *   material: DIAMOND_SWORD              # Материал предмета
- *   position: [1.0, 0.0, 0.0]
- *   scale: [0.3, 0.3, 0.3]
- *   glowOnHover: true                    # Свечение при наведении
- *   glowColor: [0, 255, 255]             # RGB цвет свечения
- *   tooltip: "Алмазный меч"
- *   onClick:
- *     action: SWITCH_SCREEN
- *     target: "weapon_menu"              # ID целевого экрана
+ * {
+ *     id: "sword_button",
+ *     type: "ITEM_BUTTON",
+ *     material: "DIAMOND_SWORD",             // Материал предмета
+ *     position: [1, 0, 0],
+ *     scale: [0.3, 0.3, 0.3],
+ *     glowOnHover: true,                     // Свечение при наведении
+ *     glowColor: [0, 255, 255],              // RGB цвет свечения
+ *     tooltip: "Алмазный меч",
+ *     onClick: { switchTo: "weapon_menu" },  // Переключение на другой экран
+ * }
  * }</pre>
  * 
  * <h2>Форматированный текст и tooltip:</h2>
- * <p>Поддерживается два формата для полей text, hoveredText, formattedText, formattedHoveredText и tooltip:</p>
- * 
- * <h3>1. Простая строка:</h3>
+ * <p>Поля text, hoveredText, formattedText, formattedHoveredText и tooltip принимают
+ * либо строку, либо массив сегментов:</p>
  * <pre>{@code
- * text: "Простой текст"
- * tooltip: "Простая подсказка"
+ * text: [ { text: "Красный ", color: "#FF0000" }, { text: "синий", color: "blue" } ],
+ * tooltip: [ { text: "Урон: ", color: "gray" }, { text: "25", color: "red" } ],
  * }</pre>
+ * <p>Цвет - hex ("#FF0000") или имя ("red", "gold", "gray", ...). Так как файл экрана -
+ * конфиг Jumper, повторяющиеся значения можно вынести в переменные:
+ * {@code dyn gold = "#FFD700";} и затем {@code color: gold}.</p>
  * 
- * <h3>2. Массив объектов с цветами:</h3>
- * <pre>{@code
- * text:
- *   - text: "Красный "
- *     color: "#FF0000"
- *   - text: "синий"
- *     color: "blue"
- * 
- * tooltip:
- *   - text: "Урон: "
- *     color: "gray"
- *   - text: "25"
- *     color: "red"
- * }</pre>
- * 
- * <h3>Поддерживаемые поля в объектах:</h3>
- * <ul>
- * <li><b>text</b> - текст компонента (обязательное)</li>
- * <li><b>color</b> - цвет текста (hex "#FF0000" или именованный "red", "blue", "green" и т.д.)</li>
- * </ul>
- * 
- * <h3>Примеры цветов:</h3>
- * <ul>
- * <li>Hex формат: "#FF0000", "#00FF00", "#0000FF"</li>
- * <li>Именованные: "red", "blue", "green", "yellow", "gold", "gray", "white", "black"</li>
- * </ul>
- * 
- * <p><b>Примечание:</b> Поле tooltipColor больше не используется. Цвета задаются в поле color каждого объекта.</p>
- * 
- * @author DisplayLib
- * @version 1.0
  * @see ScreenDefinition
  */
 public class WidgetDefinition {
-    /** Уникальный идентификатор виджета для доступа из Lua API */
+    /** Уникальный идентификатор виджета для доступа из скрипта */
     private String id;
     
     /** Тип виджета (TEXT_BUTTON или ITEM_BUTTON) */
@@ -334,25 +305,18 @@ public class WidgetDefinition {
      * <ul>
      * <li><b>NONE</b> - Никакого действия</li>
      * <li><b>SWITCH_SCREEN</b> - Переключение на другой экран</li>
-     * <li><b>RUN_SCRIPT</b> - Выполнение Lua функции</li>
+     * <li><b>RUN_SCRIPT</b> - Вызов функции скрипта</li>
      * <li><b>CLOSE_SCREEN</b> - Закрытие текущего экрана</li>
      * </ul>
      * 
-     * <p><b>Примеры YAML:</b></p>
+     * <p><b>Примеры (.jmc):</b></p>
      * <pre>{@code
-     * # Переключение экрана
-     * onClick:
-     *   action: SWITCH_SCREEN
-     *   target: "main_menu"
-     * 
-     * # Выполнение Lua функции
-     * onClick:
-     *   action: RUN_SCRIPT
-     *   function: "handleButtonClick"
-     * 
-     * # Закрытие экрана
-     * onClick:
-     *   action: CLOSE_SCREEN
+     * onClick: "handleButtonClick"                        // функция скрипта
+     * onClick: { action: "RUN_SCRIPT", function: "handleButtonClick" }
+     * onClick: { switchTo: "main_menu" }                  // переключение экрана
+     * onClick: { action: "SWITCH_SCREEN", target: "main_menu" }
+     * onClick: "close"                                    // закрытие экрана
+     * onClick: { action: "CLOSE_SCREEN" }
      * }</pre>
      */
     public static class ClickAction {
@@ -365,7 +329,7 @@ public class WidgetDefinition {
         /** Путь к скрипту для RUN_SCRIPT (устаревшее, используйте function) */
         private String script;
         
-        /** Имя Lua функции для RUN_SCRIPT */
+        /** Имя функции скрипта для RUN_SCRIPT */
         private String function;
         
         /** Дополнительные параметры (зарезервировано для будущего использования) */
@@ -397,7 +361,7 @@ public class WidgetDefinition {
             NONE,
             /** Переключиться на другой экран */
             SWITCH_SCREEN,
-            /** Выполнить Lua скрипт */
+            /** Вызвать функцию скрипта */
             RUN_SCRIPT,
             /** Закрыть текущий экран */
             CLOSE_SCREEN

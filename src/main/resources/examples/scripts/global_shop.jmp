@@ -1,0 +1,102 @@
+// Global Shop: скрипт публичного (глобального) экрана магазина (DisplayLib на Jumper, .jmp)
+// В публичном экране глобал player равен null: кликнувший игрок приходит
+// вторым аргументом обработчика, и именно через него отправляются сообщения.
+
+void onOpen() {
+    log.info("Global shop screen opened");
+}
+
+void onClose() {
+    log.info("Global shop screen closed");
+}
+
+// Общая заготовка покупки: логируем и сообщаем игроку.
+// Здесь можно добавить логику:
+// 1. Проверить баланс игрока
+// 2. Списать деньги
+// 3. Выдать предмет
+// 4. Показать сообщение
+// Пример (нужно адаптировать под вашу экономическую систему):
+//   if (playerHasMoney(player, price)) {
+//       takeMoney(player, price);
+//       giveItem(player, "DIAMOND_SWORD");   // TODO: нет в API (выдача предметов)
+//       player.message("Вы купили " + item + " за " + price + " монет!");
+//   } else {
+//       player.message("Недостаточно монет! Нужно: " + price);
+//   }
+void tryBuy(dyn player, String logItem, String item, int price) {
+    log.info("Someone tried to buy " + logItem);
+    if (player != null) {
+        player.message("§e" + item + " §7- цена: §6" + price + " монет");
+        player.message("§7Покупка пока не подключена к экономике");   // TODO: нет в API (экономика)
+    }
+}
+
+// Покупка меча
+void buy_sword(dyn widget, dyn player) {
+    tryBuy(player, "a diamond sword", "Алмазный меч", 100);
+}
+
+// Покупка брони
+void buy_armor(dyn widget, dyn player) {
+    // Логика покупки брони за 200 монет
+    tryBuy(player, "diamond armor", "Алмазная броня", 200);
+}
+
+// Покупка еды
+void buy_food(dyn widget, dyn player) {
+    // Логика покупки золотого яблока за 50 монет
+    tryBuy(player, "golden apple", "Золотое яблоко", 50);
+}
+
+// Покупка инструментов
+void buy_tools(dyn widget, dyn player) {
+    // Логика покупки алмазной кирки за 150 монет
+    tryBuy(player, "diamond pickaxe", "Алмазная кирка", 150);
+}
+
+// Проверка баланса
+void check_balance(dyn widget, dyn player) {
+    log.info("Someone checked their balance");
+    // Показать баланс игрока:
+    // player.message("Ваш баланс: " + getPlayerMoney(player) + " монет");
+    if (player != null) {
+        player.message("§7Ваш баланс: §6" + getPlayerMoney(player) + " монет");
+    }
+}
+
+// Продажа предметов
+void sell_items(dyn widget, dyn player) {
+    log.info("Someone tried to sell items");
+    // Логика продажи предметов из инвентаря:
+    // можно открыть GUI для выбора предметов или продать все ценные предметы автоматически
+    if (player != null) {
+        player.message("§7Продажа предметов пока не подключена");   // TODO: нет в API (инвентарь)
+    }
+}
+
+// Вспомогательные функции (примеры-заглушки, нужно адаптировать под вашу систему)
+
+// Проверить, есть ли у игрока достаточно денег
+// return economy.getBalance(player) >= amount;
+boolean playerHasMoney(dyn player, int amount) {
+    return true;   // заглушка
+}
+
+// Списать деньги с игрока
+// economy.withdrawPlayer(player, amount);
+void takeMoney(dyn player, int amount) {
+    log.warn("takeMoney(" + amount + ") вызвана, но экономика не подключена");   // TODO: нет в API
+}
+
+// Выдать предмет игроку
+// player.getInventory().addItem(new ItemStack(Material.valueOf(material)));
+void giveItem(dyn player, String material) {
+    log.warn("giveItem(" + material + ") вызвана, но выдача предметов не подключена");   // TODO: нет в API
+}
+
+// Получить баланс игрока
+// return economy.getBalance(player);
+int getPlayerMoney(dyn player) {
+    return 0;   // заглушка
+}

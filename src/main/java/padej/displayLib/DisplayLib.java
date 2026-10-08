@@ -1,120 +1,111 @@
 package padej.displayLib;
 
 import padej.displayLib.commands.DisplayLibCommand;
+import padej.displayLib.config.PluginConfig;
 import padej.displayLib.config.ScreenRegistry;
-import padej.displayLib.lua.LuaEngine;
-import padej.displayLib.render.particles.DisplayParticle;
 import padej.displayLib.render.shapes.Highlight;
-import padej.displayLib.test_events.*;
+import padej.displayLib.script.JumperEngine;
 import padej.displayLib.ui.UIManager;
 import org.bukkit.plugin.java.JavaPlugin;
-import org.bukkit.scheduler.BukkitRunnable;
 
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
+import java.util.Enumeration;
 import java.util.List;
+import java.util.jar.JarEntry;
+import java.util.jar.JarFile;
+import java.util.logging.Level;
 
 /**
  * Главный класс плагина DisplayLib.
- * 
- * <p>DisplayLib - это система для создания интерактивных 3D экранов в Minecraft
- * с поддержкой YAML конфигурации и Lua скриптов.</p>
- * 
- * <h2>Основные возможности:</h2>
- * <ul>
- * <li><b>YAML экраны</b> - Создание экранов через конфигурационные файлы</li>
- * <li><b>Lua скрипты</b> - Программирование логики экранов на Lua</li>
- * <li><b>Интерактивные виджеты</b> - Кнопки, текст, предметы с поддержкой кликов</li>
- * <li><b>Персональные и публичные экраны</b> - Экраны для одного игрока или для всех</li>
- * <li><b>Система хранения данных</b> - Сохранение состояния между сессиями</li>
- * <li><b>Таймеры и анимации</b> - Динамические эффекты и отложенные действия</li>
- * </ul>
- * 
+ *
+ * <p>DisplayLib рисует интерактивные 3D-экраны прямо в игровом мире на Display-сущностях.
+ * Экран описывается конфигом Jumper ({@code .jmc}), логика пишется на Jumper ({@code .jmp}),
+ * доступ скриптов к Java ограничивает политика ({@code .jma}).</p>
+ *
  * <h2>Структура файлов:</h2>
  * <pre>
  * plugins/DisplayLib/
- * ├── screens/          # YAML файлы экранов
- * │   ├── main_menu.yml
- * │   └── settings.yml
- * ├── scripts/          # Lua скрипты
- * │   ├── main_menu.lua
- * │   └── common.lua
- * └── config.yml        # Настройки плагина (hot-reload, test-listeners)
+ * ├── config.jmc        # Настройки плагина (hotReload, scriptTimeoutMs)
+ * ├── scripts.jma       # Политика доступа скриптов к Java
+ * ├── screens/          # Экраны
+ * │   ├── main_menu.jmc
+ * │   └── settings.jmc
+ * └── scripts/          # Скрипты экранов
+ *     ├── main_menu.jmp
+ *     └── lib/util.jmp  # общие модули: import "lib/util.jmp";
  * </pre>
- * 
+ *
  * <h2>Команды:</h2>
  * <ul>
- * <li><b>/displaylib reload</b> - Перезагрузить экраны и скрипты</li>
- * <li><b>/displaylib open &lt;screen&gt; [player]</b> - Открыть экран</li>
- * <li><b>/displaylib close [player]</b> - Закрыть экран</li>
- * <li><b>/displaylib list</b> - Список доступных экранов</li>
- * <li><b>/displaylib examples</b> - Создать примеры файлов</li>
+ * <li><b>/displaylib open &lt;screen&gt; [player] [x y z] [yaw pitch]</b> - Открыть приватный экран</li>
+ * <li><b>/displaylib close</b> - Закрыть свой экран</li>
+ * <li><b>/displaylib list</b> - Список экранов</li>
+ * <li><b>/displaylib openpublic &lt;screen&gt; &lt;x&gt; &lt;y&gt; &lt;z&gt; [yaw] [pitch]</b> - Поставить публичный экран</li>
+ * <li><b>/displaylib closepublic &lt;screen&gt;</b>, <b>listpublic</b></li>
+ * <li><b>/displaylib reload</b> - Перечитать экраны, политику и скрипты</li>
+ * <li><b>/displaylib examples</b> - Выгрузить примеры в папку плагина</li>
  * </ul>
- * 
- * @author DisplayLib Team
- * @version 2.0.0
- * @since 1.0.0
+ *
+ * @author Padej_
+ * @version 3.0.0
  */
 @SuppressWarnings("unused")
 public final class DisplayLib extends JavaPlugin {
 
-    public static final List<DisplayParticle> DISPLAY_PARTICLES = new ArrayList<>();
-    
     /** Экземпляр плагина; кэшируется, так как getInstance() вызывается из горячих путей */
     private static DisplayLib instance;
-    
+
+    private PluginConfig config;
     private ScreenRegistry screenRegistry;
-    private LuaEngine luaEngine;
+    private JumperEngine scriptEngine;
 
     @Override
     public void onEnable() {
         instance = this;
-        
-        // config.yml: hot-reload, test-listeners
-        saveDefaultConfig();
-        
-        // Инициализация новой системы экранов
-        screenRegistry = new ScreenRegistry(this);
-        screenRegistry.initialize();
-        
-        // Инициализация Lua движка
-        luaEngine = new LuaEngine(this);
-        
-        // Инициализация UIManager с реестром экранов
-        UIManager.getInstance().initialize(screenRegistry, luaEngine);
 
-        // Регистрация команд
+        // config.jmc: hotReload, scriptTimeoutMs
+        config = PluginConfig.load(this);
+
+        // Экраны (.jmc) и их hot reload
+        screenRegistry = new ScreenRegistry(this, config.hotReload());
+        screenRegistry.initialize();
+
+        // Скрипты (.jmp) под политикой доступа (scripts.jma)
+        scriptEngine = new JumperEngine(this, config.scriptTimeoutMs());
+
+        UIManager.getInstance().initialize(screenRegistry, scriptEngine);
+
         DisplayLibCommand commandExecutor = new DisplayLibCommand(this);
         getCommand("displaylib").setExecutor(commandExecutor);
         getCommand("displaylib").setTabCompleter(commandExecutor);
 
-        // Демонстрационные слушатели (пакет test_events) реагируют на каждый клик каждого игрока,
-        // поэтому в обычной работе выключены. Включаются в config.yml: test-listeners: true
-        if (getConfig().getBoolean("test-listeners", false)) {
-            registerTestListeners();
-            getLogger().info("Test listeners enabled (test-listeners: true)");
-        }
-
         Highlight.removeAllSelections();
         Highlight.startColorUpdateTask();
-        startParticleTask();
-        
-        getLogger().info("DisplayLib enabled with new YAML-based screen system!");
+
+        getLogger().info("DisplayLib enabled: screens are .jmc, scripts are .jmp (Jumper)");
     }
 
     @Override
     public void onDisable() {
-        // Остановка screen registry
         if (screenRegistry != null) {
             screenRegistry.shutdown();
         }
-        
+
         UIManager manager = UIManager.getInstance();
         if (manager.hasActiveScreens()) {
             getLogger().info("Cleaning up active UI screens...");
             manager.cleanup();
         }
 
-        DISPLAY_PARTICLES.clear();
+        if (scriptEngine != null) {
+            scriptEngine.shutdown();
+        }
         instance = null;
     }
 
@@ -122,38 +113,53 @@ public final class DisplayLib extends JavaPlugin {
         DisplayLib plugin = instance;
         return plugin != null ? plugin : JavaPlugin.getPlugin(DisplayLib.class);
     }
-    
-    private void registerTestListeners() {
-        var pluginManager = getServer().getPluginManager();
-        pluginManager.registerEvents(new ApplyHighlightToBlockTest(), this);
-        pluginManager.registerEvents(new CreateDisplayParticleFirstTest(), this);
-        pluginManager.registerEvents(new CreateDisplayParticleSecondTest(), this);
-        pluginManager.registerEvents(new CreateDisplayParticleThirdTest(), this);
-        pluginManager.registerEvents(new CreateTestUI(), this);
-        pluginManager.registerEvents(new GizmoTest(), this);
-        pluginManager.registerEvents(new PointDetectFirstTest(), this);
-        pluginManager.registerEvents(new PointDetectSecondTest(), this);
-        pluginManager.registerEvents(new RotationRelativeToCenterPointTest(), this);
-        pluginManager.registerEvents(new SmoothMotionAndRotationTest(), this);
+
+    public PluginConfig getPluginConfig() {
+        return config;
     }
-    
+
     public ScreenRegistry getScreenRegistry() {
         return screenRegistry;
     }
-    
-    public LuaEngine getLuaEngine() {
-        return luaEngine;
+
+    public JumperEngine getScriptEngine() {
+        return scriptEngine;
     }
 
-    private void startParticleTask() {
-        new BukkitRunnable() {
-            @Override
-            public void run() {
-                if (DISPLAY_PARTICLES.isEmpty()) return;
-                for (DisplayParticle displayParticle : new ArrayList<>(DISPLAY_PARTICLES)) {
-                    displayParticle.update();
+    /**
+     * Выгрузить примеры ({@code examples/screens/*.jmc}, {@code examples/scripts/*.jmp}) из JAR
+     * в папку плагина. Существующие файлы перезаписываются.
+     *
+     * @return число записанных файлов; -1 при ошибке
+     */
+    public int extractExamples() {
+        File jar = getFile();
+        Path dataFolder = getDataFolder().toPath();
+        int count = 0;
+        try (JarFile jarFile = new JarFile(jar)) {
+            List<JarEntry> entries = new ArrayList<>();
+            for (Enumeration<JarEntry> e = jarFile.entries(); e.hasMoreElements(); ) {
+                JarEntry entry = e.nextElement();
+                if (!entry.isDirectory() && entry.getName().startsWith("examples/")) {
+                    entries.add(entry);
                 }
             }
-        }.runTaskTimer(this, 0L, 1L);
+            for (JarEntry entry : entries) {
+                // examples/screens/x.jmc -> plugins/DisplayLib/screens/x.jmc
+                String relative = entry.getName().substring("examples/".length());
+                Path target = dataFolder.resolve(relative).normalize();
+                if (!target.startsWith(dataFolder)) continue;
+                Files.createDirectories(target.getParent());
+                try (InputStream in = jarFile.getInputStream(entry)) {
+                    Files.copy(in, target, StandardCopyOption.REPLACE_EXISTING);
+                }
+                count++;
+            }
+        } catch (IOException e) {
+            getLogger().log(Level.WARNING, "Failed to extract examples", e);
+            return -1;
+        }
+        getLogger().info("Extracted " + count + " example file(s) to " + dataFolder);
+        return count;
     }
 }

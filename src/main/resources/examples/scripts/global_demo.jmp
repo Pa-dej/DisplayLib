@@ -1,0 +1,80 @@
+// Public Demo: кнопка Hello и общий счётчик с кнопками +/- (скрипт DisplayLib на Jumper, .jmp)
+// Экран публичный: глобал player здесь null, кликнувший игрок приходит аргументом обработчика.
+
+// Общий счётчик (один на всех игроков)
+int counter = 0;
+
+void onOpen() {
+    log.info("Public demo screen opened");
+    // Загружаем счётчик из хранилища экрана
+    counter = storage.get("global_counter", 0);
+    updateCounterDisplay();
+}
+
+void onClose() {
+    log.info("Public demo screen closed");
+    // Сохраняем счётчик в хранилище
+    storage.set("global_counter", counter);
+}
+
+// Кнопка Hello
+void say_hello(dyn widget, dyn player) {
+    dyn playerName = player.name();
+
+    // Персональное сообщение кликнувшему игроку
+    player.message("§a§lHello, " + playerName + "! §r§7Welcome to the public screen!");
+
+    // Звук
+    player.sound("entity.player.levelup", 1.0, 1.0);
+
+    // Лог в консоль
+    log.info("Player " + playerName + " said hello!");
+}
+
+// Увеличить счётчик
+void increment_counter(dyn widget, dyn player) {
+    counter++;
+    updateCounterDisplay();
+
+    dyn playerName = player.name();
+    player.message("§a+1 §7Counter: §f" + counter + " §7(changed by: " + playerName + ")");
+    player.sound("block.note_block.harp", 1.0, 1.2);
+
+    log.info("Player " + playerName + " incremented counter to " + counter);
+
+    // Сохраняем в хранилище
+    storage.set("global_counter", counter);
+}
+
+// Уменьшить счётчик
+void decrement_counter(dyn widget, dyn player) {
+    if (counter <= 0) {
+        player.message("§cCounter is already zero!");
+        player.sound("block.note_block.didgeridoo", 1.0, 0.5);
+        return;
+    }
+
+    counter--;
+    updateCounterDisplay();
+
+    dyn playerName = player.name();
+    player.message("§c-1 §7Counter: §f" + counter + " §7(changed by: " + playerName + ")");
+    player.sound("block.note_block.bass", 1.0, 0.8);
+
+    log.info("Player " + playerName + " decremented counter to " + counter);
+
+    // Сохраняем в хранилище
+    storage.set("global_counter", counter);
+}
+
+// Обновить отображение счётчика
+void updateCounterDisplay() {
+    dyn counterWidget = screen.widget("counter_value");
+
+    if (counterWidget != null) {
+        counterWidget.text(counter);
+        log.info("Updated counter display to: " + counter);
+    } else {
+        log.warn("Counter widget not found!");
+    }
+}

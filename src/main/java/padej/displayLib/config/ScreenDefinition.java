@@ -1,53 +1,50 @@
 package padej.displayLib.config;
 
 import java.util.List;
-import java.util.Map;
 
 /**
- * Определение экрана из YAML конфигурации.
+ * Определение экрана из конфига Jumper ({@code screens/*.jmc}).
  * 
- * <p>Этот класс представляет структуру YAML файла экрана и содержит все настройки
- * для создания интерактивного экрана в игре.</p>
+ * <p>Файл экрана - это {@code .jmc}: переменные верхнего уровня и есть конфиг.
+ * Разрешены выражения, {@code if}, тернарный оператор и переменные, но не циклы,
+ * функции и Java (см. {@link ScreenLoader}).</p>
  * 
- * <h2>Структура YAML файла экрана:</h2>
+ * <h2>Структура файла экрана:</h2>
  * <pre>{@code
- * # Основные настройки экрана
- * id: "example_screen"                    # Уникальный идентификатор экрана
- * tick_rate: 4                           # Частота обновления (1-20 тиков)
- * screen_type: PRIVATE                   # Тип экрана: PRIVATE или PUBLIC
- * interaction_radius: 5.0                # Радиус взаимодействия (-1 = бесконечный)
- * range_check_interval: 10               # Интервал проверки расстояния в тиках
- * close_distance: 10.0                   # Расстояние автозакрытия (-1 = отключено)
+ * // Основные настройки экрана
+ * String id = "example_screen";          // Уникальный идентификатор экрана
+ * int tickRate = 4;                      // Частота обновления (1-20 тиков)
+ * String screenType = "PRIVATE";         // PRIVATE или PUBLIC
+ * double interactionRadius = 5;          // Радиус взаимодействия (-1 = без ограничения)
+ * int rangeCheckInterval = 10;           // Интервал проверки расстояния в обновлениях
+ * double closeDistance = 10;             // Дистанция автозакрытия (-1 = отключено)
  * 
- * # Настройки фона
- * background:
- *   color: [0, 0, 0]                     # RGB цвет фона
- *   alpha: 160                           # Прозрачность (0-255)
- *   scale: [10.0, 4.0, 1.0]             # Размеры [ширина, высота, глубина]
- *   position: [0.0, 0.0, 0.0]           # Смещение [x, y, z]
- *   text: " "                            # Текст фона
- *   translation: [0.0, 0.0, 0.0]        # Точная настройка позиции
+ * // Фон
+ * dyn background = {
+ *     color: [0, 0, 0],                  // RGB
+ *     alpha: 160,                        // 0-255
+ *     scale: [10, 4, 1],                 // [ширина, высота, глубина]
+ *     position: [0, 0, 0],
+ *     text: " ",
+ *     translation: [0, 0, 0],
+ * };
  * 
- * # Lua скрипты
- * scripts:
- *   file: "example.lua"                  # Путь к Lua файлу
+ * // Скрипт экрана (scripts/example.jmp)
+ * String script = "example.jmp";
  * 
- * # Виджеты экрана
- * widgets:
- *   - id: "button1"
- *     type: TEXT_BUTTON
- *     # ... настройки виджета
+ * // Виджеты
+ * dyn widgets = [
+ *     { id: "button1", type: "TEXT_BUTTON", text: "Нажми", onClick: "onButton" },
+ * ];
  * }</pre>
  * 
- * @author DisplayLib
- * @version 1.0
  * @see WidgetDefinition
  * @see ScreenLoader
  */
 public class ScreenDefinition {
     /**
      * Уникальный идентификатор экрана.
-     * Используется для открытия экрана через команды и Lua API.
+     * Используется для открытия экрана через команды и API скриптов.
      */
     private String id;
     
@@ -93,10 +90,9 @@ public class ScreenDefinition {
     private BackgroundDefinition background;
     
     /**
-     * Lua скрипты экрана.
-     * Ключ "file" содержит путь к Lua файлу относительно папки scripts/.
+     * Скрипт экрана: путь к {@code .jmp} файлу относительно папки {@code scripts/}; может быть null.
      */
-    private Map<String, String> scripts;
+    private String script;
     
     /**
      * Список виджетов экрана.
@@ -108,7 +104,7 @@ public class ScreenDefinition {
     
     public ScreenDefinition(String id, int tickRate, ScreenType screenType, double interactionRadius, 
                            int rangeCheckInterval, double closeDistance, BackgroundDefinition background, 
-                           Map<String, String> scripts, List<WidgetDefinition> widgets) {
+                           String script, List<WidgetDefinition> widgets) {
         this.id = id;
         this.tickRate = tickRate;
         this.screenType = screenType;
@@ -116,7 +112,7 @@ public class ScreenDefinition {
         this.rangeCheckInterval = rangeCheckInterval;
         this.closeDistance = closeDistance;
         this.background = background;
-        this.scripts = scripts;
+        this.script = script;
         this.widgets = widgets;
     }
     
@@ -133,8 +129,8 @@ public class ScreenDefinition {
     public BackgroundDefinition getBackground() { return background; }
     public void setBackground(BackgroundDefinition background) { this.background = background; }
     
-    public Map<String, String> getScripts() { return scripts; }
-    public void setScripts(Map<String, String> scripts) { this.scripts = scripts; }
+    public String getScript() { return script; }
+    public void setScript(String script) { this.script = script; }
     
     public List<WidgetDefinition> getWidgets() { return widgets; }
     public void setWidgets(List<WidgetDefinition> widgets) { this.widgets = widgets; }
@@ -176,15 +172,16 @@ public class ScreenDefinition {
      * <p>Фон создает подложку для всех виджетов экрана и определяет
      * общий внешний вид интерфейса.</p>
      * 
-     * <p><b>Пример YAML конфигурации:</b></p>
+     * <p><b>Пример:</b></p>
      * <pre>{@code
-     * background:
-     *   color: [50, 50, 50]        # Темно-серый цвет RGB
-     *   alpha: 200                 # Полупрозрачный
-     *   scale: [12.0, 6.0, 1.0]    # Широкий прямоугольник
-     *   position: [0.0, 1.0, 0.0]  # Немного выше центра
-     *   text: "▓"                  # Символ для текстуры
-     *   translation: [0.0, 0.0, 0.01] # Точная настройка
+     * dyn background = {
+     *     color: [50, 50, 50],        // Темно-серый цвет RGB
+     *     alpha: 200,                 // Полупрозрачный
+     *     scale: [12, 6, 1],          // Широкий прямоугольник
+     *     position: [0, 1, 0],        // Немного выше центра
+     *     text: "▓",                  // Символ для текстуры
+     *     translation: [0, 0, 0.01],  // Точная настройка
+     * };
      * }</pre>
      */
     public static class BackgroundDefinition {

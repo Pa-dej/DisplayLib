@@ -1,0 +1,141 @@
+// Global Info Board: информационная доска сервера (скрипт DisplayLib на Jumper, .jmp)
+// Экран публичный: глобал player равен null, кликнувший игрок приходит аргументом обработчика,
+// поэтому сообщения отправляются ему напрямую.
+
+void onOpen() {
+    log.info("Global info board opened");
+    // Обновляем время при открытии
+    updateServerTime();
+}
+
+void onClose() {
+    log.info("Global info board closed");
+}
+
+// Отправить игроку список строк (если игрок известен)
+void tell(dyn player, dyn lines) {
+    if (player == null) return;
+    for (dyn line : lines) {
+        player.message(line);
+    }
+}
+
+// Показать правила сервера
+void show_rules(dyn widget, dyn player) {
+    log.info("Someone requested server rules");
+    // Правила показываем в чат
+    tell(player, [
+        "§6=== Правила сервера ===",
+        "§71. Не гриферить постройки других игроков",
+        "§72. Не использовать читы и дюпы",
+        "§73. Быть вежливым в чате",
+        "§74. Не спамить и не флудить",
+        "§75. Слушаться администрацию"
+    ]);
+}
+
+// Показать список команд
+void show_commands(dyn widget, dyn player) {
+    log.info("Someone requested command list");
+    // Показать доступные команды
+    tell(player, [
+        "§e=== Доступные команды ===",
+        "§a/spawn §7- телепорт на спавн",
+        "§a/home §7- телепорт домой",
+        "§a/sethome §7- установить дом",
+        "§a/tpa <игрок> §7- запрос телепортации",
+        "§a/balance §7- проверить баланс",
+        "§a/shop §7- открыть магазин"
+    ]);
+}
+
+// Показать онлайн игроков
+void show_online(dyn widget, dyn player) {
+    log.info("Someone requested online players list");
+    // Показать список онлайн игроков
+    // TODO: нет в API (список игроков сервера); пример логики:
+    //   dyn online = [];
+    //   for (dyn p : server.getOnlinePlayers()) online.push(p.getName());
+    //   player.message("§b=== Онлайн игроки (" + online.length + ") ===");
+    //   for (int i = 0; i < online.length; i++) player.message("§7" + (i + 1) + ". §f" + online[i]);
+    if (player != null) {
+        player.message("§b=== Онлайн игроки ===");
+        player.message("§7Список онлайн игроков пока недоступен из скрипта");
+    }
+    log.warn("show_online: список онлайн игроков недоступен из API скриптов");
+}
+
+// Показать статистику сервера
+void show_stats(dyn widget, dyn player) {
+    log.info("Someone requested server statistics");
+    // Показать различную статистику
+    // TODO: нет в API (онлайн, uptime, TPS, память); пример логики:
+    //   player.message("§7Онлайн: §f" + server.getOnlinePlayers().size() + "/" + server.getMaxPlayers());
+    //   player.message("§7Время работы: §f" + getUptime());
+    //   player.message("§7TPS: §f" + getTps());
+    //   player.message("§7Использование RAM: §f" + getMemoryUsage());
+    if (player != null) {
+        player.message("§d=== Статистика сервера ===");
+        player.message("§7Статистика сервера пока недоступна из скрипта");
+    }
+    log.warn("show_stats: статистика сервера недоступна из API скриптов");
+}
+
+// Показать новости
+void show_news(dyn widget, dyn player) {
+    log.info("Someone requested news");
+    // Показать последние новости сервера
+    tell(player, [
+        "§c=== Последние новости ===",
+        "§6[15.03.2024] §fОбновление 1.2.0",
+        "§7- Добавлены новые квесты",
+        "§7- Исправлены баги с экономикой",
+        "§7- Улучшена производительность",
+        "",
+        "§6[10.03.2024] §fВесенний ивент",
+        "§7- Специальные награды до 31 марта",
+        "§7- Новые достижения"
+    ]);
+}
+
+// Показать полезные ссылки
+void show_links(dyn widget, dyn player) {
+    log.info("Someone requested useful links");
+    // Показать ссылки на Discord, YouTube и т.д.
+    tell(player, [
+        "§b=== Полезные ссылки ===",
+        "§9Discord: §fhttps://discord.gg/yourserver",
+        "§cYouTube: §fhttps://youtube.com/yourchannel",
+        "§eФорум: §fhttps://forum.yourserver.com",
+        "§aВКонтакте: §fhttps://vk.com/yourgroup",
+        "",
+        "§7Кликните на ссылку в чате для перехода!"
+    ]);
+}
+
+// Обновить время сервера
+void update_time(dyn widget, dyn player) {
+    log.info("Updating server time display");
+    updateServerTime();
+}
+
+// Вспомогательная функция для обновления времени
+void updateServerTime() {
+    // Получаем текущее время и обновляем виджет
+    dyn timeWidget = screen.widget("server_time");
+    if (timeWidget == null) return;
+
+    dyn cal = java.util.Calendar.getInstance();
+    String currentTime = format("%02d:%02d:%02d",
+        cal.get(java.util.Calendar.HOUR_OF_DAY), cal.get(java.util.Calendar.MINUTE), cal.get(java.util.Calendar.SECOND));
+    String currentDate = format("%02d.%02d.%04d",
+        cal.get(java.util.Calendar.DAY_OF_MONTH), cal.get(java.util.Calendar.MONTH) + 1, cal.get(java.util.Calendar.YEAR));
+
+    timeWidget.text("🕐 " + currentDate + " " + currentTime);
+}
+
+// Вспомогательные функции для статистики (примеры; серверного API в скриптах нет)
+// TODO: нет в API
+//   String getUptime()      { dyn sec = server.getTicksRunning() / 20; return (sec / 3600) + "ч " + (sec % 3600 / 60) + "м"; }
+//   String getTps()         { return String.format(java.util.Locale.ROOT, "%.1f", server.getTPS()); }
+//   String getMemoryUsage() { ... Runtime закрыт политикой ... }

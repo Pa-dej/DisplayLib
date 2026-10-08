@@ -1,0 +1,36 @@
+// Быстрый тест hover-анимаций: простые реакции на клики
+
+void onOpen() {
+    log.info("Быстрый тест hover анимаций открыт для " + player.name());
+    player.message("⚡ Быстрый тест анимаций");
+    player.message("Наведите курсор на виджеты для тестирования");
+    player.message("🆕 Новинка: Непрерывные пульсирующие анимации!");
+}
+
+void onClose() {
+    log.info("Быстрый тест закрыт");
+}
+
+// Обработчик клика: виджет и игрок приходят аргументами (оба можно опустить)
+void testClick(dyn widget, dyn player) {
+    player.message("✅ Тест пройден!");
+    player.sound("entity.experience_orb.pickup", 1.0, 1.5);
+
+    // Счётчик тестов живёт, пока открыт экран
+    int tests = (screen.data("test_count") || 0) + 1;
+    screen.data("test_count", tests);
+
+    if (tests == 1) {
+        player.message("Первый тест! 🎉");
+        player.message("💡 Попробуйте оранжевую кнопку 'Пульсация' - она анимируется непрерывно!");
+    } else if (tests == 3) {
+        player.message("3 теста! Попробуйте алмаз - он тоже пульсирует! 💎");
+    } else if (tests == 5) {
+        player.message("5 тестов пройдено! 🏆");
+        player.message("Непрерывные анимации работают пока курсор наведен!");
+    } else if (tests == 10) {
+        player.message("10 тестов! Вы эксперт по анимациям! 🌟");
+    } else if (tests % 5 == 0) {
+        player.message("Тестов пройдено: " + tests);
+    }
+}
