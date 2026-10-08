@@ -1,305 +1,231 @@
-# DisplayLib - Minecraft UI Library с Lua API
+# DisplayLib - интерактивные 3D-экраны в Minecraft на Jumper
 
-DisplayLib — это библиотека для создания интерактивных UI экранов в Minecraft с поддержкой YAML конфигурации и Lua скриптов.
+DisplayLib - плагин для Paper (1.21.x), который рисует интерактивные интерфейсы прямо в игровом
+мире на Display-сущностях. Экран описывается конфигом [Jumper](https://jumper-lang.github.io/)
+(`.jmc`), логика пишется на Jumper (`.jmp`), а что скриптам можно трогать в Java, задаёт
+политика доступа (`.jma`).
 
 ## Возможности
 
-- 📋 **YAML конфигурация экранов** - простое описание интерфейсов
-- 🔧 **Lua API** - мощная система скриптов для логики
-- 🎮 **Интерактивные виджеты** - кнопки, текст, предметы
-- 🔄 **Hot Reload** - автоматическая перезагрузка при изменении файлов
-- 🎨 **Гибкая настройка** - цвета, размеры, позиции, анимации
-- 💾 **Система хранения** - данные между сессиями
-- ⏰ **Таймеры** - отложенные действия и анимации
+- 📋 **Экраны как конфиги** (`screens/*.jmc`) - данные с выражениями, переменными и `if`, без кода
+- 🔧 **Скрипты на Jumper** (`scripts/*.jmp`) - синтаксис Java, лёгкость Lua, модули через `import`
+- 🔒 **Песочница** (`scripts.jma`) - белый список пакетов и классов; сторожевой таймер против зависших скриптов
+- 🎮 **Виджеты** - текстовые и предметные кнопки, форматированный текст, подсказки, hover-анимации
+- 👥 **Приватные и публичные экраны** - для одного игрока или для всех поблизости
+- 🔄 **Hot Reload** - изменённый экран перечитывается сам, скрипт - при следующем открытии
+- 💾 **Хранилище и таймеры** - данные на игрока, отложенные и повторяющиеся действия
+- 🧰 **Поддержка редакторов** - `META-INF/jumper/host.jmc` описывает глобалы и хуки для плагинов Jumper
+  (IntelliJ IDEA, VS Code, Neovim)
 
 ## Быстрый старт
 
 ### 1. Установка
 
-1. Скомпилируйте плагин: `./gradlew build`
-2. Скопируйте JAR файл в папку `plugins/` сервера
+1. Соберите плагин: `./gradlew build` (нужен JDK 21)
+2. Скопируйте JAR из `build/libs/` в папку `plugins/` сервера
 3. Перезапустите сервер
 
 ### 2. Первый запуск
 
-При первом запуске плагин автоматически создаст примеры экранов:
+Плагин создаст `plugins/DisplayLib/` с `config.jmc` и `scripts.jma`. Примеры выгружаются командой:
+
+```
+/displaylib examples
+```
 
 ```
 plugins/DisplayLib/
-  screens/
-    main_menu.yml     # Главное меню
-    branch1.yml       # Простой экран без Lua
-  scripts/
-    main_menu.lua     # Скрипт главного меню
+  config.jmc          # настройки плагина
+  scripts.jma         # политика доступа скриптов
+  screens/            # экраны (.jmc)
+    main_menu.jmc
+    script_demo.jmc
+    ...
+  scripts/            # скрипты (.jmp)
+    main_menu.jmp
+    script_demo.jmp
+    ...
 ```
 
 ### 3. Тестирование
-
-Используйте команды для тестирования:
 
 ```
 /displaylib open main_menu    # Открыть главное меню
 /displaylib list              # Список экранов
 /displaylib close             # Закрыть экран
-/displaylib reload            # Перезагрузить (для админов)
+/displaylib reload            # Перечитать экраны, политику и скрипты (админ)
 ```
 
-## Структура проекта
+## Экран (`screens/*.jmc`)
 
-### YAML экраны (`screens/`)
+Файл экрана - конфиг Jumper: переменные верхнего уровня и есть конфиг. Можно использовать
+выражения, переменные, тернарный оператор и `if`; циклов, функций и Java в конфиге нет.
 
-Каждый экран описывается в отдельном YAML файле:
+```java
+// screens/shop.jmc
+String id = "shop";
+String screenType = "PRIVATE";      // PRIVATE или PUBLIC
+int tickRate = 4;                   // период обновления, тики (1-20)
+double interactionRadius = 5;       // дальше - нет наведения и кликов (-1 = без ограничения)
+double closeDistance = 10;          // дистанция автозакрытия (-1 = не закрывать)
 
-```yaml
-id: main_menu
-background:
-  color: [0, 0, 0]
-  alpha: 160
-  scale: [10.0, 4.0, 1.0]
-  text: " "
+dyn background = { color: [20, 20, 30], alpha: 200, scale: [12, 6, 1] };
+String script = "shop.jmp";         // scripts/shop.jmp
 
-scripts:
-  file: "main_menu.lua"
-
-widgets:
-  - id: btn_start
-    type: ITEM_BUTTON
-    material: COMPASS
-    position: [-0.42, 0.30, 0.0]
-    scale: [0.15, 0.15, 0.000001]
-    tooltip: "Начать игру"
-    onClick:
-      action: RUN_SCRIPT
-      function: "btn_start_click"
+dyn gold = "#FFD700";               // переменные можно переиспользовать
+dyn widgets = [
+    {
+        id: "title",
+        type: "TEXT_BUTTON",
+        text: [ { text: "Магазин ", color: gold }, { text: "v2", color: "gray" } ],
+        position: [0, 2, 0],
+        scale: [0.6, 0.6, 0.6],
+        backgroundAlpha: 0,
+    },
+    {
+        id: "sword",
+        type: "ITEM_BUTTON",
+        material: "DIAMOND_SWORD",
+        position: [-1.5, 0, 0],
+        tooltip: "Алмазный меч - 100 монет",
+        hoverAnimation: { type: "PRESET", preset: "LIFT" },
+        onClick: "buySword",                        // void buySword(dyn widget, dyn player)
+    },
+    { id: "back",  type: "TEXT_BUTTON", text: "Назад",   position: [-3, -2, 0], onClick: { switchTo: "main_menu" } },
+    { id: "close", type: "TEXT_BUTTON", text: "Закрыть", position: [3, -2, 0],  onClick: "close" },
+];
 ```
 
-### Lua скрипты (`scripts/`)
+Поля виджетов: `id`, `type`, `position`, `scale`, `tolerance`, `translation`, `text`, `hoveredText`,
+`alignment`, `backgroundColor`, `backgroundAlpha`, `hoveredBackgroundColor`, `hoveredBackgroundAlpha`,
+`material`, `glowOnHover`, `glowColor`, `tooltip`, `tooltipColor`, `tooltipDelay`, `onClick`, `hoverAnimation`.
+Имена из прежних YAML-файлов в snake_case (`tick_rate`, `screen_type`) тоже принимаются.
 
-Логика экранов реализуется в Lua:
+### Действия `onClick`
 
-```lua
-function on_open()
-    player.message("Добро пожаловать, " .. player.name() .. "!")
-    
-    local visits = storage.get("visits", 0) + 1
-    storage.set("visits", visits)
-    
-    log.info("Экран открыт для " .. player.name())
-end
+| Запись | Что делает |
+|---|---|
+| `onClick: "buySword"` | вызвать функцию `buySword(widget, player)` скрипта |
+| `onClick: { switchTo: "main_menu" }` | открыть другой экран на том же месте |
+| `onClick: "close"` | закрыть экран |
+| `onClick: { action: "RUN_SCRIPT", function: "f" }` | полная форма (`NONE`, `SWITCH_SCREEN` + `target`, `CLOSE_SCREEN`, `RUN_SCRIPT` + `function`) |
 
-function btn_start_click()
-    player.sound("ui.button.click")
-    screen.switch("game_menu")
-end
+## Скрипт (`scripts/*.jmp`)
 
-function on_close()
-    player.message("До свидания!")
-end
+```java
+// scripts/shop.jmp
+import "lib/economy.jmp";                  // модули - относительно папки скрипта
+
+int sold = 0;                              // живёт, пока открыт экран
+
+void onOpen() {
+    player.message("Добро пожаловать, " + player.name() + "!");
+    screen.widget("title").bgAlpha(0);
+    timer.after(10, () -> screen.widget("title").bgAlpha(200));
+}
+
+void buySword(dyn widget, dyn player) {
+    int coins = storage.get("coins", 0);
+    if (coins < 100) {
+        player.message("Нужно 100 монет, у вас " + coins, "#FF5555");
+        player.sound("block.note_block.bass", 1, 0.7);
+        return;
+    }
+    storage.set("coins", coins - 100);
+    sold++;
+    widget.tooltip("Продано: " + sold);
+    player.sound("entity.player.levelup");
+    player.command("give @s diamond_sword");
+}
+
+void onClose() { log.info("shop closed, sold=" + sold); }
 ```
 
-## Lua API
+- `onOpen()` / `onClose()` - необязательные хуки жизненного цикла.
+- Обработчик клика получает `(widget, player)`; оба аргумента можно опустить.
+- У **публичного** экрана глобал `player` равен `null`: игрок известен только внутри обработчика
+  клика (аргумент). Сохраняйте его в замыкании, если он нужен в таймере.
+- Каждый открытый экран получает собственный интерпретатор: переменные верхнего уровня не делятся
+  между экранами и игроками.
+- Замыкание захватывает переменную, а не значение. Чтобы запланировать несколько таймеров в цикле,
+  вынесите один шаг в функцию - её параметры свои у каждого вызова.
 
-### `player` - игрок
+### API скриптов
 
-```lua
-player.name()                    -- имя игрока
-player.op()                      -- права оператора
-player.gamemode()                -- текущий режим игры
-player.gamemode("creative")      -- установить режим
+| Глобал | Методы |
+|---|---|
+| `player` | `name()`, `uuid()`, `op()`, `online()`, `gamemode()`, `gamemode(mode)`, `health()`, `health(v)`, `message(text)`, `message(text, "#hex")`, `sound(name[, volume[, pitch]])`, `command(cmd)`, `handle()` (Bukkit `Player`, если открыт политикой) |
+| `screen` | `id()`, `isPublic()`, `close()`, `switchTo(id)`, `widget(id)`, `widgets()`, `data(key)`, `data(key, value)` |
+| виджет | `id()`, `type()`, `valid()`, `text()`, `text(v)`, `hoveredText(v)`, `bgColor(r, g, b)`, `bgAlpha(a)`, `visible()`, `visible(b)`, `enabled()`, `enabled(b)`, `tooltip()`, `tooltip(v)` |
+| `storage` | `get(key)`, `get(key, default)`, `set(key, value)`, `has(key)`, `remove(key)`, `clear()`, `size()` - на игрока, в памяти сервера |
+| `timer` | `after(ticks, fn)`, `every(ticks, fn)`, `times(period, count, i -> ...)`, `cancel(id)`, `cancelAll()`, `active()` - 20 тиков = 1 с |
+| `log` | `info(msg)`, `warn(msg)`, `error(msg)` |
 
-player.message("текст")          -- сообщение в чат
-player.message("текст", "#ff0000") -- с цветом
+Числовые параметры принимают и `int`, и `double`. Звук - ключ как в игре (`ui.button.click`)
+или константа `Sound` (`UI_BUTTON_CLICK`).
 
-player.sound("ui.button.click")  -- звук
-player.health()                  -- здоровье (0-20)
-player.health(20)                -- установить здоровье
+## Политика доступа (`scripts.jma`)
 
-player.command("tp ~ ~10 ~")     -- выполнить команду
+Скрипт видит только то, что открыто в политике; остальное закрыто ещё на этапе разбора.
+Файл по умолчанию открывает API плагина, `java.lang` и `java.util` (без `System`, `Thread`,
+`Class`, `Runtime`) и модули:
+
+```java
+Policy.allowPackage("padej.displayLib.script.api");
+Policy.allowPackage("java.lang");
+Policy.allowPackage("java.util");
+Policy.allowModules();
+Policy.maxTableSize(100000);
+// Policy.allowPackage("org.bukkit");   // открыть Bukkit через player.handle() - осознанно
 ```
 
-### `screen` - экран
+## Настройки (`config.jmc`)
 
-```lua
-screen.id()                      -- ID экрана
-screen.close()                   -- закрыть экран
-screen.switch("other_screen")    -- переключиться
-
-screen.widget("widget_id")       -- получить виджет
-
--- Persistent data (живет пока экран открыт)
-screen.data("key")               -- получить
-screen.data("key", value)        -- установить
-screen.data("key", nil)          -- удалить
+```java
+boolean hotReload = true;      // следить за screens/
+int scriptTimeoutMs = 1000;    // сторожевой таймер: вызов скрипта дольше этого прерывается; 0 - выключен
 ```
-
-### `widget` - виджет (в функциях клика)
-
-```lua
--- Текст (только TEXT_BUTTON)
-widget.text()                    -- получить текст
-widget.text("новый текст")       -- установить текст
-widget.hoveredText("при наведении")
-
--- Состояние
-widget.visible()                 -- видимость
-widget.visible(false)            -- скрыть
-widget.enabled()                 -- активность
-widget.enabled(false)            -- отключить
-
--- Tooltip
-widget.tooltip()                 -- получить подсказку
-widget.tooltip("новая подсказка") -- установить
-
--- Цвет фона (только TEXT_BUTTON)
-widget.bgColor(40, 40, 40)       -- RGB
-widget.bgAlpha(150)              -- прозрачность 0-255
-```
-
-### `storage` - хранение данных
-
-```lua
-storage.get("key")               -- получить
-storage.get("key", 0)            -- с дефолтным значением
-storage.set("key", value)        -- установить
-storage.has("key")               -- проверить наличие
-storage.remove("key")            -- удалить
-storage.clear()                  -- очистить все
-```
-
-### `timer` - таймеры
-
-```lua
--- Выполнить один раз через N тиков
-timer.after(20, function()
-    screen.close()
-end)
-
--- Повторять каждые N тиков
-local t = timer.repeat(10, function()
-    -- анимация
-end)
-timer.cancel(t)
-
--- Повторить N раз
-timer.times(5, 10, function(i)   -- каждые 5 тиков, 5 раз
-    widget.text("Осталось: " .. (5 - i))
-end)
-```
-
-### `log` - логирование
-
-```lua
-log.info("информация")
-log.warn("предупреждение")
-log.error("ошибка")
-```
-
-## Типы виджетов
-
-### TEXT_BUTTON - текстовая кнопка
-
-```yaml
-- id: label_title
-  type: TEXT_BUTTON
-  text: "Заголовок"
-  hoveredText: "Заголовок (наведение)"
-  position: [0.0, 0.85, 0.0]
-  scale: [0.5, 0.5, 0.5]
-  tolerance: [0.08, 0.04]
-  backgroundColor: [40, 40, 40]
-  backgroundAlpha: 150
-  hoveredBackgroundColor: [60, 60, 60]
-  hoveredBackgroundAlpha: 180
-  onClick:
-    action: NONE
-```
-
-### ITEM_BUTTON - кнопка с предметом
-
-```yaml
-- id: btn_settings
-  type: ITEM_BUTTON
-  material: COMPASS
-  position: [-0.42, 0.30, 0.0]
-  scale: [0.15, 0.15, 0.000001]
-  tolerance: [0.06, 0.06]
-  tooltip: "Настройки"
-  glowOnHover: true
-  glowColor: [255, 255, 0]
-  onClick:
-    action: SWITCH_SCREEN
-    target: settings
-```
-
-## Действия onClick
-
-- `NONE` - ничего не делать
-- `SWITCH_SCREEN` - переключиться на другой экран
-- `CLOSE_SCREEN` - закрыть текущий экран
-- `RUN_SCRIPT` - выполнить Lua функцию
 
 ## Система координат
 
-Позиция виджета задается относительно центра фона:
+Позиция виджета задаётся относительно центра фона в локальных осях экрана:
 
 ```
         Y+
-        |   
+        |
  -X ----+---- +X    (смотришь на экран)
         |
         Y-
 ```
 
-**Примеры позиций:**
-- `[0.0, 0.85, 0.0]` - верх по центру (заголовок)
-- `[-0.42, 0.30, 0.0]` - левая колонка
-- `[0.35, 0.8, 0.0]` - правый верхний угол
-- `[0.0, -0.8, 0.0]` - низ по центру
-
 ## Команды
 
-- `/displaylib open <screen_id>` - открыть экран
-- `/displaylib close` - закрыть текущий экран
-- `/displaylib list` - список доступных экранов
-- `/displaylib reload` - перезагрузить экраны и скрипты (админ)
-- `/displaylib examples` - создать примеры экранов (админ)
+| Команда | Назначение | Права |
+|---|---|---|
+| `/displaylib open <screen_id> [player] [x y z] [yaw pitch]` | Открыть приватный экран | - |
+| `/displaylib close` | Закрыть свой экран | - |
+| `/displaylib list` | Список загруженных экранов | - |
+| `/displaylib openpublic <screen_id> <x> <y> <z> [yaw] [pitch]` | Поставить публичный экран в мире | `displaylib.admin` |
+| `/displaylib closepublic <screen_id>` | Убрать публичный экран | `displaylib.admin` |
+| `/displaylib listpublic` | Список публичных экранов | `displaylib.admin` |
+| `/displaylib reload` | Перечитать экраны, политику и сбросить кэш скриптов | `displaylib.admin` |
+| `/displaylib examples` | Выгрузить примеры в папку плагина | `displaylib.admin` |
 
-## Разработка
+Алиасы: `/dlib`, `/dl`.
 
-### Hot Reload
+## Java API для других плагинов
 
-При изменении YAML или Lua файлов они автоматически перезагружаются. Для ручной перезагрузки используйте `/displaylib reload`.
+- `UIManager.getInstance()` - `openScreen`, `switchScreen`, `closeScreen`, `openPublicScreen`,
+  `closePublicScreenById`, `getActiveScreen`, `getPublicScreens`.
+- `DisplayClickEvent` - отменяемое событие клика по виджету приватного экрана.
+- `ScreenInstance#getScriptContext()` / `GlobalScreenInstance#getScriptContext()` -
+  `call("functionName", args...)` вызывает функцию скрипта экрана.
 
-### Отладка
+## Сборка
 
-Используйте `log.info()`, `log.warn()`, `log.error()` в Lua скриптах для вывода отладочной информации в консоль сервера.
-
-### Структура файлов
-
-```
-plugins/DisplayLib/
-  screens/           # YAML описания экранов
-    main_menu.yml
-    settings.yml
-    ...
-  scripts/           # Lua скрипты
-    main_menu.lua
-    settings.lua
-    shared/          # Общие функции
-      utils.lua
-```
-
-## Примеры
-
-Полные примеры экранов и скриптов создаются автоматически при первом запуске или командой `/displaylib examples`.
-
-## Документация
-
-Подробная документация доступна в папке `docs/`:
-- `LUA_API_GUIDE.md` - полное описание Lua API
-- `YAML_DESIGN_GUIDE.md` - руководство по созданию экранов
-- `LINK_LUA_AND_YAML.md` - связь между YAML и Lua
+Jumper подключается через JitPack: `com.github.jumper-lang:jumper:<tag>` (см. `build.gradle.kts`).
+Gradle 8.8 запускайте на JDK 21.
 
 ## Лицензия
 
-Этот проект распространяется под лицензией MIT.
+MIT
