@@ -117,6 +117,9 @@ dyn widgets = [
 `onClick`, `hoverAnimation`. Тип можно не писать: есть `material` - `ITEM_BUTTON`, есть `sprite` - `SPRITE_BUTTON`,
 иначе `TEXT_BUTTON`. `SPRITE_BUTTON` - это TextDisplay с компонентом-объектом (`{"atlas": ..., "sprite": ...}`),
 поэтому у него есть фон, hover и `tolerance` как у текстовой кнопки; из скрипта - `widget.sprite("item/apple")`.
+Атласы клиента: `minecraft:items`, `minecraft:blocks`, `minecraft:mob_effects` (`minecraft:speed`), `minecraft:gui`
+(`hud/heart/full`), `minecraft:particles` (`heart`), `minecraft:paintings`, `minecraft:banner_patterns`,
+`minecraft:shield_patterns`, `minecraft:armor_trims`.
 Имена из прежних YAML-файлов в snake_case (`tick_rate`, `screen_type`) тоже принимаются.
 
 ### Действия `onClick`
