@@ -1,6 +1,9 @@
 package padej.displayLib.ui;
 
+import net.kyori.adventure.key.InvalidKeyException;
+import net.kyori.adventure.key.Key;
 import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.object.ObjectContents;
 import net.kyori.adventure.text.TextComponent;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextColor;
@@ -29,7 +32,7 @@ import java.util.Map;
  * <p>Раньше этот код был продублирован в {@link ScreenInstance} и
  * {@link GlobalScreenInstance}; теперь оба типа экранов используют одну реализацию.</p>
  */
-final class ScreenSupport {
+public final class ScreenSupport {
 
     /** Смещение виджетов по глубине относительно фона для избежания Z-fighting */
     static final float WIDGET_DEPTH_OFFSET = 0.001f;
@@ -102,16 +105,21 @@ final class ScreenSupport {
         float[] t = def.getTolerance();
         float[] tr = def.getTranslation();
 
-        // Текст - обычная строка или форматированные сегменты
+        // Текст - обычная строка или форматированные сегменты; у SPRITE_BUTTON - спрайт из атласа
         Component textComponent;
-        if (def.getFormattedText() != null) {
+        if (def.getType() == WidgetDefinition.WidgetType.SPRITE_BUTTON) {
+            textComponent = spriteComponent(def.getAtlas(), def.getSprite());
+        } else if (def.getFormattedText() != null) {
             textComponent = parseFormattedText(def.getFormattedText());
         } else {
             textComponent = Component.text(def.getText() != null ? def.getText() : "");
         }
 
         Component hoveredTextComponent;
-        if (def.getFormattedHoveredText() != null) {
+        if (def.getType() == WidgetDefinition.WidgetType.SPRITE_BUTTON) {
+            hoveredTextComponent = def.getHoveredSprite() != null
+                    ? spriteComponent(def.getAtlas(), def.getHoveredSprite()) : textComponent;
+        } else if (def.getFormattedHoveredText() != null) {
             hoveredTextComponent = parseFormattedText(def.getFormattedHoveredText());
         } else if (def.getHoveredText() != null && !def.getHoveredText().isEmpty()) {
             hoveredTextComponent = Component.text(def.getHoveredText());
@@ -239,7 +247,7 @@ final class ScreenSupport {
      * @param formattedText объект из YAML (String или List&lt;Map&gt;)
      * @return Adventure Component для отображения
      */
-    static Component parseFormattedText(Object formattedText) {
+    public static Component parseFormattedText(Object formattedText) {
         if (formattedText == null) {
             return Component.empty();
         }
@@ -259,6 +267,13 @@ final class ScreenSupport {
                 // Простая строка без форматирования
                 builder.append(Component.text(string));
             } else if (part instanceof Map<?, ?> partMap) {
+                Object sprite = partMap.get("sprite");
+                if (sprite != null) {
+                    // Сегмент-спрайт: {sprite: "item/iron_ingot"} или {atlas: "minecraft:items", sprite: "..."}
+                    Object atlas = partMap.get("atlas");
+                    builder.append(spriteComponent(atlas != null ? atlas.toString() : null, sprite.toString()));
+                    continue;
+                }
                 // Объект с форматированием - поддерживаем только text и color
                 Object text = partMap.get("text");
                 TextComponent.Builder partBuilder = Component.text().content(text != null ? text.toString() : "");
@@ -276,6 +291,21 @@ final class ScreenSupport {
         }
 
         return builder.build();
+    }
+
+    /**
+     * Компонент-объект со спрайтом атласа (клиент 1.21.9+): в тексте рисуется квадратом 8×8 пикселей.
+     * Атлас по умолчанию: {@code minecraft:items} для {@code item/...}, иначе {@code minecraft:blocks}.
+     * Неверный ключ не роняет экран - вместо спрайта получится обычный текст с его именем.
+     */
+    public static Component spriteComponent(String atlas, String sprite) {
+        if (sprite == null || sprite.isBlank()) return Component.empty();
+        String a = atlas != null && !atlas.isBlank() ? atlas : (sprite.startsWith("item/") ? "minecraft:items" : "minecraft:blocks");
+        try {
+            return Component.object(ObjectContents.sprite(Key.key(a), Key.key(sprite)));
+        } catch (InvalidKeyException e) {
+            return Component.text("[" + sprite + "]");
+        }
     }
 
     /** Цвет по hex-строке ("#FFD700") или имени ("green"); null, если не распознан. */

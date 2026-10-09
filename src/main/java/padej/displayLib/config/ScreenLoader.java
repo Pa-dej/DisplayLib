@@ -247,7 +247,9 @@ public class ScreenLoader {
                 plugin.getLogger().warning(where + ": invalid widget type '" + typeStr + "'");
                 return null;
             }
-            type = has(data, "material") ? WidgetDefinition.WidgetType.ITEM_BUTTON : WidgetDefinition.WidgetType.TEXT_BUTTON;
+            type = has(data, "material") ? WidgetDefinition.WidgetType.ITEM_BUTTON
+                    : has(data, "sprite") ? WidgetDefinition.WidgetType.SPRITE_BUTTON
+                    : WidgetDefinition.WidgetType.TEXT_BUTTON;
         }
         widget.setType(type);
 
@@ -274,6 +276,16 @@ public class ScreenLoader {
 
         String material = str(data, "material");
         if (material != null) widget.setMaterial(material.trim().toUpperCase(java.util.Locale.ROOT));
+
+        String sprite = str(data, "sprite");
+        if (sprite != null) widget.setSprite(sprite.trim());
+        String atlas = str(data, "atlas");
+        if (atlas != null) widget.setAtlas(atlas.trim());
+        String hoveredSprite = str(data, "hoveredSprite", "hovered_sprite");
+        if (hoveredSprite != null) widget.setHoveredSprite(hoveredSprite.trim());
+        if (type == WidgetDefinition.WidgetType.SPRITE_BUTTON && widget.getSprite() == null) {
+            plugin.getLogger().warning(where + ": SPRITE_BUTTON without 'sprite'");
+        }
 
         Boolean glowOnHover = bool(data, "glowOnHover", "glow_on_hover");
         if (glowOnHover != null) widget.setGlowOnHover(glowOnHover);

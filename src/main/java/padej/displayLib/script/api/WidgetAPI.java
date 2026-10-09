@@ -35,9 +35,9 @@ public final class WidgetAPI {
         return id;
     }
 
-    /** {@code "TEXT_BUTTON"} или {@code "ITEM_BUTTON"}. */
+    /** {@code "TEXT_BUTTON"}, {@code "SPRITE_BUTTON"} или {@code "ITEM_BUTTON"}. */
     public String type() {
-        return widget instanceof TextDisplayButtonWidget ? "TEXT_BUTTON"
+        return widget instanceof TextDisplayButtonWidget t ? (t.isSprite() ? "SPRITE_BUTTON" : "TEXT_BUTTON")
                 : widget instanceof ItemDisplayButtonWidget ? "ITEM_BUTTON"
                 : widget.getClass().getSimpleName();
     }
@@ -54,18 +54,47 @@ public final class WidgetAPI {
         return widget instanceof TextDisplayButtonWidget t && t.isValid() ? t.getText() : null;
     }
 
-    /** Установить текст. У предметных виджетов ничего не делает. */
+    /**
+     * Установить текст. Строка - как есть; таблица/массив сегментов - как в файле экрана
+     * ({@code [{text: "x3", color: "gray"}, {sprite: "item/iron_ingot"}]}). У предметных виджетов ничего не делает.
+     */
     public void text(Object text) {
         if (widget instanceof TextDisplayButtonWidget t && t.isValid()) {
-            t.setText(String.valueOf(text));
+            t.setText(toComponent(text));
         }
     }
 
-    /** Установить текст, показываемый при наведении. */
+    /** Установить текст, показываемый при наведении (форматы как у {@link #text(Object)}). */
     public void hoveredText(Object text) {
         if (widget instanceof TextDisplayButtonWidget t && t.isValid()) {
-            t.setHoveredText(String.valueOf(text));
+            t.setHoveredText(toComponent(text));
         }
+    }
+
+    /** Показать спрайт атласа вместо текста: {@code sprite("item/diamond_sword")} (атлас по префиксу). */
+    public void sprite(String sprite) {
+        sprite(null, sprite);
+    }
+
+    /** Показать спрайт из указанного атласа: {@code sprite("minecraft:blocks", "block/bricks")}. */
+    public void sprite(String atlas, String sprite) {
+        if (widget instanceof TextDisplayButtonWidget t && t.isValid()) {
+            t.setText(padej.displayLib.ui.ScreenSupport.spriteComponent(atlas, sprite));
+        }
+    }
+
+    /** Спрайт при наведении (SPRITE_BUTTON). */
+    public void hoveredSprite(String atlas, String sprite) {
+        if (widget instanceof TextDisplayButtonWidget t && t.isValid()) {
+            t.setHoveredText(padej.displayLib.ui.ScreenSupport.spriteComponent(atlas, sprite));
+        }
+    }
+
+    private static net.kyori.adventure.text.Component toComponent(Object text) {
+        Object v = padej.displayLib.config.JmcValues.toJava(text); // JTable/JArray -> Map/List
+        if (v instanceof java.util.Map<?, ?> m) v = java.util.List.of(m);
+        if (v instanceof java.util.List<?>) return padej.displayLib.ui.ScreenSupport.parseFormattedText(v);
+        return net.kyori.adventure.text.Component.text(String.valueOf(v));
     }
 
     /** Цвет фона 0–255 (только TEXT_BUTTON). */

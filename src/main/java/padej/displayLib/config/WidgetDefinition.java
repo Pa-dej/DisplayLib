@@ -67,7 +67,7 @@ public class WidgetDefinition {
     /** Уникальный идентификатор виджета для доступа из скрипта */
     private String id;
     
-    /** Тип виджета (TEXT_BUTTON или ITEM_BUTTON) */
+    /** Тип виджета (TEXT_BUTTON, ITEM_BUTTON или SPRITE_BUTTON) */
     private WidgetType type;
     
     /** Позиция виджета [x, y, z] относительно центра экрана */
@@ -147,6 +147,24 @@ public class WidgetDefinition {
     /** Прозрачность фона при наведении (0-255) */
     private int hoveredBackgroundAlpha = 0;
     
+    // ===== Поля для SPRITE_BUTTON =====
+
+    /**
+     * Спрайт из атласа клиента (для SPRITE_BUTTON), например {@code "item/diamond_sword"} или
+     * {@code "block/bricks"}. Рисуется текстовым компонентом-объектом (1.21.9+): квадрат 8×8 текстовых
+     * пикселей, масштабируется через {@code scale}.
+     */
+    private String sprite;
+
+    /**
+     * Атлас спрайта (для SPRITE_BUTTON): {@code "minecraft:items"} или {@code "minecraft:blocks"}.
+     * Если не задан - {@code items} для спрайтов {@code item/...}, иначе {@code blocks} (как у клиента).
+     */
+    private String atlas;
+
+    /** Спрайт при наведении (для SPRITE_BUTTON); если не задан - тот же, что {@link #sprite}. */
+    private String hoveredSprite;
+
     // ===== Поля для ITEM_BUTTON =====
     
     /** Материал предмета для отображения (для ITEM_BUTTON) */
@@ -238,6 +256,12 @@ public class WidgetDefinition {
     public void setHoveredBackgroundAlpha(int hoveredBackgroundAlpha) { this.hoveredBackgroundAlpha = hoveredBackgroundAlpha; }
     
     public String getMaterial() { return material; }
+    public String getSprite() { return sprite; }
+    public void setSprite(String sprite) { this.sprite = sprite; }
+    public String getAtlas() { return atlas; }
+    public void setAtlas(String atlas) { this.atlas = atlas; }
+    public String getHoveredSprite() { return hoveredSprite; }
+    public void setHoveredSprite(String hoveredSprite) { this.hoveredSprite = hoveredSprite; }
     public void setMaterial(String material) { this.material = material; }
     
     public boolean isGlowOnHover() { return glowOnHover; }
@@ -269,13 +293,17 @@ public class WidgetDefinition {
      *     цветов, стилей и настраиваемого фона.</li>
      * <li><b>ITEM_BUTTON</b> - Кнопка с отображением предмета Minecraft,
      *     поддерживает свечение и различные материалы.</li>
+     * <li><b>SPRITE_BUTTON</b> - Плоский спрайт из атласа клиента (любая текстура предмета или блока),
+     *     рисуется как TextDisplay, поэтому поддерживает фон и hover как текстовая кнопка.</li>
      * </ul>
      */
     public enum WidgetType {
         /** Текстовая кнопка с форматированием */
         TEXT_BUTTON,
         /** Кнопка с предметом */
-        ITEM_BUTTON
+        ITEM_BUTTON,
+        /** Кнопка-спрайт из атласа клиента (текстовый компонент-объект, 1.21.9+) */
+        SPRITE_BUTTON
     }
     
     /**

@@ -304,7 +304,7 @@ public class GlobalScreenInstance implements ScreenAPI.Host {
         // Для публичных экранов НЕ создаем onClick действие в виджете:
         // обработка идёт через handleClickBy. Hover-анимации также отключены.
         switch (def.getType()) {
-            case TEXT_BUTTON -> {
+            case TEXT_BUTTON, SPRITE_BUTTON -> {
                 Location loc = ScreenSupport.resolveLocation(location, def.getPosition(), ScreenSupport.WIDGET_DEPTH_OFFSET);
                 TextDisplayButtonWidget widget = TextDisplayButtonWidget.create(
                         loc, null, ScreenSupport.textConfig(def, null, false));

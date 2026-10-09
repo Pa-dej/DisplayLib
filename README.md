@@ -91,6 +91,21 @@ dyn widgets = [
         hoverAnimation: { type: "PRESET", preset: "LIFT" },
         onClick: "buySword",                        // void buySword(dyn widget, dyn player)
     },
+    {
+        id: "bricks",
+        type: "SPRITE_BUTTON",                      // любой спрайт клиента (1.21.9+), плоский как текст
+        sprite: "block/bricks",                     // atlas по умолчанию: items для item/..., иначе blocks
+        hoveredSprite: "block/cracked_stone_bricks",
+        position: [1.5, 0, 0],
+        scale: [2, 2, 1],                           // спрайт = 8×8 текстовых пикселей = 0.2 блока при scale 1
+        backgroundAlpha: 0,
+    },
+    {
+        id: "quest",
+        type: "TEXT_BUTTON",                        // спрайты можно вставлять и в текст
+        text: [ { text: "Принести: ", color: "gray" }, { sprite: "item/iron_ingot" }, { text: " x3", color: "white" } ],
+        position: [0, -1, 0],
+    },
     { id: "back",  type: "TEXT_BUTTON", text: "Назад",   position: [-3, -2, 0], onClick: { switchTo: "main_menu" } },
     { id: "close", type: "TEXT_BUTTON", text: "Закрыть", position: [3, -2, 0],  onClick: "close" },
 ];
@@ -98,7 +113,10 @@ dyn widgets = [
 
 Поля виджетов: `id`, `type`, `position`, `scale`, `tolerance`, `translation`, `text`, `hoveredText`,
 `alignment`, `backgroundColor`, `backgroundAlpha`, `hoveredBackgroundColor`, `hoveredBackgroundAlpha`,
-`material`, `glowOnHover`, `glowColor`, `tooltip`, `tooltipColor`, `tooltipDelay`, `onClick`, `hoverAnimation`.
+`material`, `glowOnHover`, `glowColor`, `sprite`, `atlas`, `hoveredSprite`, `tooltip`, `tooltipColor`, `tooltipDelay`,
+`onClick`, `hoverAnimation`. Тип можно не писать: есть `material` - `ITEM_BUTTON`, есть `sprite` - `SPRITE_BUTTON`,
+иначе `TEXT_BUTTON`. `SPRITE_BUTTON` - это TextDisplay с компонентом-объектом (`{"atlas": ..., "sprite": ...}`),
+поэтому у него есть фон, hover и `tolerance` как у текстовой кнопки; из скрипта - `widget.sprite("item/apple")`.
 Имена из прежних YAML-файлов в snake_case (`tick_rate`, `screen_type`) тоже принимаются.
 
 ### Действия `onClick`

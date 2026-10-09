@@ -1,0 +1,21 @@
+// sprite_demo.jmp: реакции на кнопки-спрайты; смена спрайта и текста со спрайтом из скрипта
+
+dyn names = { bricks: "block/bricks", sword: "item/diamond_sword", apple: "item/golden_apple" };
+int clicks = 0;
+
+void pick(dyn widget, dyn player) {
+    clicks = clicks + 1;
+    String key = widget.id();
+    screen.widget("status").text([
+        { text: "Выбрано: ", color: "gray" },
+        { sprite: names[key] },
+        { text: " " + names[key] + "  (#" + clicks + ")", color: "yellow" },
+    ]);
+    // третий клик по яблоку меняет его на обычное
+    if (key == "apple" && clicks % 3 == 0) {
+        widget.sprite("item/apple");
+        player.sound("entity.player.burp", 1, 1);
+    } else {
+        player.sound("ui.button.click", 0.6, 1.4);
+    }
+}

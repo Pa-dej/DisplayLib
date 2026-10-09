@@ -16,7 +16,7 @@ import java.util.Map;
  * в примерах), остальные - принятые синонимы (например, snake_case из прежних YAML-файлов),
  * чтобы экран переносился заменой расширения и минимальной правкой.</p>
  */
-final class JmcValues {
+public final class JmcValues {
     private JmcValues() {
     }
 
@@ -123,7 +123,7 @@ final class JmcValues {
      * массив → {@link ArrayList}, остальное как есть. Для полей, которые дальше
      * разбираются общим кодом (сегменты форматированного текста, подсказки).
      */
-    static Object toJava(Object value) {
+    public static Object toJava(Object value) {
         if (value instanceof JTable t) {
             Map<String, Object> map = new LinkedHashMap<>();
             for (Object key : t.keys()) {

@@ -438,6 +438,11 @@ public class TextDisplayButtonWidget implements Widget {
         this.tooltipTitle = null;
     }
     
+    /** Текст - компонент-объект (спрайт атласа), т.е. виджет создан как SPRITE_BUTTON. */
+    public boolean isSprite() {
+        return text instanceof net.kyori.adventure.text.ObjectComponent;
+    }
+
     // Методы для работы с текстом
     public String getText() {
         return text != null 
@@ -446,9 +451,22 @@ public class TextDisplayButtonWidget implements Widget {
     }
     
     public void setText(String newText) {
-        this.text = Component.text(newText);
+        setText(Component.text(newText));
+    }
+
+    /** Установить произвольный компонент (форматированный текст, спрайт атласа). */
+    public void setText(Component newText) {
+        this.text = newText;
         if (display != null && !isHovered) {
             display.text(this.text);
+        }
+    }
+
+    /** Установить компонент, показываемый при наведении. */
+    public void setHoveredText(Component newText) {
+        this.hoveredText = newText;
+        if (display != null && isHovered) {
+            display.text(this.hoveredText);
         }
     }
     

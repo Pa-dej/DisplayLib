@@ -1,0 +1,73 @@
+// sprite_demo: кнопки-спрайты (SPRITE_BUTTON) и спрайты внутри текста. Нужен клиент 1.21.9+.
+// Спрайт - квадрат 8×8 текстовых пикселей: при scale 1 это 0.2 блока, поэтому кнопки обычно scale 2-4.
+
+String id = "sprite_demo";
+String screenType = "PRIVATE";
+int tickRate = 2;
+String script = "sprite_demo.jmp";
+
+dyn background = { color: [18, 20, 26], alpha: 220, scale: [16, 9, 1] };
+
+dyn widgets = [
+    {
+        id: "title",
+        text: [ { text: "Sprite ", color: "#FFD700" }, { text: "buttons", color: "white" } ],
+        position: [0, 3, 0.01], scale: [0.7, 0.7, 0.7], backgroundAlpha: 0,
+    },
+
+    // Один спрайт из атласа блоков (atlas по умолчанию - minecraft:blocks)
+    {
+        id: "bricks",
+        type: "SPRITE_BUTTON",
+        sprite: "block/bricks",
+        hoveredSprite: "block/cracked_stone_bricks",
+        position: [-3, 1, 0.01], scale: [3, 3, 1],
+        tolerance: [0.35, 0.35],
+        backgroundColor: [0, 0, 0], backgroundAlpha: 90, hoveredBackgroundAlpha: 160,
+        tooltip: "block/bricks",
+        onClick: "pick",
+    },
+    // Спрайт из атласа предметов: явно
+    {
+        id: "sword",
+        type: "SPRITE_BUTTON",
+        atlas: "minecraft:items",
+        sprite: "item/diamond_sword",
+        position: [0, 1, 0.01], scale: [3, 3, 1],
+        tolerance: [0.35, 0.35],
+        backgroundAlpha: 0,
+        tooltip: [ { text: "item/diamond_sword", color: "aqua" } ],
+        hoverAnimation: { type: "PRESET", preset: "LIFT" },
+        onClick: "pick",
+    },
+    // Тип можно не писать - по полю sprite понятно
+    {
+        id: "apple",
+        sprite: "item/golden_apple",
+        position: [3, 1, 0.01], scale: [3, 3, 1],
+        tolerance: [0.35, 0.35],
+        backgroundAlpha: 0,
+        onClick: "pick",
+    },
+
+    // Спрайты внутри обычного текста
+    {
+        id: "quest",
+        text: [
+            { text: "Вам нужно принести: ", color: "gray" },
+            { atlas: "minecraft:items", sprite: "item/iron_ingot" },
+            { text: " x3  ", color: "white" },
+            { sprite: "item/diamond" },
+            { text: " x1", color: "white" },
+        ],
+        position: [0, -0.6, 0.01], scale: [0.5, 0.5, 0.5],
+        backgroundColor: [0, 0, 0], backgroundAlpha: 120,
+    },
+    {
+        id: "status",
+        text: "Нажми на спрайт",
+        position: [0, -1.6, 0.01], scale: [0.4, 0.4, 0.4],
+        backgroundAlpha: 0,
+    },
+    { id: "close", text: "Закрыть", position: [0, -2.8, 0.01], scale: [0.5, 0.5, 0.5], onClick: "close" },
+];

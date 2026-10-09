@@ -133,7 +133,7 @@ public class ScreenInstance extends WidgetManager implements ScreenAPI.Host {
         Runnable onClick = ScreenSupport.hasClickAction(def) ? () -> handleClick(def) : null;
 
         switch (def.getType()) {
-            case TEXT_BUTTON -> {
+            case TEXT_BUTTON, SPRITE_BUTTON -> {
                 Location loc = ScreenSupport.resolveLocation(location, def.getPosition(), ScreenSupport.WIDGET_DEPTH_OFFSET);
                 TextDisplayButtonWidget widget = TextDisplayButtonWidget.create(
                         loc, viewer, ScreenSupport.textConfig(def, onClick, true));
