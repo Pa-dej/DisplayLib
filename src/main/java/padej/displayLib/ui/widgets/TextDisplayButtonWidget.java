@@ -189,11 +189,44 @@ public class TextDisplayButtonWidget implements Widget {
     private void cachePosition() {
         display.getLocation(positionScratch);
         float tx = translation != null ? translation.x : 0.0f;
-        float ty = translation != null ? translation.y : 0.0f;
+        // Якорь TextDisplay - низ текста по центру; зону поднимаем на половину высоты фона,
+        // чтобы tolerance задавал прямоугольник вокруг центра нарисованного текста.
+        float ty = (translation != null ? translation.y : 0.0f) + hitCenterOffsetY();
         float tz = translation != null ? translation.z : 0.0f;
         hitArea.set(positionScratch, tx, ty, tz, horizontalTolerance, verticalTolerance, FRONT_ONLY);
         positionScratch.setWorld(null);
         positionCached = true;
+    }
+
+    /** Пиксель текста в блоках (клиент: scale(-0.025)). */
+    private static final float TEXT_PIXEL = 1.0f / 40.0f;
+    /** Высота строки, px (9 + 1). */
+    private static final int LINE_HEIGHT = 10;
+    /** Ширина переноса TextDisplay по умолчанию, px. */
+    private static final int LINE_WIDTH = 200;
+
+    /**
+     * Смещение центра зоны наведения вверх от якоря: половина высоты фона (строки · 10 + 1 px) · scaleY.
+     * Число строк - по переводам строк и грубой оценке переноса (6 px на символ, предел 200 px);
+     * ширину шрифта сервер не знает, так что для длинных строк это приближение.
+     */
+    float hitCenterOffsetY() {
+        int lines = estimateLines(text);
+        float heightPx = lines * LINE_HEIGHT + 1;
+        return heightPx / 2.0f * TEXT_PIXEL * scaleY;
+    }
+
+    private static int estimateLines(Component c) {
+        if (c instanceof net.kyori.adventure.text.ObjectComponent) return 1; // спрайт - одна строка
+        String plain = c != null
+                ? net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer.plainText().serialize(c)
+                : "";
+        int lines = 0;
+        for (String line : plain.split("\n", -1)) {
+            int width = line.codePointCount(0, line.length()) * 6;
+            lines += Math.max(1, (width + LINE_WIDTH - 1) / LINE_WIDTH);
+        }
+        return Math.max(1, lines);
     }
 
     public void updateCachedPosition() {
@@ -457,6 +490,7 @@ public class TextDisplayButtonWidget implements Widget {
     /** Установить произвольный компонент (форматированный текст, спрайт атласа). */
     public void setText(Component newText) {
         this.text = newText;
+        positionCached = false; // высота текста влияет на центр зоны наведения
         if (display != null && !isHovered) {
             display.text(this.text);
         }
