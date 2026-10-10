@@ -149,16 +149,26 @@ public class UIManager implements Listener {
             return false;
         }
 
-        // Закрываем старый экран БЕЗ потери позиции (она уже снята выше)
-        forceCloseScreen(player);
-
+        ScreenInstance current = getActiveScreen(player);
         ScreenInstance instance;
-        if (yaw != null && pitch != null) {
-            // Создаем с заданной ориентацией (для переключения экранов)
-            instance = new ScreenInstance(screenId, definition, player, location, yaw, pitch, scriptEngine);
+        if (current != null && definition.getMorph().isEnabled()
+                && current.getLocation().getWorld() == location.getWorld()) {
+            // Morph: новый экран забирает сущности старого и анимирует их к своему состоянию.
+            // Старый экран снимается с регистрации сразу, его скрипт и подсказки - в remove().
+            unregisterScreen(player);
+            current.handOffMorph();
+            instance = new ScreenInstance(screenId, definition, player, location, yaw, pitch, scriptEngine, current);
+            current.remove();
         } else {
-            // Создаем с автоматической ориентацией (для новых экранов)
-            instance = new ScreenInstance(screenId, definition, player, location, scriptEngine);
+            // Закрываем старый экран БЕЗ потери позиции (она уже снята выше)
+            forceCloseScreen(player);
+            if (yaw != null && pitch != null) {
+                // Создаем с заданной ориентацией (для переключения экранов)
+                instance = new ScreenInstance(screenId, definition, player, location, yaw, pitch, scriptEngine);
+            } else {
+                // Создаем с автоматической ориентацией (для новых экранов)
+                instance = new ScreenInstance(screenId, definition, player, location, scriptEngine);
+            }
         }
         
         registerScreen(player, instance);
@@ -182,6 +192,7 @@ public class UIManager implements Listener {
     /**
      * Внутреннее закрытие — всегда удаляет entity.
      * Используется только из tryClose() и для принудительного закрытия.
+     * Если у экрана включён morph, сущности исчезают с анимацией.
      */
     public void forceCloseScreen(Player player) {
         ScreenInstance screen = getActiveScreen(player);
@@ -189,7 +200,7 @@ public class UIManager implements Listener {
             // Сначала снимаем регистрацию: если удаление сущностей бросит исключение,
             // в реестре не останется "мёртвый" экран с работающей задачей обновления
             unregisterScreen(player);
-            screen.remove();
+            screen.removeAnimated();
         }
     }
 
@@ -512,6 +523,7 @@ public class UIManager implements Listener {
             }
         }
         publicScreens.clear();
+        MorphTransition.cancelAll();
         
         // Останавливаем обновление экранов
         privateUpdateTasks.clear();

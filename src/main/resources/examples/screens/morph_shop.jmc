@@ -1,0 +1,33 @@
+// morph_shop: второй экран демонстрации morph (см. morph_menu).
+// Фон шире и другого цвета, title уехал влево и стал зелёным "Магазин", hint сменил текст,
+// shop превратился в "Назад", item - в алмаз на другом месте, появились товары, settings исчез.
+
+String id = "morph_shop";
+String screenType = "PRIVATE";
+int tickRate = 2;
+
+dyn morph = { enabled: true, duration: 12, steps: 6 };
+
+dyn background = { color: [18, 40, 70], alpha: 220, scale: [12, 6, 1] };
+
+dyn widgets = [
+    { id: "title", text: [ { text: "Магазин", color: "#55FF55" } ], position: [-3.5, 2, -0.01], scale: [1, 1, 1], backgroundAlpha: 0 },
+    { id: "hint", text: "Товары дня - нажми, чтобы купить", position: [0.5, 2, -0.01], scale: [0.4, 0.4, 0.4],
+      backgroundColor: [0, 0, 0], backgroundAlpha: 120 },
+
+    { id: "buy_sword", type: "ITEM_BUTTON", material: "DIAMOND_SWORD", position: [-2.5, 0.3, -0.01], scale: [0.7, 0.7, 0.7], tolerance: [0.35, 0.35], tooltip: "Алмазный меч - 50" },
+    { id: "buy_bow", type: "ITEM_BUTTON", material: "BOW", position: [-0.8, 0.3, -0.01], scale: [0.7, 0.7, 0.7], tolerance: [0.35, 0.35], tooltip: "Лук - 30" },
+    { id: "buy_potion", type: "ITEM_BUTTON", material: "POTION", position: [0.9, 0.3, -0.01], scale: [0.7, 0.7, 0.7], tolerance: [0.35, 0.35], tooltip: "Зелье - 15" },
+    { id: "price", text: [ { text: "50", color: "gold" }, { text: "   30", color: "gold" }, { text: "   15", color: "gold" } ],
+      position: [-0.8, -0.5, -0.01], scale: [0.5, 0.5, 0.5], backgroundAlpha: 0 },
+
+    { id: "item", type: "ITEM_BUTTON", material: "DIAMOND", position: [3.5, 0.3, -0.01], scale: [1, 1, 1], tolerance: [0.5, 0.5],
+      tooltip: "Валюта", glowOnHover: false },
+
+    { id: "shop", text: "Назад", position: [-4, -2.2, -0.01], scale: [0.6, 0.6, 0.6],
+      backgroundColor: [60, 60, 70], backgroundAlpha: 200, hoveredBackgroundColor: [90, 90, 110], hoveredBackgroundAlpha: 230,
+      tolerance: [0.4, 0.2], hoverAnimation: { type: "PRESET", preset: "SCALE" }, onClick: { switchTo: "morph_menu" } },
+    { id: "close", text: "Закрыть", position: [4.5, -2.4, -0.01], scale: [0.4, 0.4, 0.4],
+      backgroundColor: [90, 30, 30], backgroundAlpha: 180, hoveredBackgroundColor: [150, 50, 50], hoveredBackgroundAlpha: 220,
+      tolerance: [0.35, 0.15], onClick: "close" },
+];

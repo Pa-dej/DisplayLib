@@ -1,0 +1,35 @@
+// morph_menu: демонстрация morph-переходов. Открой: /displaylib open morph_menu
+// Переключение между morph_menu, morph_shop и morph_settings анимируется:
+//  - виджеты с одинаковым id (title, hint, shop, settings, item, close) плавно переезжают,
+//    меняют размер, цвет фона; текст и его цвет меняются по шагам (duration / steps);
+//  - предмет ItemDisplay (item) меняется на половине пути;
+//  - виджеты, которых нет на другом экране, сжимаются в ноль и исчезают, новые - вырастают из нуля;
+//  - закрытие экрана (close) тоже анимируется.
+// При переключении действует morph открываемого экрана, при закрытии - закрываемого.
+
+String id = "morph_menu";
+String screenType = "PRIVATE";
+int tickRate = 2;
+
+dyn morph = { enabled: true, duration: 12, steps: 6 };
+
+dyn background = { color: [40, 40, 48], alpha: 200, scale: [9, 5, 1] };
+
+dyn widgets = [
+    { id: "title", text: [ { text: "Главное меню", color: "#FF5555" } ], position: [0, 1.5, -0.01], scale: [0.8, 0.8, 0.8], backgroundAlpha: 0 },
+    { id: "hint", text: "Выбери раздел", position: [0, 0.9, -0.01], scale: [0.4, 0.4, 0.4], backgroundAlpha: 0, backgroundColor: [0, 0, 0] },
+
+    { id: "shop", text: "Магазин", position: [-1.5, 0, -0.01], scale: [0.6, 0.6, 0.6],
+      backgroundColor: [20, 90, 40], backgroundAlpha: 200, hoveredBackgroundColor: [40, 140, 70], hoveredBackgroundAlpha: 230,
+      tolerance: [0.5, 0.2], hoverAnimation: { type: "PRESET", preset: "SCALE" }, onClick: { switchTo: "morph_shop" } },
+    { id: "settings", text: "Настройки", position: [1.5, 0, -0.01], scale: [0.6, 0.6, 0.6],
+      backgroundColor: [90, 70, 20], backgroundAlpha: 200, hoveredBackgroundColor: [140, 110, 40], hoveredBackgroundAlpha: 230,
+      tolerance: [0.55, 0.2], hoverAnimation: { type: "PRESET", preset: "SCALE" }, onClick: { switchTo: "morph_settings" } },
+
+    { id: "item", type: "ITEM_BUTTON", material: "APPLE", position: [0, -1.1, -0.01], scale: [0.6, 0.6, 0.6], tolerance: [0.3, 0.3],
+      tooltip: "Яблоко", glowOnHover: false },
+
+    { id: "close", text: "Закрыть", position: [3.3, -1.9, -0.01], scale: [0.4, 0.4, 0.4],
+      backgroundColor: [90, 30, 30], backgroundAlpha: 180, hoveredBackgroundColor: [150, 50, 50], hoveredBackgroundAlpha: 220,
+      tolerance: [0.35, 0.15], onClick: "close" },
+];

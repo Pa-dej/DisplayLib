@@ -89,6 +89,22 @@ public class ItemDisplayButtonWidget implements Widget {
     private final Location positionScratch = new Location(null, 0, 0, 0);
 
     public static ItemDisplayButtonWidget create(Location location, Player viewer, ItemDisplayButtonConfig config) {
+        ItemDisplayButtonWidget widget = init(location, viewer, config);
+        widget.spawn();
+        return widget;
+    }
+
+    /** Создать виджет на существующей сущности (morph-переход), см. TextDisplayButtonWidget#createAdopting. */
+    public static ItemDisplayButtonWidget createAdopting(Location location, Player viewer, ItemDisplayButtonConfig config, ItemDisplay entity) {
+        ItemDisplayButtonWidget widget = init(location, viewer, config);
+        widget.display = entity;
+        entity.setItemDisplayTransform(widget.displayTransform);
+        entity.setPersistent(false);
+        if (widget.glowColor != null) entity.setGlowColorOverride(widget.glowColor);
+        return widget;
+    }
+
+    private static ItemDisplayButtonWidget init(Location location, Player viewer, ItemDisplayButtonConfig config) {
         ItemDisplayButtonWidget widget = new ItemDisplayButtonWidget();
         widget.location = location;
         widget.viewer = viewer;
@@ -121,9 +137,40 @@ public class ItemDisplayButtonWidget implements Widget {
         }
 
         widget.baseScale = new Vector3f(widget.scaleX, widget.scaleY, widget.scaleZ);
-        widget.spawn();
         return widget;
     }
+
+    /** Отдать сущность (для morph) и забыть о ней. */
+    public ItemDisplay detachDisplay() {
+        ItemDisplay d = display;
+        display = null;
+        isHovered = false;
+        hideTooltip();
+        return d;
+    }
+
+    /** Целевая трансформация в обычном состоянии. */
+    public Transformation targetTransformation() {
+        return new Transformation(
+                translation != null ? new Vector3f(translation) : new Vector3f(),
+                new AxisAngle4f(), new Vector3f(scaleX, scaleY, scaleZ), new AxisAngle4f());
+    }
+
+    /** Целевой предмет. */
+    public ItemStack targetItem() {
+        ItemStack item = new ItemStack(itemType);
+        if (itemMeta != null) item.setItemMeta(itemMeta);
+        return item;
+    }
+
+    /** Целевая мировая позиция (с ориентацией экрана). */
+    public Location targetLocation() {
+        Location l = location.clone();
+        if (hasRotation) { l.setYaw(savedYaw); l.setPitch(savedPitch); }
+        return l;
+    }
+
+    public void invalidateHitArea() { positionCached = false; }
 
     private void spawn() {
         ItemStack item = new ItemStack(itemType);

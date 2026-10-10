@@ -43,6 +43,12 @@ public class ScreenInstance extends WidgetManager implements ScreenAPI.Host {
     /** Флаг предотвращения рекурсии при закрытии */
     private boolean isClosing = false;
 
+    /** Фон экрана (участвует в morph как отдельная сущность) */
+    private TextDisplayButtonWidget backgroundWidget;
+
+    /** Идущий morph-переход к этому экрану; пока он идёт, наведение и клики не обрабатываются */
+    private MorphTransition morph;
+
     /**
      * Экран, повёрнутый лицом к игроку (ориентация вычисляется один раз).
      */
@@ -56,11 +62,31 @@ public class ScreenInstance extends WidgetManager implements ScreenAPI.Host {
      */
     public ScreenInstance(String screenId, ScreenDefinition definition,
                           Player viewer, Location location, float yaw, float pitch, JumperEngine engine) {
-        this(screenId, definition, viewer, location, new float[]{yaw, pitch}, engine);
+        this(screenId, definition, viewer, location, new float[]{yaw, pitch}, engine, null);
+    }
+
+    /**
+     * Экран, появляющийся morph-переходом из {@code morphFrom}: сущности одноимённых виджетов
+     * того же типа переходят к новому экрану и анимируются к его состоянию, остальные исчезают
+     * и появляются (см. {@link MorphTransition}). Старый экран после этого нужно удалить -
+     * его сущности уже отданы.
+     */
+    public ScreenInstance(String screenId, ScreenDefinition definition,
+                          Player viewer, Location location, Float yaw, Float pitch, JumperEngine engine,
+                          ScreenInstance morphFrom) {
+        this(screenId, definition, viewer, location,
+                yaw != null && pitch != null ? new float[]{yaw, pitch} : facingOrientation(viewer, location),
+                engine, morphFrom);
     }
 
     private ScreenInstance(String screenId, ScreenDefinition definition,
                            Player viewer, Location location, float[] orientation, JumperEngine engine) {
+        this(screenId, definition, viewer, location, orientation, engine, null);
+    }
+
+    private ScreenInstance(String screenId, ScreenDefinition definition,
+                           Player viewer, Location location, float[] orientation, JumperEngine engine,
+                           ScreenInstance morphFrom) {
         super(viewer, location);
         this.screenId = screenId;
         this.definition = definition;
@@ -76,11 +102,67 @@ public class ScreenInstance extends WidgetManager implements ScreenAPI.Host {
         // Скриптовое окружение: глобалы player/screen/storage/timer/log и сам скрипт
         this.scriptContext = new ScriptContext((DisplayLib) DisplayLib.getInstance(), engine, this, viewer, scriptFile);
 
-        spawnBackground();
-        spawnWidgets();
+        if (morphFrom != null && definition.getMorph().isEnabled()) {
+            morph = new MorphTransition(definition.getMorph());
+        }
+        spawnBackground(morphFrom);
+        spawnWidgets(morphFrom);
+        if (morph != null) {
+            // всё, что осталось у старого экрана, исчезает
+            for (Widget w : morphFrom.children) morph.fadeOut(detach(w));
+            morphFrom.children.clear();
+            morph.start(() -> morph = null);
+        }
         
         // onOpen после создания всех виджетов
         scriptContext.callHook(ScriptContext.HOOK_OPEN);
+    }
+
+    /** Забрать сущность у виджета (он после этого ничего не удаляет). */
+    private static org.bukkit.entity.Display detach(Widget w) {
+        if (w instanceof TextDisplayButtonWidget t) return t.detachDisplay();
+        if (w instanceof ItemDisplayButtonWidget i) return i.detachDisplay();
+        return null;
+    }
+
+    /**
+     * Закрыть экран с анимацией исчезновения: сущности отдаются переходу и удаляются,
+     * когда он закончится; сам экран (скрипт, реестр) освобождается сразу.
+     */
+    public void removeAnimated() {
+        ScreenDefinition.Morph settings = definition.getMorph();
+        if (settings.isEnabled()) {
+            if (morph != null) morph.cancel();
+            MorphTransition out = new MorphTransition(settings);
+            for (Widget w : children) out.fadeOut(detach(w));
+            if (!out.isEmpty()) out.start(null);
+        }
+        remove();
+    }
+
+    /**
+     * Перед передачей сущностей следующему экрану: текущий переход (если идёт) отпускает их,
+     * иначе его завершение вернуло бы им старые цели поверх новых.
+     */
+    public void handOffMorph() {
+        if (morph != null) { morph.handOff(); morph = null; }
+    }
+
+    /** Идёт ли morph-переход к этому экрану. */
+    public boolean isMorphing() {
+        return morph != null;
+    }
+
+    @Override
+    public void update() {
+        if (morph != null) return; // виджеты ещё в движении - наведение не считаем
+        super.update();
+    }
+
+    @Override
+    public Widget getNearestHoveredWidget() {
+        if (morph != null) return null;
+        return super.getNearestHoveredWidget();
     }
 
     /** Ориентация (yaw, pitch) экрана в точке location, обращённого к игроку. */
@@ -100,25 +182,36 @@ public class ScreenInstance extends WidgetManager implements ScreenAPI.Host {
     // Spawning
     // -------------------------------------------------------------------------
 
-    private void spawnBackground() {
+    private void spawnBackground(ScreenInstance morphFrom) {
         ScreenDefinition.BackgroundDefinition bg = definition.getBackground();
         if (bg == null) return;
 
+        Location loc = ScreenSupport.backgroundLocation(location, bg);
+        TextDisplayButtonConfig cfg = ScreenSupport.backgroundConfig(bg);
+        org.bukkit.entity.TextDisplay old = morph != null && morphFrom.backgroundWidget != null
+                ? morphFrom.backgroundWidget.detachDisplay() : null;
+
         // Фон создается с учетом position из файла экрана
-        TextDisplayButtonWidget backgroundWidget = TextDisplayButtonWidget.create(
-                ScreenSupport.backgroundLocation(location, bg), viewer, ScreenSupport.backgroundConfig(bg));
+        backgroundWidget = old != null
+                ? TextDisplayButtonWidget.createAdopting(loc, viewer, cfg, old)
+                : TextDisplayButtonWidget.create(loc, viewer, cfg);
         
         // Сохраняем единую ориентацию экрана
         backgroundWidget.saveRotation(screenYaw, screenPitch);
         
+        if (morph != null) {
+            if (old != null) morph.match(backgroundWidget, old);
+            else morph.fadeIn(backgroundWidget);
+        }
         addDrawableChild(backgroundWidget);
     }
 
-    private void spawnWidgets() {
+    private void spawnWidgets(ScreenInstance morphFrom) {
         if (definition.getWidgets() == null) return;
 
         for (WidgetDefinition def : definition.getWidgets()) {
-            Widget widget = buildWidget(def);
+            Widget old = morph != null && def.getId() != null ? morphFrom.widgetById.get(def.getId()) : null;
+            Widget widget = buildWidget(def, old);
             if (widget == null) continue;
 
             addDrawableChild(widget);
@@ -128,7 +221,11 @@ public class ScreenInstance extends WidgetManager implements ScreenAPI.Host {
         }
     }
 
-    private Widget buildWidget(WidgetDefinition def) {
+    /**
+     * @param old одноимённый виджет старого экрана при morph-переходе или null; используется,
+     *            только если тип сущности совпадает (TextDisplay ↔ TextDisplay, ItemDisplay ↔ ItemDisplay)
+     */
+    private Widget buildWidget(WidgetDefinition def, Widget old) {
         // onClick только если клик что-то сделает (есть действие; для RUN_SCRIPT - непустая функция).
         // Виджет без клика и без реакции на наведение не обсчитывается на тиках.
         boolean clickable = ScreenSupport.clickDoesSomething(def, scriptContext, false, DisplayLib.getInstance().getLogger(), definition.getId());
@@ -138,18 +235,32 @@ public class ScreenInstance extends WidgetManager implements ScreenAPI.Host {
         switch (def.getType()) {
             case TEXT_BUTTON, SPRITE_BUTTON -> {
                 Location loc = ScreenSupport.resolveLocation(location, def.getPosition(), ScreenSupport.WIDGET_DEPTH_OFFSET);
-                TextDisplayButtonWidget widget = TextDisplayButtonWidget.create(
-                        loc, viewer, ScreenSupport.textConfig(def, onClick, true, interactive));
+                TextDisplayButtonConfig cfg = ScreenSupport.textConfig(def, onClick, true, interactive);
+                org.bukkit.entity.TextDisplay entity = old instanceof TextDisplayButtonWidget t ? t.detachDisplay() : null;
+                TextDisplayButtonWidget widget = entity != null
+                        ? TextDisplayButtonWidget.createAdopting(loc, viewer, cfg, entity)
+                        : TextDisplayButtonWidget.create(loc, viewer, cfg);
                 // Сохраняем единую ориентацию экрана (как у фона)
                 widget.saveRotation(screenYaw, screenPitch);
+                if (morph != null) {
+                    if (entity != null) morph.match(widget, entity);
+                    else morph.fadeIn(widget);
+                }
                 return widget;
             }
             case ITEM_BUTTON -> {
                 // Используем увеличенное смещение для ItemDisplay виджетов
                 Location loc = ScreenSupport.resolveLocation(location, def.getPosition(), ScreenSupport.ITEM_WIDGET_DEPTH_OFFSET);
-                ItemDisplayButtonWidget widget = ItemDisplayButtonWidget.create(
-                        loc, viewer, ScreenSupport.itemConfig(def, onClick, true, interactive));
+                ItemDisplayButtonConfig cfg = ScreenSupport.itemConfig(def, onClick, true, interactive);
+                org.bukkit.entity.ItemDisplay entity = old instanceof ItemDisplayButtonWidget i ? i.detachDisplay() : null;
+                ItemDisplayButtonWidget widget = entity != null
+                        ? ItemDisplayButtonWidget.createAdopting(loc, viewer, cfg, entity)
+                        : ItemDisplayButtonWidget.create(loc, viewer, cfg);
                 widget.saveRotation(screenYaw, screenPitch);
+                if (morph != null) {
+                    if (entity != null) morph.match(widget, entity);
+                    else morph.fadeIn(widget);
+                }
                 return widget;
             }
         }
@@ -254,6 +365,7 @@ public class ScreenInstance extends WidgetManager implements ScreenAPI.Host {
     @Override
     public void remove() {
         scriptContext.cleanup();
+        if (morph != null) { morph.cancel(); morph = null; }
         super.remove();
     }
 

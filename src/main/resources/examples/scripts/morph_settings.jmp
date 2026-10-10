@@ -1,0 +1,16 @@
+// morph_settings.jmp: переключатели в демонстрации morph (onClick: true -> функция с именем виджета)
+
+boolean soundOn = true;
+boolean particlesOn = false;
+
+void sound(dyn widget, dyn player) {
+    soundOn = !soundOn;
+    widget.text([ { text: "Звук: ", color: "white" }, { text: soundOn ? "вкл" : "выкл", color: soundOn ? "green" : "red" } ]);
+    player.sound("ui.button.click", 0.6, soundOn ? 1.4 : 0.8);
+}
+
+void particles(dyn widget, dyn player) {
+    particlesOn = !particlesOn;
+    widget.text([ { text: "Частицы: ", color: "white" }, { text: particlesOn ? "вкл" : "выкл", color: particlesOn ? "green" : "red" } ]);
+    player.sound("ui.button.click", 0.6, particlesOn ? 1.4 : 0.8);
+}

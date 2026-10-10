@@ -90,6 +90,25 @@ public class TextDisplayButtonWidget implements Widget {
     private final Location positionScratch = new Location(null, 0, 0, 0);
 
     public static TextDisplayButtonWidget create(Location location, Player viewer, TextDisplayButtonConfig config) {
+        TextDisplayButtonWidget widget = init(location, viewer, config);
+        widget.spawn();
+        return widget;
+    }
+
+    /**
+     * Создать виджет на уже существующей сущности (morph-переход между экранами):
+     * сущность прежнего виджета остаётся в мире, а её текст, цвет и трансформация
+     * доводятся до целевых значений анимацией в {@link padej.displayLib.ui.MorphTransition}.
+     */
+    public static TextDisplayButtonWidget createAdopting(Location location, Player viewer, TextDisplayButtonConfig config, TextDisplay entity) {
+        TextDisplayButtonWidget widget = init(location, viewer, config);
+        widget.display = entity;
+        entity.setAlignment(widget.textAlignment);
+        entity.setPersistent(false);
+        return widget;
+    }
+
+    private static TextDisplayButtonWidget init(Location location, Player viewer, TextDisplayButtonConfig config) {
         TextDisplayButtonWidget widget = new TextDisplayButtonWidget();
         widget.location = location;
         widget.viewer = viewer;
@@ -124,9 +143,43 @@ public class TextDisplayButtonWidget implements Widget {
         }
 
         widget.baseScale = new Vector3f(widget.scaleX, widget.scaleY, widget.scaleZ);
-        widget.spawn();
         return widget;
     }
+
+    /**
+     * Отдать сущность (для morph) и забыть о ней: виджет после этого ничего не удаляет.
+     * @return сущность или null, если её нет
+     */
+    public TextDisplay detachDisplay() {
+        TextDisplay d = display;
+        display = null;
+        isHovered = false;
+        hideTooltip();
+        return d;
+    }
+
+    /** Целевая трансформация виджета в обычном (не наведённом) состоянии. */
+    public Transformation targetTransformation() {
+        return new Transformation(
+                translation != null ? new Vector3f(translation) : new Vector3f(),
+                new AxisAngle4f(), new Vector3f(scaleX, scaleY, scaleZ), new AxisAngle4f());
+    }
+
+    /** Целевой цвет фона (ARGB) в обычном состоянии. */
+    public Color targetBackground() { return backgroundArgb(); }
+
+    /** Целевой текст в обычном состоянии. */
+    public Component targetText() { return text; }
+
+    /** Целевая мировая позиция (с ориентацией экрана). */
+    public Location targetLocation() {
+        Location l = location.clone();
+        if (hasRotation) { l.setYaw(savedYaw); l.setPitch(savedPitch); }
+        return l;
+    }
+
+    /** Пересчитать зону наведения при следующем обращении (после перемещения сущности). */
+    public void invalidateHitArea() { positionCached = false; }
 
     private void spawn() {
         display = (TextDisplay) location.getWorld().spawnEntity(location, EntityType.TEXT_DISPLAY);

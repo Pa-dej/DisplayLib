@@ -99,6 +99,12 @@ public class ScreenDefinition {
      * Каждый виджет определяет интерактивный элемент на экране.
      */
     private List<WidgetDefinition> widgets;
+
+    /**
+     * Анимация смены и закрытия экрана (morph). При переключении действует настройка
+     * открываемого экрана, при закрытии - закрываемого.
+     */
+    private Morph morph = new Morph();
     
     public ScreenDefinition() {}
     
@@ -146,6 +152,39 @@ public class ScreenDefinition {
     
     public double getCloseDistance() { return closeDistance; }
     public void setCloseDistance(double closeDistance) { this.closeDistance = closeDistance; }
+
+    public Morph getMorph() { return morph; }
+    public void setMorph(Morph morph) { this.morph = morph != null ? morph : new Morph(); }
+
+    /**
+     * Настройки morph-перехода.
+     *
+     * <pre>{@code
+     * dyn morph = { enabled: true, duration: 10, steps: 5 };
+     * boolean morph = true;   // длительность и шаги по умолчанию
+     * int morph = 16;         // = { enabled: true, duration: 16 }
+     * }</pre>
+     *
+     * <p>{@code duration} - длительность в тиках (1–59: столько же длится интерполяция клиента).
+     * {@code steps} - на сколько шагов разбивать то, что клиент не интерполирует: текст и его цвет,
+     * предмет ItemDisplay; по умолчанию шаг каждые 2 тика. Положение, масштаб и цвет фона
+     * интерполирует сам клиент.</p>
+     */
+    public static class Morph {
+        private boolean enabled = false;
+        private int duration = 10;
+        private int steps = -1;
+
+        public boolean isEnabled() { return enabled; }
+        public void setEnabled(boolean enabled) { this.enabled = enabled; }
+
+        public int getDuration() { return duration; }
+        public void setDuration(int duration) { this.duration = Math.max(1, Math.min(59, duration)); }
+
+        /** Число шагов для текста/цвета; если не задано - duration / 2 (не меньше 1). */
+        public int getSteps() { return steps > 0 ? Math.min(steps, duration) : Math.max(1, duration / 2); }
+        public void setSteps(int steps) { this.steps = steps; }
+    }
     
     /**
      * Типы экранов определяют поведение и доступность.

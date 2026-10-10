@@ -164,6 +164,10 @@ public class ScreenLoader {
             screen.setBackground(parseBackground(bgData));
         }
 
+        // morph: true | 10 | { enabled, duration, steps }
+        Object morphRaw = get(data, "morph");
+        if (morphRaw != null) screen.setMorph(parseMorph(morphRaw, file));
+
         // script: "file.jmp"  (также принимается прежняя форма scripts: { file: "..." })
         String script = str(data, "script");
         if (script == null) {
@@ -191,6 +195,26 @@ public class ScreenLoader {
         }
 
         return screen;
+    }
+
+    private ScreenDefinition.Morph parseMorph(Object raw, Path file) {
+        ScreenDefinition.Morph morph = new ScreenDefinition.Morph();
+        if (raw instanceof Boolean b) {
+            morph.setEnabled(b);
+        } else if (raw instanceof Number n) {
+            morph.setEnabled(n.intValue() > 0);
+            if (n.intValue() > 0) morph.setDuration(n.intValue());
+        } else if (raw instanceof JTable t) {
+            Boolean enabled = bool(t, "enabled");
+            morph.setEnabled(enabled == null || enabled); // таблица без enabled = включено
+            Integer duration = integer(t, "duration", "ticks");
+            if (duration != null) morph.setDuration(duration);
+            Integer steps = integer(t, "steps");
+            if (steps != null) morph.setSteps(steps);
+        } else {
+            plugin.getLogger().warning("Screen " + file.getFileName() + ": morph must be boolean, number or table");
+        }
+        return morph;
     }
 
     private ScreenDefinition.BackgroundDefinition parseBackground(JTable data) {

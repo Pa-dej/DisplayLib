@@ -1,0 +1,31 @@
+// morph_settings: третий экран демонстрации morph (см. morph_menu) - медленный переход
+// (duration 24, 12 шагов текста), чтобы разглядеть посимвольную смену текста и цвета.
+// Кнопки-переключатели меняют свой текст скриптом, title становится жёлтым "Настройки".
+
+String id = "morph_settings";
+String screenType = "PRIVATE";
+int tickRate = 2;
+String script = "morph_settings.jmp";
+
+dyn morph = { enabled: true, duration: 24, steps: 12 };
+
+dyn background = { color: [60, 50, 20], alpha: 220, scale: [8, 6, 1], position: [0, 0.5, 0] };
+
+dyn widgets = [
+    { id: "title", text: [ { text: "Настройки", color: "#FFFF55" } ], position: [0, 2.6, -0.01], scale: [0.9, 0.9, 0.9], backgroundAlpha: 0 },
+    { id: "hint", text: "Переход длиннее: 24 тика, 12 шагов", position: [0, 2, -0.01], scale: [0.35, 0.35, 0.35], backgroundAlpha: 0, backgroundColor: [0, 0, 0] },
+
+    { id: "sound", text: [ { text: "Звук: ", color: "white" }, { text: "вкл", color: "green" } ], position: [0, 1.1, -0.01], scale: [0.55, 0.55, 0.55],
+      backgroundColor: [30, 30, 30], backgroundAlpha: 200, hoveredBackgroundColor: [60, 60, 60], hoveredBackgroundAlpha: 230,
+      tolerance: [0.6, 0.18], onClick: true },
+    { id: "particles", text: [ { text: "Частицы: ", color: "white" }, { text: "выкл", color: "red" } ], position: [0, 0.4, -0.01], scale: [0.55, 0.55, 0.55],
+      backgroundColor: [30, 30, 30], backgroundAlpha: 200, hoveredBackgroundColor: [60, 60, 60], hoveredBackgroundAlpha: 230,
+      tolerance: [0.6, 0.18], onClick: true },
+
+    { id: "settings", text: "Назад в меню", position: [0, -0.8, -0.01], scale: [0.6, 0.6, 0.6],
+      backgroundColor: [60, 60, 70], backgroundAlpha: 200, hoveredBackgroundColor: [90, 90, 110], hoveredBackgroundAlpha: 230,
+      tolerance: [0.7, 0.2], hoverAnimation: { type: "PRESET", preset: "SCALE" }, onClick: { switchTo: "morph_menu" } },
+    { id: "close", text: "Закрыть", position: [0, -1.7, -0.01], scale: [0.4, 0.4, 0.4],
+      backgroundColor: [90, 30, 30], backgroundAlpha: 180, hoveredBackgroundColor: [150, 50, 50], hoveredBackgroundAlpha: 220,
+      tolerance: [0.35, 0.15], onClick: "close" },
+];
