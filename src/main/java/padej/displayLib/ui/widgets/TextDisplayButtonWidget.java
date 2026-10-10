@@ -5,6 +5,7 @@ import padej.displayLib.utils.Animation;
 import padej.displayLib.utils.HitArea;
 import padej.displayLib.utils.ViewRay;
 import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.TextComponent;
 import net.kyori.adventure.title.Title;
 import org.bukkit.Bukkit;
 import org.bukkit.Color;
@@ -219,17 +220,51 @@ public class TextDisplayButtonWidget implements Widget {
         return heightPx / 2.0f * TEXT_PIXEL * scaleY;
     }
 
-    private static int estimateLines(Component c) {
-        if (c instanceof net.kyori.adventure.text.ObjectComponent) return 1; // спрайт - одна строка
-        String plain = c != null
-                ? net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer.plainText().serialize(c)
-                : "";
-        int lines = 0;
-        for (String line : plain.split("\n", -1)) {
-            int width = line.codePointCount(0, line.length()) * 6;
-            lines += Math.max(1, (width + LINE_WIDTH - 1) / LINE_WIDTH);
+    /**
+     * Оценка числа строк: ширина текста по таблице ширин шрифта клиента (узкие символы 2–5 px,
+     * остальные 6, спрайт-объект 9 px), перенос по 200 px по словам, как StringSplitter.
+     * Плоская сериализация тут не годится: спрайт в ней выглядит как "[item/apple@items]" и
+     * раздувает ширину в разы, из-за чего центр зоны наведения уезжал вверх.
+     */
+    static int estimateLines(Component c) {
+        if (c == null) return 1;
+        // собираем «токены»: ширина слова и признак переноса строки
+        java.util.List<int[]> words = new java.util.ArrayList<>(); // [width, isNewline]
+        StringBuilder word = new StringBuilder();
+        int[] cur = {0};
+        Runnable flush = () -> { if (cur[0] > 0 || word.length() > 0) { words.add(new int[]{cur[0], 0}); cur[0] = 0; word.setLength(0); } };
+        for (Component part : c.iterable(net.kyori.adventure.text.ComponentIteratorType.DEPTH_FIRST)) {
+            if (part instanceof net.kyori.adventure.text.ObjectComponent) { cur[0] += SPRITE_ADVANCE; word.append('#'); continue; }
+            String txt = part instanceof TextComponent t ? t.content()
+                    : part instanceof net.kyori.adventure.text.TranslatableComponent tr ? tr.key() : "";
+            txt.codePoints().forEach(cp -> {
+                if (cp == '\n') { flush.run(); words.add(new int[]{0, 1}); }
+                else if (cp == ' ') { cur[0] += 4; flush.run(); }
+                else { cur[0] += charWidth(cp); word.append((char) cp); }
+            });
+        }
+        flush.run();
+        int lines = 1, lineW = 0;
+        for (int[] w : words) {
+            if (w[1] == 1) { lines++; lineW = 0; continue; }
+            if (lineW > 0 && lineW + w[0] > LINE_WIDTH) { lines++; lineW = w[0]; }
+            else lineW += w[0];
         }
         return Math.max(1, lines);
+    }
+
+    /** advance спрайта-объекта в тексте (квадрат 8 px + промежуток) */
+    private static final int SPRITE_ADVANCE = 9;
+
+    /** Ширина символа шрифта клиента (advance = ширина глифа + 1); для неизвестных - 6. */
+    private static int charWidth(int cp) {
+        switch (cp) {
+            case 'i': case '!': case '.': case ',': case ':': case ';': case '|': case '\'': case '`': return 2;
+            case 'l': return 3;
+            case 't': case 'I': case '(': case ')': case '[': case ']': case '{': case '}': case '"': case '*': case ' ': return 4;
+            case 'f': case 'k': case '<': case '>': return 5;
+            default: return cp > 0x2E80 ? 9 : 6; // CJK/эмодзи - широкие
+        }
     }
 
     public void updateCachedPosition() {

@@ -67,7 +67,7 @@ dyn widgets = [
     {
         id: "atlases",
         text: [
-            { text: "Эффект ", color: "gray" }, { atlas: "minecraft:mob_effects", sprite: "minecraft:speed" },
+            { text: "Эффект ", color: "gray" }, { atlas: "minecraft:gui", sprite: "mob_effect/speed" },
             { text: "   Здоровье ", color: "gray" }, { atlas: "minecraft:gui", sprite: "hud/heart/full" },
             { text: "   Частица ", color: "gray" }, { atlas: "minecraft:particles", sprite: "heart" },
         ],

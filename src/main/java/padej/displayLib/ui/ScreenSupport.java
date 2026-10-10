@@ -354,7 +354,7 @@ public final class ScreenSupport {
      * берётся клиентский дефолт {@code minecraft:blocks} (он собран из {@code block/} и {@code item/}, так что
      * {@code item/iron_ingot} в нём есть - ровно как в tellraw без atlas); голое имя ({@code mace},
      * {@code bricks}, {@code speed}) дополняется само: предмет → {@code item/mace}, блок → {@code block/bricks},
-     * эффект → mob_effects.
+     * эффект → {@code mob_effect/speed} в gui (атлас {@code minecraft:mob_effects} переводится туда же).
      * Неверный ключ не роняет экран - вместо спрайта получится обычный текст с его именем.</p>
      *
      * <p>Цвет у спрайта задаётся явно белым, чтобы он не наследовал цвет соседнего сегмента.</p>
@@ -378,6 +378,12 @@ public final class ScreenSupport {
         String a = atlas != null && !atlas.isBlank() ? atlas.trim() : null;
         if (a != null && !a.contains(":")) a = "minecraft:" + a;
 
+        // Иконки эффектов живут в атласе gui под префиксом mob_effect/ (atlases/gui.json);
+        // отдельного текстового атласа minecraft:mob_effects у клиента нет - переводим
+        if ("minecraft:mob_effects".equals(a)) {
+            a = "minecraft:gui";
+            if (!name.startsWith("mob_effect/")) name = "mob_effect/" + name;
+        }
         if (!name.contains("/")) {
             if (a == null || a.equals("minecraft:items") || a.equals("minecraft:blocks")) {
                 // атлас blocks у клиента собран из block/ И item/, поэтому для обоих подходит он же
@@ -387,7 +393,7 @@ public final class ScreenSupport {
             }
             if (a == null) {
                 if (org.bukkit.Registry.EFFECT.get(org.bukkit.NamespacedKey.minecraft(name)) != null) {
-                    return new String[]{"minecraft:mob_effects", name};
+                    return new String[]{"minecraft:gui", "mob_effect/" + name};
                 }
             }
         }
