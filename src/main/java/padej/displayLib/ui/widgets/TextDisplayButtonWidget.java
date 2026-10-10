@@ -208,13 +208,14 @@ public class TextDisplayButtonWidget implements Widget {
     private static final int LINE_WIDTH = 200;
 
     /**
-     * Смещение центра зоны наведения вверх от якоря: половина высоты фона (строки · 10 + 1 px) · scaleY.
+     * Смещение центра зоны наведения вверх от якоря: половина высоты фона (строки · 10 px) · scaleY
+     * (клиент 1.21.11/26.1: фон от -1 до lines*10-1 в координатах шрифта, т.е. ровно lines*10 px).
      * Число строк - по переводам строк и грубой оценке переноса (6 px на символ, предел 200 px);
      * ширину шрифта сервер не знает, так что для длинных строк это приближение.
      */
     float hitCenterOffsetY() {
         int lines = estimateLines(text);
-        float heightPx = lines * LINE_HEIGHT + 1;
+        float heightPx = lines * LINE_HEIGHT;
         return heightPx / 2.0f * TEXT_PIXEL * scaleY;
     }
 
