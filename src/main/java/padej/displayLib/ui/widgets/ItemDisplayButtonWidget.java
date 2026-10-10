@@ -26,6 +26,7 @@ public class ItemDisplayButtonWidget implements Widget {
     private Player viewer;
     private boolean isHovered = false;
     private Runnable onClick;
+    private boolean interactive = true;
     private Component tooltip;
     private boolean isShowingTooltip = false;
     private int tooltipDelay = 0;
@@ -92,6 +93,7 @@ public class ItemDisplayButtonWidget implements Widget {
         widget.location = location;
         widget.viewer = viewer;
         widget.onClick = config.getOnClick();
+        widget.interactive = config.isInteractive();
         widget.originalOnClick = config.getOnClick(); // Сохраняем оригинальный onClick
         widget.itemType = config.getMaterial();
         widget.position = config.getPosition();
@@ -174,7 +176,7 @@ public class ItemDisplayButtonWidget implements Widget {
 
     @Override
     public double hitDistance(ViewRay ray) {
-        if (display == null) return -1.0;
+        if (display == null || !interactive) return -1.0;
 
         if (!positionCached) {
             cachePosition();
@@ -251,7 +253,7 @@ public class ItemDisplayButtonWidget implements Widget {
 
     @Override
     public void update(ViewRay ray) {
-        if (display == null || viewer == null) return;
+        if (display == null || viewer == null || !interactive) return;
 
         boolean currentlyHovered = isHoveredBy(ray);
         
@@ -471,5 +473,16 @@ public class ItemDisplayButtonWidget implements Widget {
             onHoverStateChanged();
             hideTooltip();
         }
+    }
+
+    @Override
+    public boolean isInteractive() {
+        return interactive;
+    }
+
+    /** Включить/выключить обсчёт наведения (например, когда скрипт назначил виджету поведение). */
+    public void setInteractive(boolean interactive) {
+        this.interactive = interactive;
+        if (!interactive) clearHover();
     }
 }

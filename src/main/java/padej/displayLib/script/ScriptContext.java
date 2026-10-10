@@ -119,6 +119,15 @@ public final class ScriptContext {
      *
      * @return true, если функция найдена и выполнена без ошибок
      */
+    /**
+     * Будет ли клик по кнопке с {@code onClick: "name"} что-то делать: скрипт загружен, функция
+     * объявлена и её тело не пустое. Иначе виджет можно не обсчитывать (см. Widget#isInteractive).
+     */
+    public boolean clickDoesSomething(String name) {
+        ScreenScript script = getScript();
+        return script != null && name != null && script.hasFunction(name) && !script.isEmptyFunction(name);
+    }
+
     public boolean callClick(String name, String widgetId, Widget widget, Player player) {
         if (script == null || closed) return false;
         WidgetAPI w = widget != null ? widgetApi(widgetId, widget) : null;

@@ -17,6 +17,15 @@ import org.bukkit.Location;
 public interface Widget {
     
     boolean isHovered();
+
+    /**
+     * Реагирует ли виджет на взгляд и клик. Виджет без действия по клику (или с пустой функцией)
+     * и без визуальной реакции на наведение - просто надпись: его зона наведения не считается
+     * на каждом тике и он не перехватывает клики у виджетов позади.
+     */
+    default boolean isInteractive() {
+        return true;
+    }
     
     void handleClick();
     

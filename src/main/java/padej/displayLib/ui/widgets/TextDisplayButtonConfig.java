@@ -11,6 +11,8 @@ public class TextDisplayButtonConfig {
     private Component text;
     private Component hoveredText;
     private Runnable onClick;
+    /** false - виджет без реакции на наведение/клик: зона наведения не обсчитывается */
+    private boolean interactive = true;
     private Component tooltip;
     private TextColor tooltipColor;
     private int tooltipDelay;
@@ -285,5 +287,14 @@ public class TextDisplayButtonConfig {
     
     public padej.displayLib.config.HoverAnimation getHoverAnimation() {
         return hoverAnimation;
+    }
+
+    public TextDisplayButtonConfig setInteractive(boolean interactive) {
+        this.interactive = interactive;
+        return this;
+    }
+
+    public boolean isInteractive() {
+        return interactive;
     }
 }

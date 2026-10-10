@@ -17,6 +17,7 @@ import org.joml.Vector3f;
 import padej.displayLib.DisplayLib;
 import padej.displayLib.config.ScreenDefinition;
 import padej.displayLib.config.WidgetDefinition;
+import padej.displayLib.script.ScriptContext;
 import padej.displayLib.ui.widgets.ItemDisplayButtonConfig;
 import padej.displayLib.ui.widgets.TextDisplayButtonConfig;
 import padej.displayLib.ui.widgets.WidgetPosition;
@@ -98,7 +99,7 @@ public final class ScreenSupport {
      * @param onClick            действие по клику или null
      * @param withHoverAnimation применять ли hoverAnimation из YAML (для публичных экранов отключено)
      */
-    static TextDisplayButtonConfig textConfig(WidgetDefinition def, Runnable onClick, boolean withHoverAnimation) {
+    static TextDisplayButtonConfig textConfig(WidgetDefinition def, Runnable onClick, boolean withHoverAnimation, boolean interactive) {
         int[] bg = def.getBackgroundColor();
         int[] hbg = def.getHoveredBackgroundColor();
         float[] s = def.getScale();
@@ -136,6 +137,7 @@ public final class ScreenSupport {
                 .setHoveredBackgroundColor(Color.fromRGB(hbg[0], hbg[1], hbg[2]))
                 .setHoveredBackgroundAlpha(def.getHoveredBackgroundAlpha())
                 .setTextAlignment(convertAlignment(def.getAlignment()))
+                .setInteractive(interactive)
                 .setPosition(new WidgetPosition(0, 0, 0)); // позиция уже вычислена в resolveLocation()
 
         if (def.getTooltip() != null) {
@@ -154,7 +156,7 @@ public final class ScreenSupport {
      * @param onClick            действие по клику или null
      * @param withHoverAnimation применять ли hoverAnimation из YAML (для публичных экранов отключено)
      */
-    static ItemDisplayButtonConfig itemConfig(WidgetDefinition def, Runnable onClick, boolean withHoverAnimation) {
+    static ItemDisplayButtonConfig itemConfig(WidgetDefinition def, Runnable onClick, boolean withHoverAnimation, boolean interactive) {
         float[] s = def.getScale();
         float[] t = def.getTolerance();
         float[] tr = def.getTranslation();
@@ -165,6 +167,7 @@ public final class ScreenSupport {
                 .setTranslation(new Vector3f(tr[0], tr[1], tr[2]))
                 .setGlowOnHover(def.isGlowOnHover())
                 .setDisplayTransform(ItemDisplay.ItemDisplayTransform.GUI)
+                .setInteractive(interactive)
                 .setPosition(new WidgetPosition(0, 0, 0)); // позиция уже вычислена в resolveLocation()
 
         if (def.getGlowColor() != null) {
@@ -188,6 +191,55 @@ public final class ScreenSupport {
     static boolean hasClickAction(WidgetDefinition def) {
         return def.getOnClick() != null
                 && def.getOnClick().getAction() != WidgetDefinition.ClickAction.ActionType.NONE;
+    }
+
+    /**
+     * Сделает ли клик по виджету что-нибудь на самом деле: действие задано, а для {@code RUN_SCRIPT}
+     * функция есть в скрипте и её тело не пустое. {@code void f(dyn w, dyn p) {}} - считается «ничего».
+     *
+     * @param publicScreen на публичном экране SWITCH_SCREEN и CLOSE_SCREEN не работают
+     */
+    static boolean clickDoesSomething(WidgetDefinition def, ScriptContext scripts, boolean publicScreen, java.util.logging.Logger log, String screenId) {
+        if (!hasClickAction(def)) return false;
+        WidgetDefinition.ClickAction action = def.getOnClick();
+        switch (action.getAction()) {
+            case SWITCH_SCREEN -> { return !publicScreen && action.getTarget() != null; }
+            case CLOSE_SCREEN -> { return !publicScreen; }
+            case RUN_SCRIPT -> {
+                String fn = action.getFunction();
+                if (scripts == null || !scripts.hasScript()) {
+                    if (log != null) log.warning("Screen " + screenId + ": widget '" + def.getId() + "' has onClick \"" + fn + "\" but the screen has no script");
+                    return false;
+                }
+                if (fn == null || !scripts.getScript().hasFunction(fn)) {
+                    if (log != null) log.warning("Screen " + screenId + ": function '" + fn + "' for widget '" + def.getId() + "' not found in " + scripts.getScript().file());
+                    return false;
+                }
+                return !scripts.getScript().isEmptyFunction(fn);
+            }
+            default -> { return false; }
+        }
+    }
+
+    /**
+     * Нужно ли виджету вообще следить за взглядом: есть рабочий клик или видимая реакция на наведение
+     * (другой текст/фон/спрайт, подсказка, hover-анимация, свечение предмета).
+     */
+    static boolean isInteractive(WidgetDefinition def, boolean clickable, boolean withHoverAnimation) {
+        if (clickable) return true;
+        if (def.getTooltip() != null) return true;
+        if (withHoverAnimation && def.getHoverAnimation() != null) return true;
+        if (def.getType() == WidgetDefinition.WidgetType.ITEM_BUTTON) {
+            return def.isGlowOnHover();
+        }
+        if (def.getType() == WidgetDefinition.WidgetType.SPRITE_BUTTON && def.getHoveredSprite() != null
+                && !def.getHoveredSprite().equals(def.getSprite())) return true;
+        if (def.getHoveredText() != null && !def.getHoveredText().isEmpty()) return true;
+        if (def.getFormattedHoveredText() != null) return true;
+        int[] bg = def.getBackgroundColor(), hbg = def.getHoveredBackgroundColor();
+        if (def.getBackgroundAlpha() != def.getHoveredBackgroundAlpha()) return true;
+        // цвет фона при наведении имеет значение, только если фон вообще виден
+        return def.getBackgroundAlpha() > 0 && !java.util.Arrays.equals(bg, hbg);
     }
 
     // -------------------------------------------------------------------------

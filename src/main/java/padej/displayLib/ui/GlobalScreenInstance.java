@@ -303,18 +303,20 @@ public class GlobalScreenInstance implements ScreenAPI.Host {
     private Widget buildWidget(WidgetDefinition def) {
         // Для публичных экранов НЕ создаем onClick действие в виджете:
         // обработка идёт через handleClickBy. Hover-анимации также отключены.
+        boolean clickable = ScreenSupport.clickDoesSomething(def, scriptContext, true, DisplayLib.getInstance().getLogger(), definition.getId());
+        boolean interactive = ScreenSupport.isInteractive(def, clickable, false);
         switch (def.getType()) {
             case TEXT_BUTTON, SPRITE_BUTTON -> {
                 Location loc = ScreenSupport.resolveLocation(location, def.getPosition(), ScreenSupport.WIDGET_DEPTH_OFFSET);
                 TextDisplayButtonWidget widget = TextDisplayButtonWidget.create(
-                        loc, null, ScreenSupport.textConfig(def, null, false));
+                        loc, null, ScreenSupport.textConfig(def, null, false, interactive));
                 widget.saveRotation(screenYaw, screenPitch);
                 return widget;
             }
             case ITEM_BUTTON -> {
                 Location loc = ScreenSupport.resolveLocation(location, def.getPosition(), ScreenSupport.ITEM_WIDGET_DEPTH_OFFSET);
                 ItemDisplayButtonWidget widget = ItemDisplayButtonWidget.create(
-                        loc, null, ScreenSupport.itemConfig(def, null, false));
+                        loc, null, ScreenSupport.itemConfig(def, null, false, interactive));
                 widget.saveRotation(screenYaw, screenPitch);
                 return widget;
             }

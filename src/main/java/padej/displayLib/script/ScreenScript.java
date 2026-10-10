@@ -100,6 +100,27 @@ public final class ScreenScript {
         return get(name) instanceof JFunction;
     }
 
+    /**
+     * Есть ли у функции тело, которое что-то делает: {@code void f(dyn w, dyn p) {}} (или только
+     * пустые блоки/точки с запятой) - пустая. Для не-скриптовых функций (из Java) считается непустой.
+     */
+    public boolean isEmptyFunction(String name) {
+        Object value = get(name);
+        if (!(value instanceof FunctionNode.ScriptFunction sf)) return false;
+        return isEmpty(sf.node.body);
+    }
+
+    private static boolean isEmpty(me.padej.jumper.ast.Stmt stmt) {
+        if (stmt == null || stmt instanceof me.padej.jumper.ast.Stmts.Empty) return true;
+        if (stmt instanceof me.padej.jumper.ast.Stmts.Block block) {
+            for (me.padej.jumper.ast.Stmt child : block.stmts) {
+                if (!isEmpty(child)) return false;
+            }
+            return true;
+        }
+        return false;
+    }
+
     /** Значение переменной или функции верхнего уровня; {@code null}, если такого имени нет. */
     public Object get(String name) {
         int[] info = main.topLevel.get(name);

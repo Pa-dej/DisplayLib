@@ -129,14 +129,17 @@ public class ScreenInstance extends WidgetManager implements ScreenAPI.Host {
     }
 
     private Widget buildWidget(WidgetDefinition def) {
-        // Определяем onClick только если действие не NONE
-        Runnable onClick = ScreenSupport.hasClickAction(def) ? () -> handleClick(def) : null;
+        // onClick только если клик что-то сделает (есть действие; для RUN_SCRIPT - непустая функция).
+        // Виджет без клика и без реакции на наведение не обсчитывается на тиках.
+        boolean clickable = ScreenSupport.clickDoesSomething(def, scriptContext, false, DisplayLib.getInstance().getLogger(), definition.getId());
+        boolean interactive = ScreenSupport.isInteractive(def, clickable, true);
+        Runnable onClick = clickable ? () -> handleClick(def) : null;
 
         switch (def.getType()) {
             case TEXT_BUTTON, SPRITE_BUTTON -> {
                 Location loc = ScreenSupport.resolveLocation(location, def.getPosition(), ScreenSupport.WIDGET_DEPTH_OFFSET);
                 TextDisplayButtonWidget widget = TextDisplayButtonWidget.create(
-                        loc, viewer, ScreenSupport.textConfig(def, onClick, true));
+                        loc, viewer, ScreenSupport.textConfig(def, onClick, true, interactive));
                 // Сохраняем единую ориентацию экрана (как у фона)
                 widget.saveRotation(screenYaw, screenPitch);
                 return widget;
@@ -145,7 +148,7 @@ public class ScreenInstance extends WidgetManager implements ScreenAPI.Host {
                 // Используем увеличенное смещение для ItemDisplay виджетов
                 Location loc = ScreenSupport.resolveLocation(location, def.getPosition(), ScreenSupport.ITEM_WIDGET_DEPTH_OFFSET);
                 ItemDisplayButtonWidget widget = ItemDisplayButtonWidget.create(
-                        loc, viewer, ScreenSupport.itemConfig(def, onClick, true));
+                        loc, viewer, ScreenSupport.itemConfig(def, onClick, true, interactive));
                 widget.saveRotation(screenYaw, screenPitch);
                 return widget;
             }

@@ -13,6 +13,8 @@ import org.joml.Vector3f;
 public class ItemDisplayButtonConfig {
     private Material material;
     private Runnable onClick;
+    /** false - виджет без реакции на наведение/клик: зона наведения не обсчитывается */
+    private boolean interactive = true;
     private Component tooltip;
     private TextColor tooltipColor;
     private int tooltipDelay = 30;
@@ -269,5 +271,14 @@ public class ItemDisplayButtonConfig {
     
     public padej.displayLib.config.HoverAnimation getHoverAnimation() {
         return hoverAnimation;
+    }
+
+    public ItemDisplayButtonConfig setInteractive(boolean interactive) {
+        this.interactive = interactive;
+        return this;
+    }
+
+    public boolean isInteractive() {
+        return interactive;
     }
 }
