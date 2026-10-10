@@ -17,9 +17,7 @@ function arr(a: readonly number[]): string { return '[' + a.map(jnum).join(', ')
 function same(a: readonly number[], b: readonly number[]): boolean { return a.length === b.length && a.every((v, i) => Math.abs(v - b[i]) < 1e-9); }
 function richText(t: RichText): string {
   if (typeof t === 'string') return jstr(t);
-  return '[ ' + t.map((s) => s.glyph !== undefined
-    ? '{ glyph: ' + jstr(s.glyph) + ' }'
-    : s.sprite !== undefined
+  return '[ ' + t.map((s) => s.sprite !== undefined
     ? '{ ' + (atlasFor(s.atlas, s.sprite) ? 'atlas: ' + jstr(atlasFor(s.atlas, s.sprite)!) + ', ' : '') + 'sprite: ' + jstr(spriteFor(s.atlas, s.sprite)) + ' }'
     : '{ text: ' + jstr(s.text) + (s.color ? ', color: ' + jstr(s.color) : '') + ' }').join(', ') + ' ]';
 }

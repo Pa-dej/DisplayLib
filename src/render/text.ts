@@ -4,7 +4,6 @@ import type { RichText, RGB, Segment } from '../model/screen';
 import { calibration } from './metrics';
 import { font } from './font';
 import { drawSprite } from './sprites';
-import { glyphMetrics, drawGlyph } from './glyphs';
 
 export const NAMED_COLORS: Record<string, string> = {
   black: '#000000', dark_blue: '#0000AA', dark_green: '#00AA00', dark_aqua: '#00AAAA', dark_red: '#AA0000',
@@ -20,14 +19,13 @@ export function cssColor(c: string | undefined, fallback = '#FFFFFF'): string {
   return NAMED_COLORS[c.toLowerCase()] ?? fallback;
 }
 
-export interface Run { text: string; color: string; bold: boolean; sprite?: string; atlas?: string; glyph?: string }
+export interface Run { text: string; color: string; bold: boolean; sprite?: string; atlas?: string }
 
 /** Строки из RichText: сегменты + §-коды внутри строк (клиент их разбирает в литеральном тексте). */
 export function toRuns(t: RichText): Run[][] {
   const segs: Segment[] = typeof t === 'string' ? [{ text: t }] : t;
   const lines: Run[][] = [[]];
   for (const s of segs) {
-    if (s.glyph !== undefined) { if (s.glyph) lines[lines.length - 1].push({ text: '', color: '#FFFFFF', bold: false, glyph: s.glyph }); continue; }
     if (s.sprite !== undefined) { if (s.sprite) lines[lines.length - 1].push({ text: '', color: '#FFFFFF', bold: false, sprite: s.sprite, atlas: s.atlas }); continue; }
     let color = cssColor(s.color);
     let bold = false;
@@ -54,7 +52,7 @@ export function toRuns(t: RichText): Run[][] {
   return lines;
 }
 
-function runWidth(r: Run): number { return r.glyph ? glyphMetrics(r.glyph).advance : r.sprite ? calibration.spriteAdvance : font.width(r.text) + (r.bold ? [...r.text].length : 0); }
+function runWidth(r: Run): number { return r.sprite ? calibration.spriteAdvance : font.width(r.text) + (r.bold ? [...r.text].length : 0); }
 function lineWidth(l: Run[]): number { return l.reduce((w, r) => w + runWidth(r), 0); }
 
 /** Перенос по ширине lineWidth (TextDisplay по умолчанию 200 px), по словам, как Font.split. */
@@ -65,7 +63,7 @@ export function wrap(lines: Run[][], maxWidth = 200): Run[][] {
     let cur: Run[] = [];
     let curW = 0;
     for (const r of line) {
-      if (r.sprite || r.glyph) {
+      if (r.sprite) {
         const ww = runWidth(r);
         if (curW + ww > maxWidth && cur.length) { out.push(trimEnd(cur)); cur = []; curW = 0; }
         cur.push({ ...r }); curW += ww;
@@ -133,7 +131,6 @@ export function buildTextTexture(t: RichText, align: 'LEFT' | 'CENTERED' | 'RIGH
     const y0 = calibration.bgTop + i * lh;
     let x = x0;
     for (const r of line) {
-      if (r.glyph) { drawGlyph(ctx, r.glyph, x, y0, S); x += runWidth(r); continue; }
       if (r.sprite) { drawSprite(ctx, r.sprite, r.atlas, x, y0, S); x += runWidth(r); continue; }
       font.draw(ctx, r.text, x, y0, S, r.color, calibration.shadow);
       if (r.bold) font.draw(ctx, r.text, x + 1, y0, S, r.color, false);

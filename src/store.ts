@@ -6,7 +6,6 @@ import { tableToScreen } from './jmc/toModel';
 import { screenToJmc } from './jmc/writer';
 import { scanScript, scaffoldScript, type ScriptInfo } from './jmp/scan';
 import * as fs from './fs';
-import { glyphRegistry, glyphsToJmc, glyphsFromTable } from './render/glyphs';
 
 export interface ScreenDoc {
   /** путь внутри screens/, напр. "main_menu.jmc" или "shop/items.jmc" */
@@ -182,7 +181,6 @@ export async function refreshFolder(): Promise<void> {
   state.docs = state.docs.filter((d) => keep.has(d.path) || d.savedText === null);
   if (!state.current || !state.docs.some((d) => d.path === state.current)) state.current = state.docs[0]?.path ?? null;
   await refreshScripts();
-  await loadGlyphs();
   // скрипты экранов: читаем файл, если он есть; иначе остаётся живой шаблон
   for (const d of state.docs) {
     const name = scriptNameOf(d);
@@ -191,23 +189,6 @@ export async function refreshFolder(): Promise<void> {
     } else if (!state.scripts.includes(name)) { d.scriptSaved = null; if (!d.scriptDirty) d.scriptText = null; }
   }
   touch();
-}
-
-/** glyphs.jmc из папки плагина: реестр глифов (прямоугольные картинки в тексте). */
-export async function loadGlyphs(): Promise<void> {
-  const f = state.folder; if (!f) return;
-  try {
-    const text = await fs.readText(f.root, 'glyphs.jmc');
-    const table = parseJmc(text) as Record<string, unknown>;
-    const g = table && typeof table === 'object' ? (table as Record<string, unknown>).glyphs : null;
-    if (g && typeof g === 'object') glyphsFromTable(g as Record<string, unknown>);
-  } catch { /* файла нет - реестр пустой */ }
-}
-
-export async function saveGlyphs(): Promise<void> {
-  const f = state.folder; if (!f) return;
-  await fs.writeText(f.root, 'glyphs.jmc', glyphsToJmc());
-  glyphRegistry.dirty = false;
 }
 
 export async function refreshScripts(): Promise<void> {
@@ -245,7 +226,6 @@ export async function saveCurrent(): Promise<void> {
         state.scriptInfo[sname] = scanScript(st);
         msg += ' и scripts/' + sname;
       }
-      if (glyphRegistry.dirty) { await saveGlyphs(); msg += ' и glyphs.jmc'; }
       notify(msg + ' (hot reload подхватит в игре)');
     } catch (e) { fail('Не удалось сохранить: ' + (e as Error).message); }
   } else {

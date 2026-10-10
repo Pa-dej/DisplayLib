@@ -20,8 +20,6 @@ export interface Segment {
   color?: string;
   sprite?: string;
   atlas?: string;
-  /** глиф: прямоугольная картинка из ресурспака (шрифт displaylib:icons), имя = путь в textures/ без .png */
-  glyph?: string;
 }
 
 /** Текст: строка или сегменты. */
@@ -215,5 +213,5 @@ export function cloneDeep<T>(v: T): T {
 export function richToPlain(t: RichText | null | undefined): string {
   if (t == null) return '';
   if (typeof t === 'string') return t;
-  return t.map((s) => (s.sprite !== undefined ? '[' + s.sprite + ']' : s.glyph !== undefined ? '[' + s.glyph + ']' : s.text)).join('');
+  return t.map((s) => (s.sprite !== undefined ? '[' + s.sprite + ']' : s.text)).join('');
 }

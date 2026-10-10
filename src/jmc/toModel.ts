@@ -33,8 +33,7 @@ function rich(v: JmcValue): RichText | null {
       if (typeof p === 'string') segs.push({ text: p });
       else if (p && typeof p === 'object') {
         const pt = p as JmcTable;
-        if (pt.glyph != null) segs.push({ text: '', glyph: String(pt.glyph) });
-        else if (pt.sprite != null) segs.push({ text: '', sprite: String(pt.sprite), atlas: pt.atlas == null ? undefined : String(pt.atlas) });
+        if (pt.sprite != null) segs.push({ text: '', sprite: String(pt.sprite), atlas: pt.atlas == null ? undefined : String(pt.atlas) });
         else segs.push({ text: pt.text == null ? '' : String(pt.text), color: pt.color == null ? undefined : String(pt.color) });
       }
     }

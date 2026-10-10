@@ -10,7 +10,6 @@ import ExportDialog from './components/ExportDialog.vue';
 import { state, openFolder, saveCurrent, saveAll, undo, redo, newScreen, currentDoc, notify, fail } from './store';
 import { fsSupported } from './fs';
 import { buildIconPack } from './pack';
-import { glyphRegistry } from './render/glyphs';
 import { font } from './render/font';
 import { loadSheet } from './render/items';
 import { loadSpriteIndex } from './render/sprites';
@@ -25,7 +24,7 @@ async function makePack() {
     const url = URL.createObjectURL(r.blob);
     const a = document.createElement('a'); a.href = url; a.download = 'DisplayLib-icons.zip'; a.click();
     setTimeout(() => URL.revokeObjectURL(url), 10000);
-    notify(`Ресурспак: ${r.icons} иконок, ${r.glyphs} глифов` + (r.missing.length ? `; нет текстур: ${r.missing.join(', ')}` : ''));
+    notify(`Ресурспак: ${r.icons} иконок`);
   } catch (e) { fail('Не удалось собрать ресурспак: ' + (e as Error).message); }
   finally { packBusy.value = false; }
 }
@@ -63,7 +62,7 @@ onMounted(async () => {
         <button class="btn" @click="newScreen()"><Icon name="plus" /> Экран</button>
         <button class="btn" @click="importOpen = true"><Icon name="file-import" /> Импорт .jmc</button>
         <button class="btn" @click="exportOpen = true" :disabled="!currentDoc"><Icon name="file-export" /> Экспорт</button>
-        <button class="btn" @click="makePack" :disabled="packBusy" :title="'Собрать DisplayLib-icons.zip: иконки блоков + шрифт глифов (' + Object.keys(glyphRegistry.map).length + ')'"><Icon name="box" /> Ресурспак</button>
+        <button class="btn" @click="makePack" :disabled="packBusy" :title="'Собрать DisplayLib-icons.zip: иконки предметов для 3D-блоков (item/barrel и т.п.)'"><Icon name="box" /> Ресурспак</button>
         <button class="btn primary" @click="saveCurrent" :disabled="!currentDoc"><Icon :name="state.folder ? 'save' : 'download'" /> {{ state.folder ? 'Сохранить' : 'Скачать' }} <kbd style="opacity:.7">Ctrl+S</kbd></button>
       </div>
       <div class="spacer"></div>
