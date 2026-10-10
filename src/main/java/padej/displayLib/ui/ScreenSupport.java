@@ -351,9 +351,10 @@ public final class ScreenSupport {
      *
      * <p>Имя спрайта - путь к png внутри папки атласа: items/blocks - {@code item/apple}, {@code block/stone};
      * gui - {@code hud/heart/full}; mob_effects - {@code speed}; particles - {@code heart}. Если атлас не задан,
-     * он выводится из имени: {@code item/...} → items, {@code block/...} → blocks; голое имя ({@code mace},
-     * {@code bricks}, {@code speed}) дополняется само: предмет → {@code item/mace} (items), блок →
-     * {@code block/bricks} (blocks), эффект → mob_effects; иначе остаётся как есть в blocks (клиентский дефолт).
+     * берётся клиентский дефолт {@code minecraft:blocks} (он собран из {@code block/} и {@code item/}, так что
+     * {@code item/iron_ingot} в нём есть - ровно как в tellraw без atlas); голое имя ({@code mace},
+     * {@code bricks}, {@code speed}) дополняется само: предмет → {@code item/mace}, блок → {@code block/bricks},
+     * эффект → mob_effects.
      * Неверный ключ не роняет экран - вместо спрайта получится обычный текст с его именем.</p>
      *
      * <p>Цвет у спрайта задаётся явно белым, чтобы он не наследовал цвет соседнего сегмента.</p>
@@ -379,9 +380,10 @@ public final class ScreenSupport {
 
         if (!name.contains("/")) {
             if (a == null || a.equals("minecraft:items") || a.equals("minecraft:blocks")) {
+                // атлас blocks у клиента собран из block/ И item/, поэтому для обоих подходит он же
                 Material m = Material.matchMaterial(name);
-                if (m != null && m.isItem() && !m.isBlock()) return new String[]{"minecraft:items", "item/" + name};
-                if (m != null && m.isBlock()) return new String[]{"minecraft:blocks", "block/" + name};
+                if (m != null && m.isItem() && !m.isBlock()) return new String[]{a != null ? a : "minecraft:blocks", "item/" + name};
+                if (m != null && m.isBlock()) return new String[]{a != null ? a : "minecraft:blocks", "block/" + name};
             }
             if (a == null) {
                 if (org.bukkit.Registry.EFFECT.get(org.bukkit.NamespacedKey.minecraft(name)) != null) {
@@ -389,7 +391,8 @@ public final class ScreenSupport {
                 }
             }
         }
-        if (a == null) a = name.startsWith("item/") ? "minecraft:items" : "minecraft:blocks";
+        // без атласа - как у tellraw: minecraft:blocks (в нём и block/..., и item/...)
+        if (a == null) a = "minecraft:blocks";
         return new String[]{a, name};
     }
 
