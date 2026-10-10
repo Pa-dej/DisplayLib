@@ -57,7 +57,7 @@ public final class JmcValues {
         return null;
     }
 
-    public static Double number(JTable table, String... keys) {
+    static Double number(JTable table, String... keys) {
         Object value = get(table, keys);
         if (value instanceof Number n) return n.doubleValue();
         if (value instanceof String s) {

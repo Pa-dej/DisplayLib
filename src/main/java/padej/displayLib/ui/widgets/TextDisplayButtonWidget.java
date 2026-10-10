@@ -235,16 +235,6 @@ public class TextDisplayButtonWidget implements Widget {
         Runnable flush = () -> { if (cur[0] > 0 || word.length() > 0) { words.add(new int[]{cur[0], 0}); cur[0] = 0; word.setLength(0); } };
         for (Component part : c.iterable(net.kyori.adventure.text.ComponentIteratorType.DEPTH_FIRST)) {
             if (part instanceof net.kyori.adventure.text.ObjectComponent) { cur[0] += SPRITE_ADVANCE; word.append('#'); continue; }
-            if (part instanceof TextComponent tc && padej.displayLib.config.GlyphRegistry.FONT.equals(tc.font())) {
-                // глиф из displaylib:icons: ширина из glyphs.jmc
-                tc.content().codePoints().forEach(cp -> {
-                    for (padej.displayLib.config.GlyphRegistry.Glyph g : padej.displayLib.config.GlyphRegistry.all().values()) {
-                        if (g.codePoint() == cp) { cur[0] += g.width(); word.append('#'); return; }
-                    }
-                    cur[0] += 6; word.append('#');
-                });
-                continue;
-            }
             String txt = part instanceof TextComponent t ? t.content()
                     : part instanceof net.kyori.adventure.text.TranslatableComponent tr ? tr.key() : "";
             txt.codePoints().forEach(cp -> {

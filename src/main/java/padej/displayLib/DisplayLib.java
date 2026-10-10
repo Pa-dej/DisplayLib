@@ -72,9 +72,6 @@ public final class DisplayLib extends JavaPlugin {
         // config.jmc: hotReload, scriptTimeoutMs
         config = PluginConfig.load(this);
 
-        // Глифы (glyphs.jmc + ресурспак DisplayLib-icons): широкие картинки в тексте
-        padej.displayLib.config.GlyphRegistry.load(this);
-
         // Экраны (.jmc) и их hot reload
         screenRegistry = new ScreenRegistry(this, config.hotReload());
         screenRegistry.initialize();

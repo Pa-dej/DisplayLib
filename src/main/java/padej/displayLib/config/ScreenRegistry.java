@@ -87,7 +87,6 @@ public class ScreenRegistry {
      * Перезагрузить все экраны
      */
     public void reloadAll() {
-        GlyphRegistry.load(plugin);
         Map<String, ScreenDefinition> loadedScreens = screenLoader.loadAllScreens();
         
         // Без промежуточной очистки: в реестре не возникает момента, когда экранов нет вовсе
