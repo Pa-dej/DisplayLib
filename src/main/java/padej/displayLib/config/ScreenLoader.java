@@ -338,7 +338,7 @@ public class ScreenLoader {
 
         Object onClick = get(data, "onClick", "on_click", "click");
         if (onClick != null) {
-            WidgetDefinition.ClickAction action = parseClickAction(onClick, where);
+            WidgetDefinition.ClickAction action = parseClickAction(onClick, where, widget.getId());
             if (action != null) widget.setOnClick(action);
         }
 
@@ -354,6 +354,7 @@ public class ScreenLoader {
     /**
      * Действие по клику. Формы записи:
      * <pre>
+     * onClick: true                                          // функция скрипта с именем id виджета
      * onClick: "buySword"                                   // функция скрипта
      * onClick: "close"                                       // закрыть экран
      * onClick: { action: "RUN_SCRIPT", function: "buySword" }
@@ -363,8 +364,21 @@ public class ScreenLoader {
      * onClick: { action: "NONE" }
      * </pre>
      */
-    private WidgetDefinition.ClickAction parseClickAction(Object onClick, String where) {
+    private WidgetDefinition.ClickAction parseClickAction(Object onClick, String where, String widgetId) {
         WidgetDefinition.ClickAction action = new WidgetDefinition.ClickAction();
+
+        // onClick: true - вызвать функцию скрипта, названную как id виджета (без строки с именем);
+        // onClick: false - ничего
+        if (onClick instanceof Boolean b) {
+            if (!b) { action.setAction(WidgetDefinition.ClickAction.ActionType.NONE); return action; }
+            if (widgetId == null || widgetId.isBlank()) {
+                plugin.getLogger().warning(where + ": onClick: true requires widget id (function name)");
+                return null;
+            }
+            action.setAction(WidgetDefinition.ClickAction.ActionType.RUN_SCRIPT);
+            action.setFunction(widgetId);
+            return action;
+        }
 
         if (onClick instanceof String s) {
             String value = s.trim();
@@ -380,7 +394,7 @@ public class ScreenLoader {
         }
 
         if (!(onClick instanceof JTable table)) {
-            plugin.getLogger().warning(where + ": onClick must be a string or a table");
+            plugin.getLogger().warning(where + ": onClick must be true, a string or a table");
             return null;
         }
 

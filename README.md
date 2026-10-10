@@ -128,6 +128,7 @@ dyn widgets = [
 
 | Запись | Что делает |
 |---|---|
+| `onClick: true` | вызвать функцию скрипта, названную как `id` виджета: `void <id>(widget, player)` |
 | `onClick: "buySword"` | вызвать функцию `buySword(widget, player)` скрипта |
 | `onClick: { switchTo: "main_menu" }` | открыть другой экран на том же месте |
 | `onClick: "close"` | закрыть экран |
