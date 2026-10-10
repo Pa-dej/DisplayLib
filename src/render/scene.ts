@@ -25,6 +25,8 @@ interface Node {
   group: THREE.Group;
   mesh: THREE.Mesh;
   hit: THREE.LineSegments | null;
+  /** Заблокирован в редакторе: не выбирается кликом и не перетаскивается. */
+  locked?: boolean;
   dispose(): void;
 }
 
@@ -268,7 +270,8 @@ export class ScreenScene {
   }
 
   private attachGizmo(): void {
-    const n = this.selected ? this.nodes.get(this.selected) : null;
+    const sel = this.selected ? this.nodes.get(this.selected) : null;
+    const n = sel && !sel.locked ? sel : null; // у заблокированного гизмо нет
     if (n) { if (this.gizmo.object !== n.group) this.gizmo.attach(n.group); }
     else this.gizmo.detach();
     this.gizmoHelper.visible = !!n;
@@ -302,8 +305,10 @@ export class ScreenScene {
     const old = this.nodes.get(uid);
     if (old) { if (this.gizmo.object === old.group) this.gizmo.detach(); this.scene.remove(old.group); old.dispose(); this.nodes.delete(uid); }
     const w = this.screen?.widgets.find((x) => x.uid === uid);
-    if (!w) { if (this.selected === uid) { this.updateSelectionBox(); this.attachGizmo(); } return; }
+    // скрытый виджет не строится вовсе: его нет ни в сцене, ни в выборе, ни среди привязок
+    if (!w || w.hidden) { if (this.selected === uid) { this.updateSelectionBox(); this.attachGizmo(); } return; }
     const n = w.type === 'ITEM_BUTTON' ? this.buildItem(w) : this.buildText(w);
+    n.locked = !!w.locked;
     this.nodes.set(uid, n);
     this.scene.add(n.group);
     if (this.selected === uid) { this.updateSelectionBox(); this.attachGizmo(); }
@@ -433,7 +438,7 @@ export class ScreenScene {
   }
 
   private pick(): string | null {
-    const meshes = [...this.nodes.values()].map((n) => n.mesh);
+    const meshes = [...this.nodes.values()].filter((n) => !n.locked).map((n) => n.mesh);
     const hits = this.raycaster.intersectObjects(meshes, false);
     for (const h of hits) { const uid = h.object.userData.uid as string | null; if (uid) return uid; }
     return null;

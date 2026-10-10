@@ -100,10 +100,38 @@ export function loadScreenText(path: string, text: string): ScreenDoc {
   const table = parseJmc(text);
   if (!table || typeof table !== 'object' || Array.isArray(table)) throw new Error('ожидались переменные верхнего уровня или return { ... }');
   const { screen, warnings } = tableToScreen(table, path.split('/').pop()!);
+  applyEditorFlags(screen);
   const existing = state.docs.find((d) => d.path === path);
   const doc: ScreenDoc = { path, screen, savedText: text, warnings, dirty: false, scriptText: existing?.scriptText ?? null, scriptSaved: existing?.scriptSaved ?? null, scriptDirty: existing?.scriptDirty ?? false };
   if (existing) Object.assign(existing, doc); else state.docs.push(doc);
   return existing ?? doc;
+}
+
+// ---- флаги редактора (скрыт / заблокирован): не часть .jmc, живут в localStorage по id экрана
+function flagsKey(screenId: string): string { return 'displaylib.flags.' + screenId; }
+export function applyEditorFlags(s: Screen): void {
+  try {
+    const raw = localStorage.getItem(flagsKey(s.id)); if (!raw) return;
+    const m = JSON.parse(raw) as Record<string, string>;
+    for (const w of s.widgets) { const f = w.id ? m[w.id] : undefined; if (!f) continue; w.hidden = f.includes('h') || undefined; w.locked = f.includes('l') || undefined; }
+  } catch { /* нет доступа к localStorage */ }
+}
+export function saveEditorFlags(s: Screen): void {
+  try {
+    const m: Record<string, string> = {};
+    for (const w of s.widgets) { const f = (w.hidden ? 'h' : '') + (w.locked ? 'l' : ''); if (f && w.id) m[w.id] = f; }
+    if (Object.keys(m).length) localStorage.setItem(flagsKey(s.id), JSON.stringify(m)); else localStorage.removeItem(flagsKey(s.id));
+  } catch { /* ignore */ }
+}
+/** Скрыть/показать виджет в редакторе (скрытый не рисуется и не участвует в привязках). */
+export function toggleHidden(uid: string): void {
+  const s = currentScreen.value!; const w = s.widgets.find((x) => x.uid === uid); if (!w) return;
+  w.hidden = !w.hidden || undefined; saveEditorFlags(s); state.revision++;
+}
+/** Заблокировать/разблокировать: заблокированный не выбирается кликом в сцене и не перетаскивается. */
+export function toggleLocked(uid: string): void {
+  const s = currentScreen.value!; const w = s.widgets.find((x) => x.uid === uid); if (!w) return;
+  w.locked = !w.locked || undefined; saveEditorFlags(s); state.revision++;
 }
 
 export function currentText(): string { const s = currentScreen.value; return s ? screenToJmc(s) : ''; }

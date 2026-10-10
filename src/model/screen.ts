@@ -58,6 +58,10 @@ export interface HoverAnimation {
 export interface Widget {
   /** Внутренний ключ редактора (не попадает в файл). */
   uid: string;
+  /** Флаги редактора (в файл не пишутся, хранятся в localStorage по id экрана и виджета):
+   *  hidden - не рисуется и не участвует в привязках; locked - не выбирается и не двигается в сцене. */
+  hidden?: boolean;
+  locked?: boolean;
   id: string;
   type: WidgetType;
   position: Vec3;

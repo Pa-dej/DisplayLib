@@ -63,7 +63,7 @@ function onWindowBlur() { scene?.cancelInteraction(); }
 function nudge(e: KeyboardEvent) {
   if (e.key === 'f' || e.key === 'F') { scene?.focusSelected(); return; }
   if (e.key === '1' || e.key === '3' || e.key === '7') { scene?.alignTo(e.key === '1' ? 'z' : e.key === '3' ? 'x' : 'y', e.ctrlKey); e.preventDefault(); return; }
-  const w = selectedWidget.value; if (!w) return;
+  const w = selectedWidget.value; if (!w || w.locked) return;
   const step = e.shiftKey ? 0.5 : e.altKey ? 0.01 : 0.1;
   const d: Record<string, [number, number, number]> = { ArrowLeft: [-step, 0, 0], ArrowRight: [step, 0, 0], ArrowUp: [0, step, 0], ArrowDown: [0, -step, 0], PageUp: [0, 0, -step], PageDown: [0, 0, step] };
   const v = d[e.key]; if (!v) return;

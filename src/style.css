@@ -139,6 +139,12 @@ input[type=range] { accent-color: var(--vp-c-brand-1); }
 .nav-item .kind { font-size: 10px; font-weight: 700; padding: 0 4px; border-radius: 4px; background: var(--vp-c-default-soft); color: var(--vp-c-text-3); flex: none; }
 .nav-item .name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .nav-item .muted { color: var(--vp-c-text-3); font-size: 12px; }
+.nav-item.hidden .name, .nav-item.hidden .kind { opacity: 0.45; }
+.nav-item .btn.sm.icon { width: 22px; min-width: 22px; height: 22px; padding: 0; }
+.nav-item { gap: 5px; }
+.nav-item .btn.flag { opacity: 0.25; }
+.nav-item:hover .btn.flag, .nav-item.active .btn.flag, .nav-item .btn.flag.on { opacity: 1; }
+.nav-item .btn.flag.on { color: var(--vp-c-brand-1); }
 .empty { padding: 24px 12px; text-align: center; color: var(--vp-c-text-3); font-size: 13px; }
 
 /* --- превью */

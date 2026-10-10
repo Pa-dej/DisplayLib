@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import Icon from './Icon.vue';
-import { state, currentScreen, addWidget, removeWidget, duplicateWidget, moveWidgetOrder, closeDoc } from '../store';
+import { state, currentScreen, addWidget, removeWidget, duplicateWidget, moveWidgetOrder, closeDoc, toggleHidden, toggleLocked } from '../store';
 import { richToPlain } from '../model/screen';
 
 function select(path: string) { state.current = path; }
@@ -31,10 +31,12 @@ function label(w: { id: string; type: string; text: any; material: string; sprit
           <button class="btn sm" @click="addWidget('SPRITE_BUTTON')" title="Спрайт атласа (1.21.9+)"><Icon name="icons" /></button>
         </span>
       </div>
-      <div v-for="(w, i) in currentScreen.widgets" :key="w.uid" class="nav-item" :class="{ active: w.uid === state.selected }" @click="state.selected = w.uid" @mouseenter="state.hovered = w.uid" @mouseleave="state.hovered = null">
+      <div v-for="(w, i) in currentScreen.widgets" :key="w.uid" class="nav-item" :class="{ active: w.uid === state.selected, hidden: w.hidden }" @click="state.selected = w.uid" @mouseenter="state.hovered = w.uid" @mouseleave="state.hovered = null">
         <span class="kind">{{ w.type === 'TEXT_BUTTON' ? 'T' : w.type === 'SPRITE_BUTTON' ? 'S' : 'I' }}</span>
         <span class="name">{{ label(w) }}</span>
         <span class="muted" v-if="w.onClick && w.onClick.action !== 'NONE'"><Icon :name="w.onClick.action === 'RUN_SCRIPT' ? 'code' : w.onClick.action === 'SWITCH_SCREEN' ? 'exchange-alt' : 'times'" :size="11" /></span>
+        <button class="btn sm icon flag" :class="{ on: w.hidden }" :title="w.hidden ? 'Показать' : 'Скрыть (не рисуется, не участвует в привязках)'" @click.stop="toggleHidden(w.uid)"><Icon :name="w.hidden ? 'eye-slash' : 'eye'" :size="11" /></button>
+        <button class="btn sm icon flag" :class="{ on: w.locked }" :title="w.locked ? 'Разблокировать' : 'Заблокировать (не выбирается и не двигается в сцене)'" @click.stop="toggleLocked(w.uid)"><Icon :name="w.locked ? 'lock' : 'lock-open'" :size="11" /></button>
         <template v-if="w.uid === state.selected">
           <button class="btn sm icon" title="Выше" @click.stop="moveWidgetOrder(w.uid, -1)" :disabled="i === 0"><Icon name="arrow-up" /></button>
           <button class="btn sm icon" title="Ниже" @click.stop="moveWidgetOrder(w.uid, 1)" :disabled="i === currentScreen.widgets.length - 1"><Icon name="arrow-down" /></button>
