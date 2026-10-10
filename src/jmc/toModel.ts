@@ -67,6 +67,17 @@ export function tableToScreen(data: JmcTable, fileName: string): ToModelResult {
     s.background = b;
   } else s.background = null;
 
+  // morph: true | 12 | { enabled, duration, steps }
+  const mr = get(data, 'morph');
+  if (typeof mr === 'boolean') s.morph.enabled = mr;
+  else if (typeof mr === 'number') { s.morph.enabled = mr > 0; if (mr > 0) s.morph.duration = Math.trunc(mr); }
+  else if (mr && typeof mr === 'object' && !Array.isArray(mr)) {
+    const mt = mr as JmcTable;
+    const en = bool(mt, 'enabled'); s.morph.enabled = en == null ? true : en;
+    const du = num(mt, 'duration', 'ticks'); if (du != null) s.morph.duration = Math.max(1, Math.min(59, Math.trunc(du)));
+    const stp = num(mt, 'steps'); if (stp != null) s.morph.steps = Math.trunc(stp);
+  }
+
   let script = str(data, 'script');
   if (script == null) { const sc = table(data, 'scripts'); if (sc) script = str(sc, 'file'); }
   s.script = script && script.trim() ? script.trim() : null;

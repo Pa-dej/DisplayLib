@@ -97,6 +97,10 @@ export interface Background {
   text: string;
 }
 
+/** Анимация смены/закрытия экрана: steps = -1 означает duration / 2 (как в плагине). */
+export interface Morph { enabled: boolean; duration: number; steps: number }
+export function defaultMorph(): Morph { return { enabled: false, duration: 10, steps: -1 }; }
+
 export interface Screen {
   id: string;
   screenType: ScreenType;
@@ -105,6 +109,7 @@ export interface Screen {
   closeDistance: number;
   rangeCheckInterval: number;
   background: Background | null;
+  morph: Morph;
   script: string | null;
   widgets: Widget[];
 }
@@ -201,6 +206,7 @@ export function defaultScreen(id = 'new_screen'): Screen {
     closeDistance: -1,
     rangeCheckInterval: 10,
     background: defaultBackground(),
+    morph: defaultMorph(),
     script: null,
     widgets: [],
   };

@@ -56,6 +56,11 @@ export function screenToJmc(s: Screen, opts: WriteOptions = {}): string {
   if (s.interactionRadius !== -1 || opts.verbose) L.push(`double interactionRadius = ${jnum(s.interactionRadius)};`);
   if (s.closeDistance !== -1 || opts.verbose) L.push(`double closeDistance = ${jnum(s.closeDistance)};`);
   if (s.rangeCheckInterval !== 10 || opts.verbose) L.push(`int rangeCheckInterval = ${s.rangeCheckInterval};`);
+  if (s.morph.enabled || opts.verbose) {
+    const f = [`enabled: ${s.morph.enabled}`, `duration: ${s.morph.duration}`];
+    if (s.morph.steps > 0 || opts.verbose) f.push(`steps: ${s.morph.steps > 0 ? s.morph.steps : Math.max(1, Math.floor(s.morph.duration / 2))}`);
+    L.push(`dyn morph = { ${f.join(', ')} };`);
+  }
   if (s.background) {
     const b = s.background;
     const f: string[] = [`color: ${arr(b.color)}`, `alpha: ${b.alpha}`, `scale: ${arr(b.scale)}`];

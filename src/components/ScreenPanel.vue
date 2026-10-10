@@ -41,6 +41,16 @@ const idBad = computed(() => !/^[A-Za-z0-9_\-]+$/.test(s.value.id));
       <div class="field"><label>rangeCheckInterval</label><div class="row"><input type="number" min="1" step="1" :value="s.rangeCheckInterval" @focus="snapshot()" @input="s.rangeCheckInterval = Math.max(1, Math.round(num($event))); touch()" /><span class="hint">Обновлений</span></div></div>
     </div>
 
+    <div class="section" v-if="s.screenType === 'PRIVATE'">
+      <h3>Morph - анимация смены экрана</h3>
+      <div class="field"><label>morph</label><label class="row"><input type="checkbox" :checked="s.morph.enabled" @change="snapshot(); s.morph.enabled = ($event.target as HTMLInputElement).checked; touch()" /> <span class="hint">Анимировать переход на этот экран (switchTo) и его закрытие</span></label></div>
+      <template v-if="s.morph.enabled">
+        <div class="field"><label>duration</label><div class="row"><input type="number" min="1" max="59" step="1" :value="s.morph.duration" @focus="snapshot()" @input="s.morph.duration = Math.max(1, Math.min(59, Math.round(num($event)))); touch()" /><span class="hint">Тиков (клиент интерполирует позицию, масштаб и фон)</span></div></div>
+        <div class="field"><label>steps</label><div class="row"><input type="number" min="0" max="59" step="1" :value="s.morph.steps > 0 ? s.morph.steps : ''" placeholder="duration / 2" @focus="snapshot()" @input="s.morph.steps = Math.round(num($event)) || -1; touch()" /><span class="hint">Шагов смены текста, цвета текста и предмета</span></div></div>
+        <div class="hint">Виджеты с тем же id и типом на обоих экранах переезжают (позиция, масштаб, фон - плавно; текст «text» → «extext» → … → «example text», цвет по RGB), остальные сжимаются в ноль и исчезают / вырастают из нуля. Действует morph открываемого экрана; при закрытии - закрываемого.</div>
+      </template>
+    </div>
+
     <div class="section">
       <h3>Скрипт</h3>
       <div class="field"><label>script</label><div><input type="text" list="script-list" :value="s.script ?? ''" @focus="snapshot()" @input="s.script = text($event).trim() || null; touch()" placeholder="Имя.jmp (в scripts/)" />
