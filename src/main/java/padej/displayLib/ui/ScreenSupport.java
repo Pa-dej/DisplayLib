@@ -320,6 +320,12 @@ public final class ScreenSupport {
                 // Простая строка без форматирования
                 builder.append(Component.text(string));
             } else if (part instanceof Map<?, ?> partMap) {
+                Object glyph = partMap.get("glyph");
+                if (glyph != null) {
+                    // Сегмент-глиф: {glyph: "widget/button"} - символ шрифта displaylib:icons из ресурспака
+                    builder.append(padej.displayLib.config.GlyphRegistry.component(glyph.toString()));
+                    continue;
+                }
                 Object sprite = partMap.get("sprite");
                 if (sprite != null) {
                     // Сегмент-спрайт: {sprite: "item/iron_ingot"} или {atlas: "minecraft:items", sprite: "..."}
