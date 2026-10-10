@@ -312,7 +312,8 @@ public final class ScreenSupport {
             return Component.text(formattedText.toString());
         }
 
-        TextComponent.Builder builder = Component.text();
+        // Корень - явный белый: сегменты без цвета всегда белые, цвет соседнего сегмента не «протекает»
+        TextComponent.Builder builder = Component.text().color(NamedTextColor.WHITE);
 
         for (Object part : textParts) {
             if (part instanceof String string) {
@@ -347,17 +348,49 @@ public final class ScreenSupport {
 
     /**
      * Компонент-объект со спрайтом атласа (клиент 1.21.9+): в тексте рисуется квадратом 8×8 пикселей.
-     * Атлас по умолчанию: {@code minecraft:items} для {@code item/...}, иначе {@code minecraft:blocks}.
-     * Неверный ключ не роняет экран - вместо спрайта получится обычный текст с его именем.
+     *
+     * <p>Имя спрайта - путь к png внутри папки атласа: items/blocks - {@code item/apple}, {@code block/stone};
+     * gui - {@code hud/heart/full}; mob_effects - {@code speed}; particles - {@code heart}. Если атлас не задан,
+     * он выводится из имени: {@code item/...} → items, {@code block/...} → blocks; голое имя ({@code mace},
+     * {@code bricks}, {@code speed}) дополняется само: предмет → {@code item/mace} (items), блок →
+     * {@code block/bricks} (blocks), эффект → mob_effects; иначе остаётся как есть в blocks (клиентский дефолт).
+     * Неверный ключ не роняет экран - вместо спрайта получится обычный текст с его именем.</p>
+     *
+     * <p>Цвет у спрайта задаётся явно белым, чтобы он не наследовал цвет соседнего сегмента.</p>
      */
     public static Component spriteComponent(String atlas, String sprite) {
         if (sprite == null || sprite.isBlank()) return Component.empty();
-        String a = atlas != null && !atlas.isBlank() ? atlas : (sprite.startsWith("item/") ? "minecraft:items" : "minecraft:blocks");
+        String[] resolved = resolveSprite(atlas, sprite);
         try {
-            return Component.object(ObjectContents.sprite(Key.key(a), Key.key(sprite)));
+            return Component.object(ObjectContents.sprite(Key.key(resolved[0]), Key.key(resolved[1])))
+                    .color(NamedTextColor.WHITE);
         } catch (InvalidKeyException e) {
             return Component.text("[" + sprite + "]");
         }
+    }
+
+    /** {atlas, sprite} с подставленными атласом и папкой (см. {@link #spriteComponent}). */
+    static String[] resolveSprite(String atlas, String sprite) {
+        String name = sprite.trim();
+        if (name.startsWith("minecraft:")) name = name.substring("minecraft:".length());
+        if (name.endsWith(".png")) name = name.substring(0, name.length() - 4);
+        String a = atlas != null && !atlas.isBlank() ? atlas.trim() : null;
+        if (a != null && !a.contains(":")) a = "minecraft:" + a;
+
+        if (!name.contains("/")) {
+            if (a == null || a.equals("minecraft:items") || a.equals("minecraft:blocks")) {
+                Material m = Material.matchMaterial(name);
+                if (m != null && m.isItem() && !m.isBlock()) return new String[]{"minecraft:items", "item/" + name};
+                if (m != null && m.isBlock()) return new String[]{"minecraft:blocks", "block/" + name};
+            }
+            if (a == null) {
+                if (org.bukkit.Registry.EFFECT.get(org.bukkit.NamespacedKey.minecraft(name)) != null) {
+                    return new String[]{"minecraft:mob_effects", name};
+                }
+            }
+        }
+        if (a == null) a = name.startsWith("item/") ? "minecraft:items" : "minecraft:blocks";
+        return new String[]{a, name};
     }
 
     /** Цвет по hex-строке ("#FFD700") или имени ("green"); null, если не распознан. */
