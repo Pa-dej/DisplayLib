@@ -307,10 +307,22 @@ export async function saveCurrent(): Promise<void> {
   notify(msg + ' - положи в plugins/DisplayLib/screens и scripts');
 }
 
+/** Ctrl+Shift+S: все экраны и их скрипты одним zip (screens/*.jmc, scripts/*.jmp) - распаковать в plugins/DisplayLib. */
 export async function saveAll(): Promise<void> {
-  const cur = state.current;
-  for (const d of state.docs) { if (d.dirty || d.scriptDirty) { state.current = d.path; await saveCurrent(); } }
-  state.current = cur;
+  if (!state.docs.length) return;
+  const files: Record<string, string> = {};
+  for (const d of state.docs) {
+    const text = screenToJmc(d.screen);
+    files['screens/' + d.screen.id + '.jmc'] = text;
+    d.savedText = text; d.dirty = false;
+    if (d.scriptDirty || hasHandlers(d.screen) || d.scriptText != null) {
+      const st = scriptTextOf(d);
+      files['scripts/' + scriptNameOf(d)] = st;
+      d.scriptText = st; d.scriptSaved = st; d.scriptDirty = false;
+    }
+  }
+  await fs.downloadZip('DisplayLib-screens.zip', files);
+  notify(`Скачан DisplayLib-screens.zip (${Object.keys(files).length} файлов) - распакуй в plugins/DisplayLib`);
 }
 
 export async function deleteCurrent(): Promise<void> {

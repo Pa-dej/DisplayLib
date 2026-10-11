@@ -55,6 +55,7 @@ onMounted(async () => {
         <button class="btn" @click="exportOpen = true" :disabled="!currentDoc"><Icon name="file-export" /> Экспорт</button>
         <button class="btn" @click="assetsOpen = true" :disabled="!currentDoc" title="Все спрайты клиента по категориям; клик добавляет спрайт на экран"><Icon name="icons" /> Ассеты</button>
         <button class="btn primary" @click="saveCurrent" :disabled="!currentDoc" title="Скачать screens/<id>.jmc (и scripts/<id>.jmp, если нужен)"><Icon name="download" /> Скачать <kbd style="opacity:.7">Ctrl+S</kbd></button>
+        <button class="btn" @click="saveAll" :disabled="!state.docs.length" title="Все экраны и скрипты одним zip: screens/*.jmc + scripts/*.jmp (Ctrl+Shift+S)"><Icon name="layer-group" /> Zip</button>
       </div>
       <div class="btn-group" style="margin-left:6px">
         <button class="btn icon" @click="undo()" :disabled="!canUndo" title="Отменить (Ctrl+Z)"><Icon name="undo" /></button>
