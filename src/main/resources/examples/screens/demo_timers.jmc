@@ -10,12 +10,12 @@ dyn morph = { enabled: true, duration: 6, steps: 3 };
 dyn background = { color: [40, 40, 48], alpha: 200, scale: [12, 5, 1] };
 
 dyn widgets = [
-    { id: "title", text: [ { text: "Таймеры", color: "#6bb647" } ], position: [0, 1.125, -0.01], scale: [0.5, 0.5, 0.5], tolerance: [0, 0] },
+    { id: "title", text: [ { text: "Таймеры", color: "#47a2b6" } ], position: [0, 1.125, -0.01], scale: [0.5, 0.5, 0.5], tolerance: [0, 0] },
 
     { id: "clock", text: "0 с", position: [0, 0.9, -0.01], scale: [0.4, 0.4, 0.4], tolerance: [0, 0], backgroundAlpha: 0 },
 
     { id: "tick", text: "Старт секундомера", position: [-0.35, 0.65, -0.01], scale: [0.4, 0.4, 0.4], tolerance: [0.42, 0.05],
-      backgroundColor: [20, 90, 40], backgroundAlpha: 200, hoveredBackgroundColor: [40, 140, 70], hoveredBackgroundAlpha: 230, onClick: true },
+      backgroundColor: [31, 72, 81], backgroundAlpha: 200, hoveredBackgroundColor: [46, 105, 117], hoveredBackgroundAlpha: 230, onClick: true },
     { id: "countdown", text: "Отсчёт 5", position: [0.4, 0.65, -0.01], scale: [0.4, 0.4, 0.4], tolerance: [0.25, 0.05],
       backgroundColor: [30, 32, 44], backgroundAlpha: 200, hoveredBackgroundColor: [60, 64, 88], hoveredBackgroundAlpha: 230, onClick: true },
 

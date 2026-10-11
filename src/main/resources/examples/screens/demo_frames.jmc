@@ -11,7 +11,7 @@ dyn morph = { enabled: true, duration: 6, steps: 3 };
 dyn background = { color: [40, 40, 48], alpha: 200, scale: [12, 5, 1] };
 
 dyn widgets = [
-    { id: "title", text: [ { text: "Кадры", color: "#6bb647" } ], position: [0, 1.125, -0.01], scale: [0.5, 0.5, 0.5], tolerance: [0, 0] },
+    { id: "title", text: [ { text: "Кадры", color: "#47a2b6" } ], position: [0, 1.125, -0.01], scale: [0.5, 0.5, 0.5], tolerance: [0, 0] },
 
     // три точки
     { id: "loading", frames: ["Загрузка", "Загрузка.", "Загрузка..", "Загрузка..."], frameInterval: 6,
@@ -33,7 +33,7 @@ dyn widgets = [
     // в покое статичный текст, при наведении - бегущая стрелка
     { id: "play", text: "Играть", hoveredFrames: ["> Играть  ", " > Играть ", "  > Играть", "   Играть>"], hoveredFrameInterval: 3,
       position: [-0.35, 0.45, -0.01], scale: [0.4, 0.4, 0.4], tolerance: [0.2, 0.05],
-      backgroundColor: [20, 90, 40], backgroundAlpha: 200, hoveredBackgroundColor: [40, 140, 70], hoveredBackgroundAlpha: 230, onClick: true },
+      backgroundColor: [31, 72, 81], backgroundAlpha: 200, hoveredBackgroundColor: [46, 105, 117], hoveredBackgroundAlpha: 230, onClick: true },
     // анимация и в покое, и при наведении, с разными интервалами
     { id: "shimmer", frames: [ [ { text: "Магазин", color: "white" } ], [ { text: "Магазин", color: "yellow" } ], [ { text: "Магазин", color: "gold" } ], [ { text: "Магазин", color: "yellow" } ] ], frameInterval: 8,
       hoveredFrames: [ [ { text: "Магазин", color: "aqua" } ], [ { text: "Магазин", color: "white" } ] ], hoveredFrameInterval: 4,

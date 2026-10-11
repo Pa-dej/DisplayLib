@@ -13,7 +13,7 @@ void tick(dyn widget, dyn player) {
         timer.cancel(everyId);
         everyId = -1;
         widget.text("Старт секундомера");
-        widget.bgColor(20, 90, 40);
+        widget.bgColor(31, 72, 81);
     } else {
         ticks = 0;
         everyId = timer.every(20, () -> {
@@ -43,7 +43,7 @@ void later(dyn widget, dyn player) {
     widget.text("Жду…");
     timer.after(40, () -> {
         widget.text("Через 2 с");
-        player.message("Прошло 2 секунды", "#6bb647");
+        player.message("Прошло 2 секунды", "#47a2b6");
     });
     status();
 }

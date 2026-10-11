@@ -11,7 +11,7 @@ dyn morph = { enabled: true, duration: 6, steps: 3 };
 dyn background = { color: [40, 40, 48], alpha: 200, scale: [12, 5, 1] };
 
 dyn widgets = [
-    { id: "title", text: [ { text: "Наведение", color: "#6bb647" } ], position: [0, 1.125, -0.01], scale: [0.5, 0.5, 0.5], tolerance: [0, 0] },
+    { id: "title", text: [ { text: "Наведение", color: "#47a2b6" } ], position: [0, 1.125, -0.01], scale: [0.5, 0.5, 0.5], tolerance: [0, 0] },
 
     { id: "scale", text: "SCALE", position: [-0.4, 0.85, -0.01], scale: [0.4, 0.4, 0.4], tolerance: [0.16, 0.05],
       backgroundColor: [30, 32, 44], backgroundAlpha: 200, hoveredBackgroundColor: [60, 64, 88], hoveredBackgroundAlpha: 230,
@@ -24,7 +24,7 @@ dyn widgets = [
       hoverAnimation: { type: "PRESET", preset: "BOUNCE", duration: 10, easing: "BOUNCE" } },
 
     { id: "translate", text: "TRANSLATE", position: [-0.4, 0.6, -0.01], scale: [0.4, 0.4, 0.4], tolerance: [0.27, 0.05],
-      backgroundColor: [20, 90, 40], backgroundAlpha: 200, hoveredBackgroundColor: [40, 140, 70], hoveredBackgroundAlpha: 230,
+      backgroundColor: [31, 72, 81], backgroundAlpha: 200, hoveredBackgroundColor: [46, 105, 117], hoveredBackgroundAlpha: 230,
       hoverAnimation: { type: "TRANSLATE", offset: [0.05, 0, 0], duration: 4, easing: "LINEAR" } },
     { id: "rotate", text: "ROTATE", position: [0.4, 0.6, -0.01], scale: [0.4, 0.4, 0.4], tolerance: [0.2, 0.05],
       backgroundColor: [90, 70, 20], backgroundAlpha: 200, hoveredBackgroundColor: [140, 110, 40], hoveredBackgroundAlpha: 230,

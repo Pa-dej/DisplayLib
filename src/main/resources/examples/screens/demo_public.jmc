@@ -12,7 +12,7 @@ String script = "demo_public.jmp";
 dyn background = { color: [24, 36, 52], alpha: 220, scale: [12, 5, 1] };
 
 dyn widgets = [
-    { id: "title", text: [ { text: "Доска объявлений", color: "#6bb647" } ], position: [0, 1.125, -0.01], scale: [0.5, 0.5, 0.5], tolerance: [0, 0] },
+    { id: "title", text: [ { text: "Доска объявлений", color: "#47a2b6" } ], position: [0, 1.125, -0.01], scale: [0.5, 0.5, 0.5], tolerance: [0, 0] },
     { id: "online", frames: ["Сервер онлайн", "Сервер онлайн."], frameInterval: 20,
       position: [0, 0.9, -0.01], scale: [0.35, 0.35, 0.35], tolerance: [0, 0], backgroundAlpha: 0 },
 

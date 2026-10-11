@@ -32,7 +32,7 @@ void gamemode(dyn widget, dyn player) {
 }
 
 void whisper(dyn widget, dyn player) {
-    player.message("Привет, " + player.name() + "!", "#6bb647");
+    player.message("Привет, " + player.name() + "!", "#47a2b6");
     player.message([ { text: "Сообщение сегментами: ", color: "gray" }, { text: "работает", color: "green" } ]);
     player.command("me машет рукой");            // команда от имени игрока
 }

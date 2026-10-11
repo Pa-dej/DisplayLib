@@ -9,14 +9,14 @@ dyn morph = { enabled: true, duration: 6, steps: 3 };
 dyn background = { color: [40, 40, 48], alpha: 200, scale: [12, 5, 1] };
 
 dyn widgets = [
-    { id: "title", text: [ { text: "Игрок", color: "#6bb647" } ], position: [0, 1.125, -0.01], scale: [0.5, 0.5, 0.5], tolerance: [0, 0] },
+    { id: "title", text: [ { text: "Игрок", color: "#47a2b6" } ], position: [0, 1.125, -0.01], scale: [0.5, 0.5, 0.5], tolerance: [0, 0] },
 
     // заполняется в onOpen
     { id: "info", text: "…", position: [0, 0.9, -0.01], scale: [0.35, 0.35, 0.35], tolerance: [0, 0], backgroundAlpha: 0 },
 
     { id: "heal", text: [ { text: "Лечить ", color: "white" }, { atlas: "minecraft:gui", sprite: "hud/heart/full" } ],
       position: [-0.35, 0.65, -0.01], scale: [0.4, 0.4, 0.4], tolerance: [0.24, 0.05],
-      backgroundColor: [20, 90, 40], backgroundAlpha: 200, hoveredBackgroundColor: [40, 140, 70], hoveredBackgroundAlpha: 230, onClick: true },
+      backgroundColor: [31, 72, 81], backgroundAlpha: 200, hoveredBackgroundColor: [46, 105, 117], hoveredBackgroundAlpha: 230, onClick: true },
     { id: "hurt", text: [ { text: "Ударить ", color: "white" }, { atlas: "minecraft:gui", sprite: "hud/heart/half" } ],
       position: [0.35, 0.65, -0.01], scale: [0.4, 0.4, 0.4], tolerance: [0.26, 0.05],
       backgroundColor: [90, 30, 30], backgroundAlpha: 200, hoveredBackgroundColor: [150, 50, 50], hoveredBackgroundAlpha: 230, onClick: true },
