@@ -19,6 +19,7 @@ export default defineConfig({
         { text: 'Быстрый старт', link: '/guide/getting-started' },
         { text: 'Редактор экранов', link: '/guide/editor' },
         { text: 'Команды и API', link: '/guide/commands' },
+        { text: 'Примеры', link: '/guide/examples' },
       ] },
       { text: 'Справочник', items: [
         { text: 'Экран (.jmc)', link: '/reference/screen' },

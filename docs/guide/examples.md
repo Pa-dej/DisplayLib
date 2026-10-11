@@ -1,0 +1,62 @@
+# Примеры
+
+Все экраны лежат в `plugins/DisplayLib/screens` после `/displaylib examples` и открываются командой
+`/displaylib open <id>`. Снимки сделаны в [редакторе](/editor/){target="_self"} - в игре выглядит так же,
+только с настоящим освещением.
+
+## Хаб: `demo_menu`
+
+Главное меню демонстраций; каждая кнопка переходит на свой экран через morph, кнопки «Назад»/«Закрыть» с одними и теми же `id` на всех экранах переезжают, а не мигают.
+
+![demo_menu](/examples/demo_menu.png)
+
+## `demo_widgets` - три типа виджетов и сегменты
+
+`TEXT_BUTTON`, `SPRITE_BUTTON` (кирпичи), `ITEM_BUTTON` (меч) и строка с вставленными спрайтами предметов.
+
+![demo_widgets](/examples/demo_widgets.png)
+
+## `demo_hover` - реакции на наведение
+
+Пресеты `SCALE`/`LIFT`/`BOUNCE`, `TRANSLATE`, `ROTATE`, `COMBINED` и кнопка, у которой меняется только фон.
+В редакторе наведите мышь - анимация проигрывается с теми же длительностью и easing.
+
+![demo_hover](/examples/demo_hover.png)
+
+## `demo_frames` - кадровая анимация текста
+
+`frames`/`frameInterval` и `hoveredFrames`: бегущие точки, «печатающийся» заголовок, стрелка при наведении.
+
+![demo_frames](/examples/demo_frames.png)
+
+## `demo_script` - API скрипта
+
+`screen`, `widget`, `storage`, `log`, хуки `onOpen`/`onClose`; счётчик, который меняет текст и фон виджета.
+
+![demo_script](/examples/demo_script.png)
+
+## `demo_player` - PlayerAPI
+
+Имя, UUID, режим игры, здоровье, сообщения, звуки и команды от имени игрока.
+
+![demo_player](/examples/demo_player.png)
+
+## `demo_timers` - TimerAPI и модули
+
+`after`, `every`, `times`, `cancel`, `active` и `import "lib/util.jmp"`.
+
+![demo_timers](/examples/demo_timers.png)
+
+## `demo_public` - публичный экран
+
+Стоит в мире и виден всем: `/displaylib openpublic demo_public <x> <y> <z>`. На публичных экранах нет hover-анимаций и `switchTo`, игрок известен только внутри обработчика клика.
+
+![demo_public](/examples/demo_public.png)
+
+## `morph_menu` → `morph_shop` → `morph_settings`
+
+Исходная демонстрация morph: три экрана с общими `id` кнопок; текст и цвет меняются по шагам, позиция, масштаб и фон - плавно. В редакторе откройте два экрана и нажмите «Переход» в секции Morph.
+
+| | | |
+|---|---|---|
+| ![morph_menu](/examples/morph_menu.png) | ![morph_shop](/examples/morph_shop.png) | ![morph_settings](/examples/morph_settings.png) |

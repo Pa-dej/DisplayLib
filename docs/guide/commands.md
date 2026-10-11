@@ -9,6 +9,7 @@
 | `/displaylib closepublic <screen_id>` | Убрать публичный экран | `displaylib.admin` |
 | `/displaylib listpublic` | Список публичных экранов | `displaylib.admin` |
 | `/displaylib reload` | Перечитать экраны, политику и сбросить кэш скриптов | `displaylib.admin` |
+| `/displaylib validate` | Перечитать и показать проблемы экранов: дубли id, клики в никуда, нет скрипта/функции, число статичных виджетов | `displaylib.admin` |
 | `/displaylib examples` | Выгрузить примеры в папку плагина | `displaylib.admin` |
 
 Алиасы: `/dlib`, `/dl`.

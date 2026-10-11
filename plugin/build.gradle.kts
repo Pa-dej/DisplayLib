@@ -4,7 +4,10 @@ plugins {
 }
 
 group = "padej"
-version = "1.21.11+3.0.0"
+// Версия: <Minecraft>+<плагин>. Часть плагина берётся из -PpluginVersion (CI подставляет её из тега v*), иначе дефолт.
+val mcVersion = "1.21.11"
+val pluginVersion = (findProperty("pluginVersion") as String?)?.removePrefix("v")?.takeIf { it.isNotBlank() } ?: "3.1.0"
+version = "$mcVersion+$pluginVersion"
 
 repositories {
     mavenCentral()

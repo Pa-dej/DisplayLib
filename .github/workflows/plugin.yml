@@ -24,7 +24,14 @@ jobs:
           distribution: temurin
           java-version: '21'
       - uses: gradle/actions/setup-gradle@v4
-      - run: chmod +x gradlew && ./gradlew build --no-daemon
+      - name: Build (version from tag on v*)
+        run: |
+          chmod +x gradlew
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            ./gradlew build --no-daemon -PpluginVersion="${GITHUB_REF_NAME#v}"
+          else
+            ./gradlew build --no-daemon
+          fi
       - uses: actions/upload-artifact@v4
         with:
           name: DisplayLib

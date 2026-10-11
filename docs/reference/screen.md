@@ -56,10 +56,10 @@ dyn widgets = [
 ];
 ```
 
-Поля виджетов: `id`, `type`, `position`, `scale`, `tolerance`, `translation`, `text`, `hoveredText`,
+Поля виджетов: `id`, `type`, `position`, `scale`, `tolerance`, `translation`, `rotation`, `text`, `hoveredText`,
 `alignment`, `backgroundColor`, `backgroundAlpha`, `hoveredBackgroundColor`, `hoveredBackgroundAlpha`,
-`material`, `glowOnHover`, `glowColor`, `sprite`, `atlas`, `hoveredSprite`, `tooltip`, `tooltipColor`, `tooltipDelay`,
-`onClick`, `hoverAnimation`. Тип можно не писать: есть `material` - `ITEM_BUTTON`, есть `sprite` - `SPRITE_BUTTON`,
+`material`, `glowOnHover`, `glowColor`, `sprite`, `atlas`, `hoveredSprite`, `spriteColor`, `hoveredSpriteColor`,
+`tooltip`, `tooltipColor`, `tooltipDelay`, `clickSound`, `hoverSound`, `onClick`, `hoverAnimation`. Тип можно не писать: есть `material` - `ITEM_BUTTON`, есть `sprite` - `SPRITE_BUTTON`,
 иначе `TEXT_BUTTON`. `SPRITE_BUTTON` - это TextDisplay с компонентом-объектом (`{"atlas": ..., "sprite": ...}`),
 поэтому у него есть фон, hover и `tolerance` как у текстовой кнопки; из скрипта - `widget.sprite("item/apple")`.
 Атласы клиента: `minecraft:items`, `minecraft:blocks`, `minecraft:gui` для иконок эффектов (`mob_effect/speed`), `minecraft:gui`
@@ -68,6 +68,24 @@ dyn widgets = [
 Голое имя без атласа плагин дополняет сам: `mace` → `item/mace` (items), `bricks` → `block/bricks` (blocks),
 `speed` → `mob_effect/speed` в gui. Сегменты без `color` всегда белые - цвет соседнего сегмента не протекает.
 Имена из прежних YAML-файлов в snake_case (`tick_rate`, `screen_type`) тоже принимаются.
+
+## Поворот, тинт спрайтов, звуки
+
+```java
+{ id: "tag", text: "NEW", rotation: 15 },                                   // градусы в плоскости экрана, + = против часовой
+{ id: "hp", atlas: "minecraft:gui", sprite: "hud/heart/container", spriteColor: "red", hoveredSpriteColor: "#ff9999" },
+{ id: "quest", text: [ { text: "HP " }, { atlas: "minecraft:gui", sprite: "hud/heart/full", color: "red" } ] },
+{ id: "buy", text: "Купить", clickSound: { sound: "block.note_block.pling", volume: 0.6, pitch: 1.4 }, hoverSound: "ui.button.click", onClick: true },
+{ id: "silent", text: "Тихо", clickSound: false },
+```
+
+- `rotation` вращает виджет вокруг его центра (текст, спрайт и предмет). Зона наведения не вращается - её центр
+  совпадает с центром поворота. Hover-поворот (`ROTATE`, `WOBBLE`) складывается с ним. Из скрипта - `widget.rotation(deg[, ticks])`.
+- Тинт спрайта - это цвет текста компонента: клиент умножает текстуру на цвет. Белые и серые иконки (HUD, эффекты,
+  узоры) красятся чисто, цветные предметы лишь затемняются. `hoveredSpriteColor` считается hover-реакцией.
+- Звуки: ключ клиента (`ui.button.click`), константа (`UI_BUTTON_CLICK`), таблица `{ sound, volume, pitch }` или `false`.
+  По умолчанию клик у текста/спрайта - `block.dispenser.fail` (pitch 2), у предмета - `ui.button.click`; `hoverSound` по
+  умолчанию нет (и он тоже делает виджет интерактивным).
 
 ## Действия `onClick`
 
@@ -101,7 +119,7 @@ dyn widgets = [
 
 1. клик ничего не делает: `onClick` нет / `none`; функция скрипта не объявлена или пустая (`void b(dyn w, dyn p) {}`);
    `switchTo` на несуществующий или публичный экран; на публичном экране - любые `switchTo`/`close`;
-2. нет реакции на наведение: подсказки, hover-анимации, другого текста/спрайта, свечения предмета;
+2. нет реакции на наведение: подсказки, hover-анимации, hover-звука, другого текста/спрайта/тинта, свечения предмета;
 3. фон при наведении не отличается: RGBA совпадают, либо альфа обоих фонов 0 (фона не видно - RGB не важен).
 
 Отдельно: виджет с `tolerance` `<= 0` по любой оси не тикается всегда - в зону нулевого размера не попасть взглядом.
@@ -109,6 +127,8 @@ dyn widgets = [
 Такие виджеты не попадают в список обсчитываемых на тике и не перехватывают клики; экран из одних
 надписей не делает hit-test вовсе. `/displaylib list` показывает число виджетов и не тикаемые id.
 Скрипт для п. 1 только разбирается (без выполнения); функции из `import` считаются рабочими.
+`/displaylib validate` перечитывает экраны и показывает в чате всё, что в игре проявится как «кнопка не работает»:
+дубли `id`, клики в никуда, отсутствующие скрипты и функции. Редактор показывает те же предупреждения в панели экрана.
 
 ## Morph - анимация смены и закрытия экрана
 
