@@ -50,7 +50,7 @@ const idBad = computed(() => !/^[A-Za-z0-9_\-]+$/.test(s.value.id));
   <div>
     <div class="section">
       <h2><span>Экран</span><button class="btn sm danger" @click="deleteCurrent" title="Удалить файл экрана"><Icon name="trash" /> Удалить</button></h2>
-      <div class="field"><label>id</label><div><input type="text" :value="s.id" @focus="snapshot()" @input="s.id = text($event); touch()" /><div class="hint">Файл screens/{{ s.id }}.jmc{{ currentDoc && currentDoc.path !== s.id + '.jmc' && currentDoc.savedText !== null ? ' (сейчас ' + currentDoc.path + ', при сохранении переименуется)' : '' }}</div><div v-if="idBad" class="hint" style="color:var(--vp-c-danger-1)">Только латиница, цифры, _ и -</div></div></div>
+      <div class="field"><label>id</label><div><input type="text" :value="s.id" @focus="snapshot()" @input="s.id = text($event); touch()" /><div class="hint">Файл screens/{{ s.id }}.jmc</div><div v-if="idBad" class="hint" style="color:var(--vp-c-danger-1)">Только латиница, цифры, _ и -</div></div></div>
       <div class="field"><label>Тип</label><select :value="s.screenType" @change="snapshot(); s.screenType = ($event.target as HTMLSelectElement).value as any; touch()"><option value="PRIVATE">PRIVATE - для одного игрока</option><option value="PUBLIC">PUBLIC - стоит в мире</option></select></div>
       <div class="hint" v-if="s.screenType === 'PUBLIC'">Публичный: открывается командой <code>/dlib openpublic {{ s.id }} x y z</code>, глобал <code>player</code> В скрипте равен null, игрок приходит аргументом обработчика; hover-анимации, switchTo и close не работают.</div>
       <div class="hint" v-else>Приватный: <code>/dlib open {{ s.id }}</code> - экран появляется в 2 блоках перед игроком.</div>
@@ -87,13 +87,12 @@ const idBad = computed(() => !/^[A-Za-z0-9_\-]+$/.test(s.value.id));
 
     <div class="section">
       <h3>Скрипт</h3>
-      <div class="field"><label>script</label><div><input type="text" list="script-list" :value="s.script ?? ''" @focus="snapshot()" @input="s.script = text($event).trim() || null; touch()" placeholder="Имя.jmp (в scripts/)" />
-        <datalist id="script-list"><option v-for="p in state.scripts" :key="p" :value="p" /></datalist></div></div>
+      <div class="field"><label>script</label><div><input type="text" :value="s.script ?? ''" @focus="snapshot()" @input="s.script = text($event).trim() || null; touch()" placeholder="Имя.jmp (в scripts/)" /></div></div>
       <div class="row wrap">
         <button class="btn sm" @click="showScript()">Открыть скрипт</button>
-        <span class="hint" v-if="currentDoc">scripts/{{ scriptNameOf(currentDoc) }} · {{ { saved: 'Файл на диске', dirty: 'Есть правки', 'template-needed': 'Шаблон, запишется при сохранении', template: 'Шаблон, не нужен (нет вызовов функций)' }[scriptStatus(currentDoc)] }}</span>
+        <span class="hint" v-if="currentDoc">scripts/{{ scriptNameOf(currentDoc) }} · {{ { saved: 'Экспортирован', dirty: 'Есть правки', 'template-needed': 'Шаблон, уйдёт в экспорт', template: 'Шаблон, не нужен (нет вызовов функций)' }[scriptStatus(currentDoc)] }}</span>
       </div>
-      <div class="hint">У каждого экрана есть скрипт <code>scripts/&lt;id&gt;.jmp</code> - как и разметка. Пока его не правили, это живой шаблон по кнопкам экрана: хуки <code>onOpen()</code>/<code>onClose()</code> И обработчик <code>void &lt;имя&gt;(dyn widget, dyn player)</code> На каждый onClick. Код правится во вкладке скрипта под предпросмотром; на диск уходит вместе с экраном (Ctrl+S), если на экране есть вызовы функций или текст правили.</div>
+      <div class="hint">У каждого экрана есть скрипт <code>scripts/&lt;id&gt;.jmp</code> - как и разметка. Пока его не правили, это живой шаблон по кнопкам экрана: хуки <code>onOpen()</code>/<code>onClose()</code> И обработчик <code>void &lt;имя&gt;(dyn widget, dyn player)</code> На каждый onClick. Код правится во вкладке скрипта под предпросмотром; скачивается вместе с экраном («Скачать» / Ctrl+S) или через «Экспорт», если на экране есть вызовы функций или текст правили.</div>
     </div>
 
     <div class="section">

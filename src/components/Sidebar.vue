@@ -17,9 +17,9 @@ function label(w: { id: string; type: string; text: any; material: string; sprit
         <span class="kind">{{ d.screen.screenType === 'PUBLIC' ? 'PUB' : 'PRV' }}</span>
         <span class="name">{{ d.screen.id }}</span>
         <span v-if="d.dirty" class="dot" title="Не сохранено"></span>
-        <button v-if="d.savedText === null" class="btn sm icon" title="Закрыть без сохранения" @click.stop="closeDoc(d.path)"><Icon name="times" /></button>
+        <button class="btn sm icon" title="Убрать из редактора" @click.stop="closeDoc(d.path)"><Icon name="times" /></button>
       </div>
-      <div v-if="!state.docs.length" class="empty">Откройте папку плагина или создайте экран</div>
+      <div v-if="!state.docs.length" class="empty">Создайте экран или импортируйте .jmc</div>
     </div>
 
     <div class="nav-group" v-if="currentScreen">
@@ -47,12 +47,5 @@ function label(w: { id: string; type: string; text: any; material: string; sprit
       <div v-if="!currentScreen.widgets.length" class="empty">Виджетов нет. Добавьте текстовую кнопку или предмет.</div>
     </div>
 
-    <div class="nav-group" v-if="state.folder">
-      <div class="nav-title"><span>Скрипты</span><span class="badge">{{ state.scripts.length }}</span></div>
-      <div v-for="s in state.scripts" :key="s" class="nav-item" :class="{ active: currentScreen?.script === s }" :title="(state.scriptInfo[s]?.functions ?? []).join(', ')">
-        <span class="kind">jmp</span><span class="name">{{ s }}</span>
-        <span class="muted">{{ state.scriptInfo[s]?.functions.length ?? 0 }}ƒ</span>
-      </div>
-    </div>
   </aside>
 </template>

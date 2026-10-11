@@ -1,10 +1,11 @@
-// Состояние редактора: открытая папка плагина, экраны, выделение, история правок.
+// Состояние редактора: экраны (в памяти + автосохранение в localStorage), выделение, история правок.
+// Файлы на диск не пишутся: только экспорт (скачать / скопировать).
 import { reactive, computed, watch } from 'vue';
 import { type Screen, type Widget, type WidgetType, type Vec3, type HoverAnimation, cloneDeep, defaultScreen, defaultWidget, newUid } from './model/screen';
 import { parseJmc } from './jmc/parser';
 import { tableToScreen } from './jmc/toModel';
 import { screenToJmc } from './jmc/writer';
-import { scanScript, scaffoldScript, type ScriptInfo } from './jmp/scan';
+import { scanScript, scaffoldScript } from './jmp/scan';
 import * as fs from './fs';
 
 export interface ScreenDoc {
@@ -24,14 +25,10 @@ export interface ScreenDoc {
 }
 
 interface State {
-  folder: fs.PluginFolder | null;
-  folderName: string;
   docs: ScreenDoc[];
   current: string | null;      // path текущего экрана
   selected: string | null;     // uid виджета
   hovered: string | null;
-  scripts: string[];           // пути внутри scripts/
-  scriptInfo: Record<string, ScriptInfo>;
   /** счётчик запросов «открыть вкладку скрипта» (Preview следит) */
   openScript: number;
   message: string;
@@ -44,8 +41,8 @@ interface State {
 }
 
 export const state = reactive<State>({
-  folder: null, folderName: '', docs: [], current: null, selected: null, hovered: null,
-  scripts: [], scriptInfo: {}, openScript: 0, message: '', error: '', undo: [], redo: [], revision: 0, posRevision: 0, busy: false,
+  docs: [], current: null, selected: null, hovered: null,
+  openScript: 0, message: '', error: '', undo: [], redo: [], revision: 0, posRevision: 0, busy: false,
 });
 
 export const currentDoc = computed(() => state.docs.find((d) => d.path === state.current) ?? null);
@@ -210,84 +207,30 @@ export function moveWidgetOrder(uid: string, delta: number): void {
   snapshot(); const [w] = s.widgets.splice(i, 1); s.widgets.splice(j, 0, w); touch();
 }
 
-// ---------------------------------------------------------------- папка плагина
+// ---------------------------------------------------------------- экспорт
 
-export async function openFolder(restore = false): Promise<void> {
-  try {
-    state.busy = true;
-    const f = restore ? await fs.restoreFolder() : await fs.pickFolder();
-    if (!f) { if (!restore) fail('Папка не выбрана'); return; }
-    state.folder = f; state.folderName = f.root.name;
-    await refreshFolder();
-    notify('Открыта папка ' + f.root.name);
-  } catch (e) {
-    if ((e as any)?.name !== 'AbortError') fail('Не удалось открыть папку: ' + (e as Error).message);
-  } finally { state.busy = false; }
-}
-
-export async function refreshFolder(): Promise<void> {
-  const f = state.folder; if (!f) return;
-  const files = await fs.listFiles(f.screens, '.jmc');
-  const keep = new Set(files);
-  for (const p of files) {
-    try { loadScreenText(p, await fs.readText(f.screens, p)); }
-    catch (e) { fail(p + ': ' + (e as Error).message); }
-  }
-  state.docs = state.docs.filter((d) => keep.has(d.path) || d.savedText === null);
-  if (!state.current || !state.docs.some((d) => d.path === state.current)) state.current = state.docs[0]?.path ?? null;
-  await refreshScripts();
-  // скрипты экранов: читаем файл, если он есть; иначе остаётся живой шаблон
-  for (const d of state.docs) {
-    const name = scriptNameOf(d);
-    if (!d.scriptDirty && state.scripts.includes(name)) {
-      try { const t = await fs.readText(f.scripts, name); d.scriptText = t; d.scriptSaved = t; } catch { /* пропускаем */ }
-    } else if (!state.scripts.includes(name)) { d.scriptSaved = null; if (!d.scriptDirty) d.scriptText = null; }
-  }
-  touch();
-}
-
-export async function refreshScripts(): Promise<void> {
-  const f = state.folder; if (!f) return;
-  state.scripts = await fs.listFiles(f.scripts, '.jmp');
-  const info: Record<string, ScriptInfo> = {};
-  for (const p of state.scripts) {
-    try { info[p] = scanScript(await fs.readText(f.scripts, p)); } catch { /* пропускаем */ }
-  }
-  state.scriptInfo = info;
-}
-
+/**
+ * «Скачать» / Ctrl+S: экран как screens/<id>.jmc и, если он нужен (есть обработчики или скрипт правили),
+ * scripts/<id>.jmp вторым файлом. Редактор на диск не пишет - файлы кладутся в папку плагина вручную.
+ */
 export async function saveCurrent(): Promise<void> {
   const d = currentDoc.value; if (!d) return;
   const text = screenToJmc(d.screen);
   const wanted = d.screen.id + '.jmc';
-  if (state.folder) {
-    try {
-      // имя файла следует за id экрана (как в примерах); старый файл с другим именем удаляем
-      if (d.savedText !== null && d.path !== wanted && !d.path.includes('/')) {
-        await fs.removeFile(state.folder.screens, d.path);
-      }
-      if (!d.path.includes('/')) d.path = wanted;
-      await fs.writeText(state.folder.screens, d.path, text);
-      d.savedText = text; d.dirty = false;
-      if (state.current !== d.path) state.current = d.path;
-      let msg = 'Сохранено: screens/' + d.path;
-      // скрипт: отредактированный - всегда; шаблон - только если он нужен (есть обработчики) и файла ещё нет
-      const sname = scriptNameOf(d);
-      if (d.scriptDirty || (d.scriptSaved === null && hasHandlers(d.screen))) {
-        const st = scriptTextOf(d);
-        await fs.writeText(state.folder.scripts, sname, st);
-        d.scriptText = st; d.scriptSaved = st; d.scriptDirty = false;
-        if (!state.scripts.includes(sname)) state.scripts.push(sname);
-        state.scriptInfo[sname] = scanScript(st);
-        msg += ' и scripts/' + sname;
-      }
-      notify(msg + ' (hot reload подхватит в игре)');
-    } catch (e) { fail('Не удалось сохранить: ' + (e as Error).message); }
-  } else {
-    fs.download(wanted, text);
-    d.savedText = text; d.dirty = false;
-    notify('Файл ' + wanted + ' скачан' + (hasHandlers(d.screen) || d.scriptDirty ? '; скрипт - через «Экспорт»' : ''));
+  if (!d.path.includes('/')) d.path = wanted;
+  if (state.current !== d.path) state.current = d.path;
+  fs.download(wanted, text);
+  d.savedText = text; d.dirty = false;
+  let msg = 'Скачан ' + wanted;
+  if (d.scriptDirty || hasHandlers(d.screen)) {
+    const sname = scriptNameOf(d);
+    const st = scriptTextOf(d);
+    // второй файл - через мгновение, иначе браузер склеивает два клика в один
+    setTimeout(() => fs.download(sname, st), 300);
+    d.scriptText = st; d.scriptSaved = st; d.scriptDirty = false;
+    msg += ' и ' + sname;
   }
+  notify(msg + ' - положи в plugins/DisplayLib/screens и scripts');
 }
 
 export async function saveAll(): Promise<void> {
@@ -298,11 +241,8 @@ export async function saveAll(): Promise<void> {
 
 export async function deleteCurrent(): Promise<void> {
   const d = currentDoc.value; if (!d) return;
-  if (state.folder && d.savedText !== null) {
-    try { await fs.removeFile(state.folder.screens, d.path); } catch (e) { fail('Не удалось удалить: ' + (e as Error).message); return; }
-  }
   closeDoc(d.path);
-  notify('Экран удалён');
+  notify('Экран убран из редактора (файлы на диске не трогались)');
 }
 
 // ---------------------------------------------------------------- скрипт экрана
@@ -333,9 +273,41 @@ export function scriptTextOf(d: ScreenDoc): string {
 /** Состояние скрипта для подписи в интерфейсе. */
 export function scriptStatus(d: ScreenDoc): 'saved' | 'dirty' | 'template' | 'template-needed' {
   if (d.scriptDirty) return 'dirty';
-  if (d.scriptSaved !== null) return 'saved';
+  if (d.scriptSaved !== null) return 'saved';   // уже экспортировали
   return hasHandlers(d.screen) ? 'template-needed' : 'template';
 }
+
+// ---------------------------------------------------------------- автосохранение в браузере
+// Экраны живут в памяти; чтобы перезагрузка вкладки их не теряла, текст .jmc и скрипт складываются в localStorage.
+const AUTOSAVE_KEY = 'displaylib.session';
+let autosaveTimer: ReturnType<typeof setTimeout> | null = null;
+export function scheduleAutosave(): void {
+  if (autosaveTimer) clearTimeout(autosaveTimer);
+  autosaveTimer = setTimeout(() => {
+    autosaveTimer = null;
+    try {
+      const docs = state.docs.map((d) => ({ path: d.path, jmc: screenToJmc(d.screen), script: d.scriptText, scriptDirty: d.scriptDirty, scriptSaved: d.scriptSaved, dirty: d.dirty }));
+      localStorage.setItem(AUTOSAVE_KEY, JSON.stringify({ docs, current: state.current }));
+    } catch { /* нет места или доступа - просто без автосохранения */ }
+  }, 400);
+}
+/** Восстановить экраны прошлой сессии; true - что-то восстановлено. */
+export function restoreSession(): boolean {
+  try {
+    const raw = localStorage.getItem(AUTOSAVE_KEY); if (!raw) return false;
+    const data = JSON.parse(raw) as { docs: { path: string; jmc: string; script: string | null; scriptDirty: boolean; scriptSaved: string | null; dirty: boolean }[]; current: string | null };
+    for (const d of data.docs) {
+      try {
+        const doc = loadScreenText(d.path, d.jmc);
+        doc.scriptText = d.script; doc.scriptDirty = !!d.scriptDirty; doc.scriptSaved = d.scriptSaved ?? null; doc.dirty = !!d.dirty;
+        if (!d.dirty) doc.savedText = d.jmc; else doc.savedText = null;
+      } catch { /* битый экран пропускаем */ }
+    }
+    if (data.current && state.docs.some((x) => x.path === data.current)) state.current = data.current;
+    return state.docs.length > 0;
+  } catch { return false; }
+}
+watch(() => [state.revision, state.posRevision, state.current], () => scheduleAutosave());
 
 /** Правка текста скрипта в редакторе. */
 export function setScriptText(text: string): void {

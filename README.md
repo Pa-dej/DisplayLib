@@ -14,9 +14,9 @@ npm run build      # статика в dist/
 npm run preview    # отдать dist/ на http://localhost:4173
 ```
 
-Работа с папкой плагина использует File System Access API - это Chrome или Edge и адрес
-`localhost` (или https). Из `file://` папку открыть нельзя; без папки редактор работает в режиме
-импорт/экспорт файлов.
+Редактор на диск не пишет: экраны импортируются вставкой `.jmc` и экспортируются кнопками
+«Скачать» (Ctrl+S: `screens/<id>.jmc` и, если нужен, `scripts/<id>.jmp`) или «Экспорт» (копировать /
+скачать). Открытые экраны переживают перезагрузку вкладки - они автосохраняются в localStorage.
 
 ## Ассеты предпросмотра
 
@@ -80,7 +80,7 @@ src/render/font.ts    растровый шрифт из ресурсов кли
 src/render/text.ts    текстура TextDisplay: сегменты, §-коды, перенос по 200 px
 src/render/items.ts   спрайты предметов
 src/render/scene.ts   Three.js: экран, камера, выделение, перетаскивание, зоны наведения
-src/fs.ts             File System Access API
+src/fs.ts             скачивание файлов
 src/store.ts          состояние, undo/redo, сохранение
 src/components/       интерфейс
 ```
