@@ -131,7 +131,7 @@ function distributeSel(kind: DistributeKind) { if (scene) applyShifts(distribute
       </span>
       <button class="btn sm danger" title="Удалить выделенные (Delete)" @click="removeWidgets(selectedUids)"><Icon name="trash" /></button>
     </div>
-    <div class="preview-legend">ЛКМ: виджет - выбрать/тащить (Shift: шаг 0.5, Alt: 0.01, Ctrl: без направляющих), Shift+клик - к выделению, Shift+тащить по пустому - рамка, Ctrl+A - все; пусто - вращать · СКМ/ПКМ - сдвиг · колесо - зум · стрелки: x/y, PgUp/PgDn: ближе/дальше · гизмо в углу - оси</div>
+    <div class="preview-legend">ЛКМ: виджет - выбрать/тащить (Shift: шаг 0.5, Alt: 0.01, Ctrl: без направляющих), Shift+клик - к выделению, Shift+тащить по пустому - рамка, Ctrl+A - все, Ctrl+C/V - копировать/вставить (и между экранами); пусто - вращать · СКМ/ПКМ - сдвиг · колесо - зум · стрелки: x/y, PgUp/PgDn: ближе/дальше · гизмо в углу - оси</div>
   </div>
   <Splitter v-if="tab !== 'none'" css-var="--codebar-h" dir="h" :sign="-1" :min="80" :max="900" />
   <div class="codebar" :class="{ collapsed: tab === 'none' }">

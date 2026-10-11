@@ -82,7 +82,7 @@ export function screenToJmc(s: Screen, opts: WriteOptions = {}): string {
   return L.join('\n');
 }
 
-function widgetToJmc(w: Widget, opts: WriteOptions): string {
+export function widgetToJmc(w: Widget, opts: WriteOptions): string {
   const f: string[] = [];
   const v = !!opts.verbose;
   if (w.id) f.push(`id: ${jstr(w.id)}`);

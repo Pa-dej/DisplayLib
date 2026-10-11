@@ -8,6 +8,7 @@ import ImportDialog from './components/ImportDialog.vue';
 import AssetBrowser from './components/AssetBrowser.vue';
 import Splitter from './components/Splitter.vue';
 import ExportDialog from './components/ExportDialog.vue';
+import { installClipboard } from './clipboard';
 import { state, saveCurrent, saveAll, undo, redo, canUndo, canRedo, newScreen, currentDoc, restoreSession, notify, fail } from './store';
 import { font } from './render/font';
 import { loadSheet } from './render/items';
@@ -31,6 +32,7 @@ onMounted(async () => {
   ready.value = true;
   restoreSession();
   if (!state.docs.length) newScreen('new_screen');
+  installClipboard();
   window.addEventListener('keydown', (e) => {
     // e.code не зависит от раскладки (KeyZ и на русской); в textarea (скрипт, импорт) - родной undo браузера
     const tag = (e.target as HTMLElement)?.tagName;

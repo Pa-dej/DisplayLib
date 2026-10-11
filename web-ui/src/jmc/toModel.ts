@@ -99,7 +99,7 @@ export function tableToScreen(data: JmcTable, fileName: string): ToModelResult {
   return { screen: s, warnings };
 }
 
-function tableToWidget(d: JmcTable, index: number, warnings: string[]): Widget | null {
+export function tableToWidget(d: JmcTable, index: number, warnings: string[]): Widget | null {
   const typeStr = str(d, 'type');
   let type = enumValue(['TEXT_BUTTON', 'ITEM_BUTTON', 'SPRITE_BUTTON'] as const, typeStr);
   if (!type) {
