@@ -5,7 +5,7 @@ import type { Screen } from '../model/screen';
 import { defaultBackground, ANCHOR_PRESETS, anchorPresetName, type Vec2 } from '../model/screen';
 import VecInput from './fields/VecInput.vue';
 import ColorInput from './fields/ColorInput.vue';
-import { state, currentDoc, snapshot, touch, deleteCurrent, showScript, scriptNameOf, scriptStatus, scaleScreen, currentIssues, screenIds } from '../store';
+import { state, currentDoc, snapshot, touch, deleteCurrent, showScript, scriptNameOf, scriptStatus, scaleScreen, currentIssues } from '../store';
 import { calibration } from '../render/metrics';
 import { layout } from '../render/text';
 
@@ -44,7 +44,6 @@ function toggleBg() { snapshot(); s.value.background = s.value.background ? null
 function fmt(n: number) { return (Math.round(n * 100) / 100).toString(); }
 const scaleK = ref(1);
 function applyScale() { if (scaleK.value > 0 && scaleK.value !== 1) { scaleScreen(scaleK.value); scaleK.value = 1; } }
-const morphTarget = ref('');
 const idBad = computed(() => !/^[A-Za-z0-9_\-]+$/.test(s.value.id));
 </script>
 <template>
@@ -84,17 +83,9 @@ const idBad = computed(() => !/^[A-Za-z0-9_\-]+$/.test(s.value.id));
     </div>
 
     <div class="section" v-if="s.screenType === 'PRIVATE'">
-      <h3>Morph - анимация смены экрана</h3>
-      <div class="field"><label>morph</label><label class="row"><input type="checkbox" :checked="s.morph.enabled" @change="snapshot(); s.morph.enabled = ($event.target as HTMLInputElement).checked; touch()" /> <span class="hint">Анимировать переход на этот экран (switchTo) и его закрытие</span></label></div>
-      <template v-if="s.morph.enabled">
-        <div class="field"><label>duration</label><div class="row"><input type="number" min="1" max="59" step="1" :value="s.morph.duration" @focus="snapshot()" @input="s.morph.duration = Math.max(1, Math.min(59, Math.round(num($event)))); touch()" /><span class="hint">Тиков (клиент интерполирует позицию, масштаб и фон)</span></div></div>
-        <div class="field"><label>steps</label><div class="row"><input type="number" min="0" max="59" step="1" :value="s.morph.steps > 0 ? s.morph.steps : ''" placeholder="duration / 2" @focus="snapshot()" @input="s.morph.steps = Math.round(num($event)) || -1; touch()" /><span class="hint">Шагов смены текста, цвета текста и предмета</span></div></div>
-        <div class="field"><label>Превью</label><div class="row">
-          <select v-model="morphTarget" class="grow"><option value="">выбери экран…</option><option v-for="d in state.docs.filter((x) => x.path !== state.current)" :key="d.path" :value="d.path">{{ d.screen.id }}</option></select>
-          <button class="btn sm" :disabled="!morphTarget" title="Проиграть переход с текущего экрана на выбранный (как switchTo в игре) и переключиться на него" @click="state.morphTo = morphTarget"><Icon name="exchange-alt" /> Переход</button>
-        </div></div>
-        <div class="hint">Виджеты с тем же id и типом на обоих экранах переезжают (позиция, масштаб, фон - плавно; текст «text» → «extext» → … → «example text», цвет по RGB), остальные сжимаются в ноль и исчезают / вырастают из нуля. Действует morph открываемого экрана; при закрытии - закрываемого.</div>
-      </template>
+      <h3>Morph</h3>
+      <div class="field"><label>morph</label><label class="row"><input type="checkbox" :checked="s.morph.enabled" @change="snapshot(); s.morph.enabled = ($event.target as HTMLInputElement).checked; touch()" /> <span class="hint">{{ s.morph.enabled ? `анимация ${s.morph.duration} тиков, ${s.morph.steps > 0 ? s.morph.steps : Math.max(1, Math.floor(s.morph.duration / 2))} шагов` : 'выключен - смена экрана мгновенная' }}</span></label></div>
+      <div class="hint">Длительность, шаги и превью переходов - на вкладке <b>Morph</b> вверху панели.</div>
     </div>
 
     <div class="section">

@@ -5,15 +5,18 @@ import { currentScreen, selectedWidget, currentDoc, state } from '../store';
 import ScreenPanel from './ScreenPanel.vue';
 import WidgetPanel from './WidgetPanel.vue';
 import CalibrationPanel from './CalibrationPanel.vue';
-const tab = ref<'props' | 'calib'>('props');
+import MorphPanel from './MorphPanel.vue';
+const tab = ref<'props' | 'morph' | 'calib'>('props');
 </script>
 <template>
   <aside class="inspector">
     <div class="row" style="margin-bottom:12px">
       <span class="tab" :class="{ active: tab === 'props' }" @click="tab = 'props'"><Icon name="sliders-h" /> Свойства</span>
+      <span class="tab" :class="{ active: tab === 'morph' }" @click="tab = 'morph'"><Icon name="exchange-alt" /> Morph</span>
       <span class="tab" :class="{ active: tab === 'calib' }" @click="tab = 'calib'"><Icon name="cog" /> Калибровка</span>
     </div>
     <template v-if="tab === 'calib'"><CalibrationPanel /></template>
+    <template v-else-if="tab === 'morph'"><MorphPanel /></template>
     <template v-else-if="!currentScreen"><div class="empty">Нет открытого экрана</div></template>
     <template v-else>
       <div v-if="currentDoc?.warnings.length" class="callout warn"><b>При чтении файла:</b><br />{{ currentDoc.warnings.join('; ') }}</div>
