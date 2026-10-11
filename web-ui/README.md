@@ -31,7 +31,7 @@ npm run preview    # отдать dist/ на http://localhost:4173
   | `assets/minecraft/textures/font/` (ascii.png, accented.png, nonlatin_european.png …) | `public/assets/minecraft/textures/font/` |
 
   `unifont` (unihex) не нужен и пропускается. Без png используется запасной шрифт: размеры
-  близкие, вид другой. Файлы Mojang не включены в репозиторий намеренно.
+  близкие, вид другой. Файлы берутся из jar клиента 1.21.11 и входят в репозиторий (папки: font, textures/{font,item,block,gui/sprites,mob_effect,particle,painting,entity/banner,entity/shield,trims}).
 
 ## Иконки блоков в тексте
 
@@ -51,7 +51,7 @@ npm run preview    # отдать dist/ на http://localhost:4173
 Кнопка «Загрузить client.jar» (`src/clientjar.ts`): пользователь выбирает jar клиента, fflate распаковывает в браузере
 `assets/minecraft/font/*.json`, `textures/{font,item,block,gui/sprites,mob_effect,particle,painting,entity/banner,entity/shield,trims}`
 и `version.json`; файлы живут в IndexedDB (`displaylib/client`) и подставляются через `assetUrl()` вместо `public/assets/...`;
-индекс спрайтов строится из содержимого jar (`clientSpriteIndex()`). Так опубликованный редактор обходится без файлов Mojang.
+индекс спрайтов строится из содержимого jar (`clientSpriteIndex()`). Полезно для другого клиента (снапшот, иная версия); по умолчанию ресурсы 1.21.11 уже лежат в `public/assets/minecraft`.
 
 ## Как считается предпросмотр
 
