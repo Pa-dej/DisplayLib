@@ -21,7 +21,7 @@ npm run preview    # отдать dist/ на http://localhost:4173
 ## Ассеты предпросмотра
 
 - **Предметы**: спрайт `css-blocks-and-entities/icons-minecraft-268.*` уже разложен в
-  `public/assets/items/icons.png` + `src/items.json` (1816 предметов).
+  `public/assets/items/icons.png` + `src/items.json` (1728 предметов).
 - **Шрифт Minecraft** (чтобы текст был пиксель в пиксель): из клиента
   `%APPDATA%\.minecraft\versions\1.21.x\1.21.x.jar` (это zip) скопируйте две папки, сохраняя структуру:
 
