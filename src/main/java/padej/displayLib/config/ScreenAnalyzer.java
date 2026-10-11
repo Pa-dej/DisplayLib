@@ -24,7 +24,8 @@ import java.util.logging.Logger;
  * создаёт такие виджеты неинтерактивными: они не попадают в список обсчитываемых на тике и не
  * перехватывают клики.
  *
- * <p>Виджет не тикается, если выполнены <b>все</b> факторы:</p>
+ * <p>Виджет не тикается, если его {@code tolerance} по любой оси {@code <= 0} (в зону нулевого размера
+ * не попасть взглядом), либо если выполнены <b>все</b> факторы:</p>
  * <ol>
  * <li><b>клик ничего не делает</b>: {@code onClick} не задан / {@code NONE}; {@code RUN_SCRIPT}, у которого
  *     нет скрипта, функция в скрипте не объявлена или объявлена с пустым телом ({@code void b() {}});
@@ -93,6 +94,9 @@ public final class ScreenAnalyzer {
      */
     static String inertReason(WidgetDefinition def, ScreenDefinition screen, Map<String, ScreenDefinition> screens,
                               ScriptInfo script, boolean publicScreen) {
+        // зона наведения нулевого размера: в неё нельзя попасть взглядом, что бы виджет ни умел
+        float[] tol = def.getTolerance();
+        if (tol == null || tol.length < 2 || tol[0] <= 0 || tol[1] <= 0) return "tolerance <= 0 (no hit area)";
         String click = clickReason(def, screens, script, publicScreen);
         if (click == null) return null;                       // клик работает
         if (hasHoverVisual(def, !publicScreen)) return null;  // есть реакция на наведение
