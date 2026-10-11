@@ -38,3 +38,16 @@ export function distributeRects(rects: Map<string, Rect>, kind: DistributeKind):
   }
   return out;
 }
+
+/** Выровнять каждый выделенный по краю/центру фона (или любого опорного прямоугольника). */
+export function alignToRect(rects: Map<string, Rect>, ref: Rect, kind: AlignKind): Map<string, { dx: number; dy: number }> {
+  const out = new Map<string, { dx: number; dy: number }>();
+  const cx = (ref.l + ref.r) / 2, cy = (ref.b + ref.t) / 2;
+  for (const [uid, r] of rects) {
+    const rcx = (r.l + r.r) / 2, rcy = (r.b + r.t) / 2;
+    const dx = kind === 'left' ? ref.l - r.l : kind === 'right' ? ref.r - r.r : kind === 'hcenter' ? cx - rcx : 0;
+    const dy = kind === 'top' ? ref.t - r.t : kind === 'bottom' ? ref.b - r.b : kind === 'vcenter' ? cy - rcy : 0;
+    out.set(uid, { dx, dy });
+  }
+  return out;
+}

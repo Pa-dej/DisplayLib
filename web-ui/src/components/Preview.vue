@@ -5,7 +5,7 @@ import { ScreenScene } from '../render/scene';
 import Splitter from './Splitter.vue';
 import { state, currentDoc, currentScreen, currentText, snapshot, snapshotCoalesced, touch, touchPosition, selectedWidget, selectedWidgets, selectedUids, select, selectMany, removeWidgets, scriptTextOf, scriptNameOf, scriptStatus, setScriptText, resetScriptToTemplate } from '../store';
 import { calibration } from '../render/metrics';
-import { alignRects, distributeRects, type AlignKind, type DistributeKind } from '../render/align';
+import { alignRects, distributeRects, alignToRect, type AlignKind, type DistributeKind } from '../render/align';
 import { spriteState } from '../render/sprites';
 
 const canvas = ref<HTMLCanvasElement | null>(null);
@@ -57,6 +57,14 @@ onBeforeUnmount(() => { scene?.dispose(); window.removeEventListener('blur', onW
 
 // смена экрана или любая правка модели -> перестроить (дёшево: экраны маленькие)
 watch(() => [state.current, state.revision], () => scene?.setScreen(currentScreen.value));
+watch(() => state.current, (cur, prev) => {
+  if (!scene) return;
+  if (prev) cameras.set(prev, scene.getCamera());
+  camScreen = cur;
+  const saved = cur ? cameras.get(cur) : undefined;
+  if (saved) scene.setCamera(saved);
+}, { flush: 'post' });
+window.addEventListener('beforeunload', rememberCamera);
 watch(() => state.morphTo, (path) => {
   if (!path || !scene) return;
   const target = state.docs.find((d) => d.path === path); state.morphTo = null;
@@ -92,6 +100,13 @@ function nudge(e: KeyboardEvent) {
 function r(v: number) { return Math.round(v * 1000) / 1000; }
 
 const multi = computed(() => selectedUids.value.length >= 2);
+const hasBg = computed(() => { void state.revision; return !!currentScreen.value?.background; });
+function alignBg(kind: AlignKind) { const ref = scene?.backgroundRect(); if (scene && ref) applyShifts(alignToRect(scene.widgetRects(selectedUids.value), ref, kind)); }
+
+// камера запоминается на экран (в рамках сессии), чтобы переключение экранов не сбивало вид
+const cameras = new Map<string, ReturnType<ScreenScene['getCamera']>>();
+let camScreen: string | null = null;
+function rememberCamera() { if (scene && camScreen) cameras.set(camScreen, scene.getCamera()); }
 function applyShifts(sh: Map<string, { dx: number; dy: number }>) {
   if (!sh.size) return;
   snapshot();
@@ -119,19 +134,28 @@ function distributeSel(kind: DistributeKind) { if (scene) applyShifts(distribute
       <label class="btn sm" title="Прилипание к краям, центрам и равным зазорам других виджетов (Ctrl при перетаскивании - отключить)"><input type="checkbox" v-model="smartGuides" /> <Icon name="magic" /> Направляющие</label>
       <label class="btn sm" title="Виджет под курсором показывается как при наведении в игре: hover-текст/фон и hover-анимация (масштаб, смещение, поворот) с длительностью и easing плагина"><input type="checkbox" v-model="hoverPreview" /> <Icon name="hand-pointer" /> Hover</label>
     </div>
-    <div v-if="multi" class="preview-toolbar align-bar">
+    <div v-if="selectedUids.length" class="preview-toolbar align-bar">
       <span class="btn sm static"><Icon name="object-group" /> {{ selectedUids.length }}</span>
-      <span class="btn-group">
+      <span class="btn-group" v-if="hasBg" title="К фону экрана">
+        <button class="btn sm icon" title="К левому краю фона" @click="alignBg('left')"><Icon name="align-left" /></button>
+        <button class="btn sm icon" title="По центру фона (горизонтально)" @click="alignBg('hcenter')"><Icon name="align-center" /></button>
+        <button class="btn sm icon" title="К правому краю фона" @click="alignBg('right')"><Icon name="align-right" /></button>
+        <button class="btn sm icon rot" title="К верхнему краю фона" @click="alignBg('top')"><Icon name="align-left" /></button>
+        <button class="btn sm icon rot" title="По середине фона (вертикально)" @click="alignBg('vcenter')"><Icon name="align-center" /></button>
+        <button class="btn sm icon rot" title="К нижнему краю фона" @click="alignBg('bottom')"><Icon name="align-right" /></button>
+        <span class="btn sm static" style="padding-left:2px"><Icon name="square" :size="10" /></span>
+      </span>
+      <span class="btn-group" v-if="multi">
         <button class="btn sm icon" title="По левому краю" @click="alignSel('left')"><Icon name="align-left" /></button>
         <button class="btn sm icon" title="По центру (горизонтально)" @click="alignSel('hcenter')"><Icon name="align-center" /></button>
         <button class="btn sm icon" title="По правому краю" @click="alignSel('right')"><Icon name="align-right" /></button>
       </span>
-      <span class="btn-group">
+      <span class="btn-group" v-if="multi">
         <button class="btn sm icon rot" title="По верхнему краю" @click="alignSel('top')"><Icon name="align-left" /></button>
         <button class="btn sm icon rot" title="По середине (вертикально)" @click="alignSel('vcenter')"><Icon name="align-center" /></button>
         <button class="btn sm icon rot" title="По нижнему краю" @click="alignSel('bottom')"><Icon name="align-right" /></button>
       </span>
-      <span class="btn-group">
+      <span class="btn-group" v-if="multi">
         <button class="btn sm" title="Равные промежутки по горизонтали (крайние на месте)" :disabled="selectedUids.length < 3" @click="distributeSel('h')"><Icon name="arrows-alt-h" /> ⋯</button>
         <button class="btn sm" title="Равные промежутки по вертикали" :disabled="selectedUids.length < 3" @click="distributeSel('v')"><Icon name="arrows-alt-v" /> ⋮</button>
       </span>

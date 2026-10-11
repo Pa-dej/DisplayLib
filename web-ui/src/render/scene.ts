@@ -183,6 +183,21 @@ export class ScreenScene {
 
   // ---------------------------------------------------------------- камера
 
+  /** Камера для сохранения на экран: позиция, цель, fov. */
+  getCamera(): { pos: [number, number, number]; target: [number, number, number] } {
+    const p = this.camera.position, t = this.controls.target;
+    return { pos: [p.x, p.y, p.z], target: [t.x, t.y, t.z] };
+  }
+  setCamera(c: { pos: [number, number, number]; target: [number, number, number] }): void {
+    this.camera.position.set(c.pos[0], c.pos[1], c.pos[2]); this.controls.target.set(c.target[0], c.target[1], c.target[2]);
+    this.controls.update();
+  }
+
+  /** Прямоугольник фона в плоскости экрана (мировые x/y) или null. */
+  backgroundRect(): Rect | null {
+    return this.bgNode ? this.rectAt(this.bgNode, this.bgNode.group.position.x, this.bgNode.group.position.y) : null;
+  }
+
   resetCamera(mode: 'player' | 'center' | 'front' | 'fit'): void {
     const d = calibration.eyeDistance, h = calibration.eyeAboveCenter;
     this.camera.fov = calibration.fov;
