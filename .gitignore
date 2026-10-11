@@ -124,4 +124,5 @@ node_modules/
 docs/.vitepress/dist/
 docs/.vitepress/cache/
 web-ui/dist/
-plugin/docs/   # старые локальные заметки, не часть сайта
+# старые локальные заметки, не часть сайта
+plugin/docs/
