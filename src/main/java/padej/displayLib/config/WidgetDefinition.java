@@ -172,6 +172,12 @@ public class WidgetDefinition {
     
     /** Включить свечение при наведении (для ITEM_BUTTON) */
     private boolean glowOnHover = true;
+
+    /**
+     * Статический виджет (результат {@link ScreenAnalyzer} при загрузке): клик ничего не делает и
+     * реакции на наведение нет - на тиках экрана не проверяется. Не читается из файла.
+     */
+    private boolean inert = false;
     
     /** RGB цвет свечения [красный, зеленый, синий] (0-255) */
     private int[] glowColor;
@@ -265,6 +271,9 @@ public class WidgetDefinition {
     public void setMaterial(String material) { this.material = material; }
     
     public boolean isGlowOnHover() { return glowOnHover; }
+
+    public boolean isInert() { return inert; }
+    public void setInert(boolean inert) { this.inert = inert; }
     public void setGlowOnHover(boolean glowOnHover) { this.glowOnHover = glowOnHover; }
     
     public int[] getGlowColor() { return glowColor; }

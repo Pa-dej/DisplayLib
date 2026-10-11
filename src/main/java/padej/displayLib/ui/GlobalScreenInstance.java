@@ -44,6 +44,8 @@ public class GlobalScreenInstance implements ScreenAPI.Host {
     
     /** Все виджеты экрана */
     private final List<Widget> children = new ArrayList<>();
+    /** Тикаемые виджеты (isInteractive) - только их проверяем на наведение, см. ScreenAnalyzer */
+    private final List<Widget> ticked = new ArrayList<>();
     
     /** Быстрый доступ к виджетам по id (порядок объявления сохраняется) */
     private final Map<String, Widget> widgetById = new LinkedHashMap<>();
@@ -140,6 +142,7 @@ public class GlobalScreenInstance implements ScreenAPI.Host {
             widget.remove();
         }
         children.clear();
+        ticked.clear();
         widgetById.clear();
         definitionByWidget.clear();
         
@@ -295,6 +298,7 @@ public class GlobalScreenInstance implements ScreenAPI.Host {
 
     private void addChild(Widget widget, WidgetDefinition def) {
         children.add(widget);
+        if (widget.isInteractive()) ticked.add(widget);
         if (def != null) {
             definitionByWidget.put(widget, def);
         }
@@ -358,6 +362,7 @@ public class GlobalScreenInstance implements ScreenAPI.Host {
     }
 
     private void updateHoverDetection() {
+        if (ticked.isEmpty()) return; // одни статические виджеты
         for (int i = 0; i < nearbyPlayers.size(); i++) {
             Player player = nearbyPlayers.get(i);
             
@@ -376,8 +381,8 @@ public class GlobalScreenInstance implements ScreenAPI.Host {
         Widget closestWidget = null;
         double closestDistance = Double.MAX_VALUE;
 
-        for (int i = 0; i < children.size(); i++) {
-            Widget widget = children.get(i);
+        for (int i = 0; i < ticked.size(); i++) {
+            Widget widget = ticked.get(i);
             double distance = widget.hitDistance(ray);
             if (distance >= 0.0 && distance < closestDistance) {
                 closestDistance = distance;

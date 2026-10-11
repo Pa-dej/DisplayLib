@@ -316,16 +316,20 @@ public class DisplayLibCommand implements CommandExecutor, TabCompleter {
                     return true;
                 }
                 
-                plugin.getScreenRegistry().reloadAll();
+                // скрипты - раньше экранов: разбор экранов читает скрипты под новой политикой
                 plugin.getScriptEngine().reload();
+                plugin.getScreenRegistry().reloadAll();
                 sender.sendMessage("§aЭкраны, политика и скрипты перезагружены");
             }
             
             case "list" -> {
                 var screens = plugin.getScreenRegistry().getAllScreens();
-                sender.sendMessage("§eДоступные экраны:");
-                for (String screenId : screens.keySet()) {
-                    sender.sendMessage("§7- " + screenId);
+                sender.sendMessage("§eДоступные экраны §7(виджетов, из них не тикаемых):");
+                for (var e : screens.entrySet()) {
+                    int total = e.getValue().getWidgets() != null ? e.getValue().getWidgets().size() : 0;
+                    var inert = e.getValue().getInertWidgetIds();
+                    sender.sendMessage("§7- §f" + e.getKey() + " §7(" + total + ", " + inert.size() + ")"
+                            + (inert.isEmpty() ? "" : " §8" + String.join(", ", inert)));
                 }
             }
             
@@ -340,8 +344,8 @@ public class DisplayLibCommand implements CommandExecutor, TabCompleter {
                     sender.sendMessage("§cНе удалось выгрузить примеры, смотрите консоль");
                     return true;
                 }
-                plugin.getScreenRegistry().reloadAll();
                 plugin.getScriptEngine().reload();
+                plugin.getScreenRegistry().reloadAll();
                 sender.sendMessage("§aВыгружено файлов примеров: " + count + ", экраны перезагружены");
             }
             

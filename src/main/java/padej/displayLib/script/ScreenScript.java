@@ -107,18 +107,7 @@ public final class ScreenScript {
     public boolean isEmptyFunction(String name) {
         Object value = get(name);
         if (!(value instanceof FunctionNode.ScriptFunction sf)) return false;
-        return isEmpty(sf.node.body);
-    }
-
-    private static boolean isEmpty(me.padej.jumper.ast.Stmt stmt) {
-        if (stmt == null || stmt instanceof me.padej.jumper.ast.Stmts.Empty) return true;
-        if (stmt instanceof me.padej.jumper.ast.Stmts.Block block) {
-            for (me.padej.jumper.ast.Stmt child : block.stmts) {
-                if (!isEmpty(child)) return false;
-            }
-            return true;
-        }
-        return false;
+        return padej.displayLib.config.ScreenAnalyzer.isEmptyBody(sf.node.body);
     }
 
     /** Значение переменной или функции верхнего уровня; {@code null}, если такого имени нет. */

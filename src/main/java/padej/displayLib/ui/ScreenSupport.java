@@ -222,24 +222,14 @@ public final class ScreenSupport {
     }
 
     /**
-     * Нужно ли виджету вообще следить за взглядом: есть рабочий клик или видимая реакция на наведение
-     * (другой текст/фон/спрайт, подсказка, hover-анимация, свечение предмета).
+     * Нужно ли виджету вообще следить за взглядом: есть рабочий клик или видимая реакция на наведение.
+     * Статически не тикаемые виджеты ({@link padej.displayLib.config.ScreenAnalyzer}, список при загрузке
+     * экрана) отсеиваются сразу; для остальных решает проверка клика с настоящим скриптом.
      */
     static boolean isInteractive(WidgetDefinition def, boolean clickable, boolean withHoverAnimation) {
+        if (def.isInert()) return false;
         if (clickable) return true;
-        if (def.getTooltip() != null) return true;
-        if (withHoverAnimation && def.getHoverAnimation() != null) return true;
-        if (def.getType() == WidgetDefinition.WidgetType.ITEM_BUTTON) {
-            return def.isGlowOnHover();
-        }
-        if (def.getType() == WidgetDefinition.WidgetType.SPRITE_BUTTON && def.getHoveredSprite() != null
-                && !def.getHoveredSprite().equals(def.getSprite())) return true;
-        if (def.getHoveredText() != null && !def.getHoveredText().isEmpty()) return true;
-        if (def.getFormattedHoveredText() != null) return true;
-        int[] bg = def.getBackgroundColor(), hbg = def.getHoveredBackgroundColor();
-        if (def.getBackgroundAlpha() != def.getHoveredBackgroundAlpha()) return true;
-        // цвет фона при наведении имеет значение, только если фон вообще виден
-        return def.getBackgroundAlpha() > 0 && !java.util.Arrays.equals(bg, hbg);
+        return padej.displayLib.config.ScreenAnalyzer.hasHoverVisual(def, withHoverAnimation);
     }
 
     // -------------------------------------------------------------------------

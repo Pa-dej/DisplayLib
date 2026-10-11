@@ -16,6 +16,15 @@ import java.util.List;
 
 public abstract class WidgetManager {
     public final List<Widget> children = new ArrayList<>();
+
+    /**
+     * Тикаемые виджеты: подмножество {@link #children}, за взглядом на которые есть смысл следить
+     * ({@link Widget#isInteractive()}). Статические надписи, кнопки без действия и без hover-реакции
+     * (список не тикаемых виджетов экрана составляется при загрузке, см. ScreenAnalyzer) сюда не попадают
+     * и на тиках не обсчитываются вовсе.
+     */
+    private final List<Widget> ticked = new ArrayList<>();
+    private boolean tickListDirty = true;
     public Player viewer;
     protected Location location;
     
@@ -35,11 +44,29 @@ public abstract class WidgetManager {
     
     public <T extends Widget> T addDrawableChild(T child) {
         children.add(child);
+        tickListDirty = true;
         return child;
     }
     
     public void markDirty() {
         isDirty = true;
+        tickListDirty = true;
+    }
+
+    /** Пересобрать список тикаемых виджетов (состав детей или их интерактивность изменились). */
+    private void refreshTickList() {
+        ticked.clear();
+        for (int i = 0; i < children.size(); i++) {
+            Widget w = children.get(i);
+            if (w != null && w.isInteractive()) ticked.add(w);
+        }
+        tickListDirty = false;
+    }
+
+    /** Сколько виджетов экрана обсчитывается на тиках (для /displaylib info и отладки). */
+    public int tickedWidgetCount() {
+        if (tickListDirty) refreshTickList();
+        return ticked.size();
     }
     
     // Абстрактный метод для получения ScreenDefinition (если есть)
@@ -72,28 +99,29 @@ public abstract class WidgetManager {
         if (isDirty) {
             children.removeIf(widget -> !widget.isValid());
             isDirty = false;
+            tickListDirty = true;
         }
+        if (tickListDirty) refreshTickList();
+        if (ticked.isEmpty()) return; // одни статические виджеты - следить не за чем
         
         // Оптимизация: проверяем interaction_radius перед обновлением виджетов
         // Если игрок далеко, не обновляем hover состояния (экономим CPU)
         boolean playerInInteractionRange = isPlayerInInteractionRange();
-        
-        // Debug logging removed to prevent console spam
         
         if (playerInInteractionRange) {
             // Луч взгляда вычисляется один раз на всё обновление и передаётся виджетам
             viewRay.set(viewer);
             // Индексный обход: обработчики могут менять список виджетов во время обновления,
             // а итератор ArrayList в этом случае бросил бы ConcurrentModificationException
-            for (int i = 0; i < children.size(); i++) {
-                children.get(i).update(viewRay);
+            for (int i = 0; i < ticked.size(); i++) {
+                ticked.get(i).update(viewRay);
             }
         } else {
             // Игрок вне радиуса взаимодействия - сбрасываем hover.
             // clearHover() сам проверяет сохранённое состояние, поэтому повторный
             // расчёт наведения (isHovered) здесь не нужен.
-            for (int i = 0; i < children.size(); i++) {
-                Widget widget = children.get(i);
+            for (int i = 0; i < ticked.size(); i++) {
+                Widget widget = ticked.get(i);
                 if (widget.isValid()) {
                     widget.clearHover();
                 }
@@ -121,6 +149,7 @@ public abstract class WidgetManager {
             widget.remove();
         }
         children.clear();
+        ticked.clear();
 
         markDirty();
     }
@@ -138,12 +167,13 @@ public abstract class WidgetManager {
         if (viewer == null) return null;
 
         viewRay.set(viewer);
+        if (tickListDirty) refreshTickList();
 
         Widget nearestWidget = null;
         double nearestDistance = Double.MAX_VALUE;
 
-        for (int i = 0; i < children.size(); i++) {
-            Widget widget = children.get(i);
+        for (int i = 0; i < ticked.size(); i++) {
+            Widget widget = ticked.get(i);
             if (widget == null) continue;
 
             double distance = widget.hitDistance(viewRay);

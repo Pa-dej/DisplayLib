@@ -105,6 +105,12 @@ public class ScreenDefinition {
      * открываемого экрана, при закрытии - закрываемого.
      */
     private Morph morph = new Morph();
+
+    /**
+     * Список не тикаемых виджетов (id, либо {@code #N} для виджетов без id) - заполняется
+     * {@link ScreenAnalyzer} при каждой загрузке экранов в память.
+     */
+    private java.util.Set<String> inertWidgetIds = java.util.Set.of();
     
     public ScreenDefinition() {}
     
@@ -152,6 +158,9 @@ public class ScreenDefinition {
     
     public double getCloseDistance() { return closeDistance; }
     public void setCloseDistance(double closeDistance) { this.closeDistance = closeDistance; }
+
+    public java.util.Set<String> getInertWidgetIds() { return inertWidgetIds; }
+    public void setInertWidgetIds(java.util.Set<String> ids) { this.inertWidgetIds = ids != null ? ids : java.util.Set.of(); }
 
     public Morph getMorph() { return morph; }
     public void setMorph(Morph morph) { this.morph = morph != null ? morph : new Morph(); }

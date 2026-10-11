@@ -53,6 +53,7 @@ public class ScreenRegistry {
         // Загружаем все экраны
         Map<String, ScreenDefinition> loadedScreens = screenLoader.loadAllScreens();
         screens.putAll(loadedScreens);
+        analyze();
         
         plugin.getLogger().info("Loaded " + screens.size() + " screen(s)");
         
@@ -93,8 +94,23 @@ public class ScreenRegistry {
         screens.putAll(loadedScreens);
         screens.keySet().retainAll(loadedScreens.keySet());
         screenIdByFile.clear();
+        analyze();
         
         plugin.getLogger().info("Reloaded " + screens.size() + " screen(s)");
+    }
+
+    /**
+     * Статический разбор всех экранов: список не тикаемых виджетов ({@link ScreenAnalyzer}).
+     * Пересчитывается целиком при любой загрузке: цели {@code switchTo} зависят от других экранов.
+     */
+    public void analyze() {
+        java.nio.file.Path scriptsDir = plugin.getDataFolder().toPath().resolve("scripts").toAbsolutePath().normalize();
+        me.padej.jumper.runtime.Access access = plugin.getScriptEngine() != null ? plugin.getScriptEngine().getAccess() : null;
+        try {
+            ScreenAnalyzer.analyze(screens, scriptsDir, access, plugin.getLogger());
+        } catch (RuntimeException e) {
+            plugin.getLogger().log(java.util.logging.Level.WARNING, "Screen analysis failed", e);
+        }
     }
     
     /**
@@ -115,6 +131,7 @@ public class ScreenRegistry {
             }
             screens.put(screenId, screen);
             screenIdByFile.put(fileId, screenId);
+            analyze();
             plugin.getLogger().info("Reloaded screen: " + screenId);
             return;
         }
@@ -132,6 +149,7 @@ public class ScreenRegistry {
         String removedId = previousId != null ? previousId : fileId;
         screenIdByFile.remove(fileId);
         if (screens.remove(removedId) != null) {
+            analyze(); // переходы на удалённый экран стали «в никуда»
             plugin.getLogger().info("Removed screen: " + removedId);
         }
     }

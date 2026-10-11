@@ -72,12 +72,13 @@ public final class DisplayLib extends JavaPlugin {
         // config.jmc: hotReload, scriptTimeoutMs
         config = PluginConfig.load(this);
 
+        // Скрипты (.jmp) под политикой доступа (scripts.jma) - раньше экранов:
+        // статический разбор экранов читает скрипты под той же политикой
+        scriptEngine = new JumperEngine(this, config.scriptTimeoutMs());
+
         // Экраны (.jmc) и их hot reload
         screenRegistry = new ScreenRegistry(this, config.hotReload());
         screenRegistry.initialize();
-
-        // Скрипты (.jmp) под политикой доступа (scripts.jma)
-        scriptEngine = new JumperEngine(this, config.scriptTimeoutMs());
 
         UIManager.getInstance().initialize(screenRegistry, scriptEngine);
 
