@@ -1,0 +1,22 @@
+// demo_widgets.jmp: onClick: true -> функция с именем виджета, void <id>(dyn widget, dyn player)
+
+int clicks = 0;
+
+void text_btn(dyn widget, dyn player) {
+    clicks = clicks + 1;
+    screen.widget("status").text([ { text: "Текстовая кнопка, клик №" + clicks, color: "yellow" } ]);
+    player.sound("ui.button.click", 0.6, 1.2);
+}
+
+void sprite_btn(dyn widget, dyn player) {
+    // спрайт меняется из скрипта; голое имя - плагин сам найдёт item/ или block/
+    widget.sprite(clicks % 2 == 0 ? "block/bricks" : "block/stone_bricks");
+    clicks = clicks + 1;
+    screen.widget("status").text([ { text: "Спрайт: ", color: "gray" }, { sprite: clicks % 2 == 0 ? "block/bricks" : "block/stone_bricks" } ]);
+    player.sound("block.stone.place", 0.7, 1.0);
+}
+
+void item_btn(dyn widget, dyn player) {
+    screen.widget("status").text([ { text: "Предмет - ", color: "gray" }, { text: "ItemDisplay", color: "aqua" }, { text: " со свечением", color: "gray" } ]);
+    player.sound("item.armor.equip_diamond", 0.8, 1.0);
+}

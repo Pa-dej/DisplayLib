@@ -1,0 +1,16 @@
+// Общий модуль: подключается как import "lib/util.jmp"; (Policy.allowModules() в scripts.jma)
+
+int clamp(int v, int lo, int hi) { return v < lo ? lo : v > hi ? hi : v; }
+
+// "12 с", "1 мин 5 с"
+String fmtTicks(int ticks) {
+    int s = ticks / 20;
+    return s >= 60 ? (s / 60) + " мин " + (s % 60) + " с" : s + " с";
+}
+
+// Состояние модуля живёт, пока открыт экран (у каждого экрана свой интерпретатор).
+// Импортёр получает копию значения переменной на момент import, поэтому читать её нужно
+// через функцию, а не напрямую.
+int calls = 0;
+int bump() { return ++calls; }
+int moduleCalls() { return calls; }

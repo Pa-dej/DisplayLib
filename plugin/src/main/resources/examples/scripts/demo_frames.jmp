@@ -1,0 +1,17 @@
+// demo_frames.jmp: кадры можно задавать и из скрипта
+
+int plays = 0;
+
+void play(dyn widget, dyn player) {
+    plays = plays + 1;
+    // обратный отсчёт кадрами, потом обычный текст (text(...) отменяет анимацию)
+    screen.widget("loading").frames(["3", "2", "1", "Поехали!"], 10);
+    timer.after(45, () -> screen.widget("loading").text("Запусков: " + plays));
+    player.sound("ui.button.click", 0.6, 1.2);
+}
+
+void shimmer(dyn widget, dyn player) {
+    widget.frames(null, 1);                              // снять анимацию покоя
+    widget.text([ { text: "Куплено", color: "green" } ]);
+    player.sound("entity.experience_orb.pickup", 0.7, 1.0);
+}

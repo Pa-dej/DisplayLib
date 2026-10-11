@@ -1,0 +1,181 @@
+plugins {
+    java
+    id("xyz.jpenilla.run-paper") version "2.3.1"
+}
+
+group = "padej"
+version = "1.21.11+3.0.0"
+
+repositories {
+    mavenCentral()
+    maven {
+        name = "papermc-repo"
+        url = uri("https://repo.papermc.io/repository/maven-public/")
+    }
+    maven {
+        name = "jitpack"
+        url = uri("https://jitpack.io")
+    }
+}
+
+dependencies {
+    compileOnly("io.papermc.paper:paper-api:1.21.11-R0.1-SNAPSHOT")
+
+    // Jumper: язык скриптов (.jmp), конфигов (.jmc) и политик доступа (.jma).
+    // Без зависимостей, вшивается в JAR плагина. Версия - тег релиза
+    // https://github.com/jumper-lang/jumper/releases (JitPack собирает :lang по jitpack.yml).
+    implementation("com.github.jumper-lang:jumper:v0.11.2")
+}
+
+tasks {
+    runServer {
+        minecraftVersion("1.21")
+    }
+
+    jar {
+        from(configurations.runtimeClasspath.get().map { if (it.isDirectory) it else zipTree(it) })
+        duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    }
+
+    named("build") {
+        doLast {
+            println("FINISH!")
+            
+            // Copy JAR to server (with overwrite)
+            copy {
+                from(layout.buildDirectory.dir("libs"))
+                into("C:\\Users\\User\\Desktop\\servers\\paper-1.21.11\\plugins")
+                include("*-${version}.jar")
+                exclude("*-sources.jar")
+                duplicatesStrategy = DuplicatesStrategy.INCLUDE
+            }
+            
+            // Copy example files to server plugin directory
+            val serverPluginDir = "C:\\Users\\User\\Desktop\\servers\\paper-1.21.11\\plugins\\DisplayLib"
+            
+            // Create directories
+            file("${serverPluginDir}\\screens").mkdirs()
+            file("${serverPluginDir}\\scripts").mkdirs()
+            
+            // Copy example screens (with overwrite)
+            copy {
+                from("src/main/resources/examples/screens")
+                into("${serverPluginDir}\\screens")
+                include("**/*.jmc")
+                duplicatesStrategy = DuplicatesStrategy.INCLUDE
+            }
+            
+            // Copy example scripts (with overwrite)
+            copy {
+                from("src/main/resources/examples/scripts")
+                into("${serverPluginDir}\\scripts")
+                include("**/*.jmp")
+                duplicatesStrategy = DuplicatesStrategy.INCLUDE
+            }
+            
+            println("Example files copied to server!")
+        }
+    }
+
+    // Task to copy only examples without rebuilding
+    register("copyExamples") {
+        group = "development"
+        description = "Copy example files to server without rebuilding"
+        
+        doLast {
+            val serverPluginDir = "C:\\Users\\User\\Desktop\\servers\\paper-1.21.11\\plugins\\DisplayLib"
+            
+            // Create directories
+            file("${serverPluginDir}\\screens").mkdirs()
+            file("${serverPluginDir}\\scripts").mkdirs()
+            
+            // Copy example screens (with overwrite)
+            copy {
+                from("src/main/resources/examples/screens")
+                into("${serverPluginDir}\\screens")
+                include("**/*.jmc")
+                duplicatesStrategy = DuplicatesStrategy.INCLUDE
+            }
+            
+            // Copy example scripts (with overwrite)
+            copy {
+                from("src/main/resources/examples/scripts")
+                into("${serverPluginDir}\\scripts")
+                include("**/*.jmp")
+                duplicatesStrategy = DuplicatesStrategy.INCLUDE
+            }
+            
+            println("Example files copied to server!")
+        }
+    }
+
+    withType<JavaCompile>().configureEach {
+        options.encoding = "UTF-8"
+        options.release.set(21)
+    }
+
+    javadoc {
+        options {
+            this as StandardJavadocDocletOptions
+            encoding = "UTF-8"
+            windowTitle = "DisplayLib API"
+            addStringOption("locale", "ru")
+            links("https://docs.oracle.com/en/java/javase/21/docs/api/")
+            links("https://jd.papermc.io/paper/1.21/")
+            memberLevel = JavadocMemberLevel.PROTECTED
+            
+            // Настройки для русского языка
+            addStringOption("charset", "UTF-8")
+            addStringOption("docencoding", "UTF-8")
+            
+            // Дополнительные опции
+            addBooleanOption("author", true)
+            addBooleanOption("version", true)
+            addBooleanOption("use", true)
+            addBooleanOption("splitindex", true)
+            addStringOption("doctitle", "DisplayLib API Documentation")
+            addStringOption("header", "<b>DisplayLib v${version}</b>")
+            addStringOption("footer", "<b>DisplayLib v${version}</b>")
+            addStringOption("bottom", "Copyright © 2024 DisplayLib. Все права защищены.")
+        }
+        
+        // Исключаем тестовые классы
+        exclude("**/test_events/**")
+        
+        // Включаем только основные пакеты
+        include("**/config/**")
+        include("**/script/api/**")
+        include("**/ui/**")
+        include("**/DisplayLib.java")
+        
+        setDestinationDir(layout.buildDirectory.dir("docs/javadoc").get().asFile)
+        
+        doLast {
+            println("Javadoc сгенерирован в: ${destinationDir}")
+        }
+    }
+
+    processResources {
+        val props = mapOf("version" to version)
+        inputs.properties(props)
+        filteringCharset = "UTF-8"
+        filesMatching("plugin.yml") {
+            expand(props)
+        }
+    }
+}
+
+java {
+    val javaVersion = JavaVersion.toVersion(21)
+    sourceCompatibility = javaVersion
+    targetCompatibility = javaVersion
+    if (JavaVersion.current() < javaVersion) {
+        toolchain.languageVersion = JavaLanguageVersion.of(21)
+    }
+}
+
+// Personal, untracked build tasks (e.g. copying the JAR to your own test server).
+// The file is optional and is not committed; see .git/info/exclude or .gitignore.
+if (file("local.gradle.kts").exists()) {
+    apply(from = "local.gradle.kts")
+}

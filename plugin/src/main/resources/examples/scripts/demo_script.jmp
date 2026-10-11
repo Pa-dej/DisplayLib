@@ -1,0 +1,49 @@
+// demo_script.jmp: WidgetAPI, ScreenAPI, StorageAPI, LogAPI и хуки.
+// Глобалы: player (владелец приватного экрана), screen, storage, timer, log.
+
+boolean locked = false;
+
+void onOpen() {
+    // storage переживает закрытие экрана - счётчик продолжается
+    int n = storage.get("demo_count", 0);
+    screen.widget("counter").text("Счётчик: " + n);
+    screen.widget("status").text([ { text: "onOpen: ", color: "gray" }, { text: player.name(), color: "white" }, { text: ", экран " + screen.id(), color: "gray" } ]);
+    screen.data("clicks", 0);                            // данные экрана: живут, пока он открыт
+    log.info("demo_script открыт для " + player.name());
+}
+
+void onClose() {
+    log.info("demo_script закрыт, кликов по счётчику за сеанс: " + screen.data("clicks"));
+}
+
+void counter(dyn widget, dyn player) {
+    int n = storage.get("demo_count", 0) + 1;
+    storage.set("demo_count", n);
+    screen.data("clicks", screen.data("clicks") + 1);
+    widget.text("Счётчик: " + n);
+    // цвет фона зависит от значения
+    widget.bgColor(30 + (n * 12 > 150 ? 150 : n * 12), 32, 44);
+    player.sound("block.note_block.pling", 0.8, 0.8 + (n % 10) * 0.08);
+}
+
+void reset(dyn widget, dyn player) {
+    storage.remove("demo_count");
+    screen.widget("counter").text("Счётчик: 0");
+    screen.widget("counter").bgColor(30, 32, 44);
+    player.sound("block.note_block.bass", 0.8, 0.6);
+}
+
+void toggle(dyn widget, dyn player) {
+    dyn label = screen.widget("label");
+    label.visible(!label.visible());
+    widget.text(label.visible() ? "Скрыть метку" : "Показать метку");
+}
+
+void lock(dyn widget, dyn player) {
+    locked = !locked;
+    dyn c = screen.widget("counter");
+    c.enabled(!locked);                                  // выключенная кнопка не реагирует на клик
+    c.tooltip(locked ? "Заблокировано" : null);
+    widget.text(locked ? "Разблокировать" : "Заблокировать");
+    screen.widget("status").text([ { text: locked ? "Счётчик заблокирован" : "Счётчик снова работает", color: locked ? "red" : "green" } ]);
+}

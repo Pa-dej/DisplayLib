@@ -1,0 +1,75 @@
+// morph_menu: экран DisplayLib (конфиг Jumper, .jmc)
+
+String id = "morph_menu";
+String screenType = "PRIVATE";
+int tickRate = 4;
+dyn morph = { enabled: true, duration: 4, steps: 4 };
+
+dyn background = { color: [40, 40, 48], alpha: 200, scale: [12, 5, 1] };
+
+dyn widgets = [
+  {
+    id: "title",
+    type: "TEXT_BUTTON",
+    text: [ { text: "Morph Showcase", color: "gray" } ],
+    position: [0, 1.125, -0.01],
+    scale: [0.5, 0.5, 0.8],
+    tolerance: [0, 0],
+  },
+  {
+    id: "hint",
+    type: "TEXT_BUTTON",
+    text: [ { text: "test ", color: "#c0c0c0" }, { atlas: "minecraft:items", sprite: "item/iron_ingot" } ],
+    position: [0, 0.9, -0.01],
+    scale: [0.4, 0.4, 0.4],
+    tolerance: [0, 0],
+  },
+  {
+    id: "shop",
+    type: "TEXT_BUTTON",
+    text: "Магазин",
+    position: [0, 0.7, -0.01],
+    scale: [0.4, 0.4, 0.6],
+    tolerance: [0.21, 0.05],
+    backgroundColor: [20, 90, 40],
+    backgroundAlpha: 200,
+    hoveredBackgroundColor: [40, 140, 70],
+    hoveredBackgroundAlpha: 230,
+    onClick: { switchTo: "morph_shop" },
+  },
+  {
+    id: "settings",
+    type: "TEXT_BUTTON",
+    text: "Настройки",
+    position: [0, 0.5, -0.01],
+    scale: [0.4, 0.4, 0.6],
+    tolerance: [0.27, 0.05],
+    backgroundColor: [90, 70, 20],
+    backgroundAlpha: 200,
+    hoveredBackgroundColor: [140, 110, 40],
+    hoveredBackgroundAlpha: 230,
+    onClick: { switchTo: "morph_settings" },
+  },
+  {
+    id: "item",
+    type: "SPRITE_BUTTON",
+    sprite: "haste",
+    position: [0, 0, -0.01],
+    scale: [1, 1, 1],
+    tolerance: [0, 0],
+    tooltip: "Яблоко",
+  },
+  {
+    id: "close",
+    type: "TEXT_BUTTON",
+    text: "Закрыть",
+    position: [0, 0.3, -0.01],
+    scale: [0.4, 0.4, 0.4],
+    tolerance: [0.21, 0.05],
+    backgroundColor: [90, 30, 30],
+    backgroundAlpha: 180,
+    hoveredBackgroundColor: [150, 50, 50],
+    hoveredBackgroundAlpha: 220,
+    onClick: { close: true },
+  },
+];

@@ -1,0 +1,26 @@
+// demo_public: ПУБЛИЧНЫЙ экран - стоит в мире, виден всем. Открыть: /displaylib openpublic demo_public <x> <y> <z>
+//  - глобал player в скрипте равен null: кликнувший игрок приходит аргументом обработчика;
+//  - hover-анимации, hoveredText, switchTo и close не работают (экран общий), подсказки и кадры - работают;
+//  - закрыть: /displaylib closepublic demo_public
+
+String id = "demo_public";
+String screenType = "PUBLIC";
+int tickRate = 4;
+double interactionRadius = 6;
+String script = "demo_public.jmp";
+
+dyn background = { color: [24, 36, 52], alpha: 220, scale: [12, 5, 1] };
+
+dyn widgets = [
+    { id: "title", text: [ { text: "Доска объявлений", color: "#47a2b6" } ], position: [0, 1.125, -0.01], scale: [0.5, 0.5, 0.5], tolerance: [0, 0] },
+    { id: "online", frames: ["Сервер онлайн", "Сервер онлайн."], frameInterval: 20,
+      position: [0, 0.9, -0.01], scale: [0.35, 0.35, 0.35], tolerance: [0, 0], backgroundAlpha: 0 },
+
+    // общий счётчик: виден всем, кликать может любой
+    { id: "votes", text: "Голосов: 0", position: [0, 0.65, -0.01], scale: [0.4, 0.4, 0.4], tolerance: [0.3, 0.05],
+      backgroundColor: [31, 72, 81], backgroundAlpha: 200, tooltip: "Нажми, чтобы проголосовать", onClick: true },
+    { id: "last", text: "Последний: -", position: [0, 0.42, -0.01], scale: [0.3, 0.3, 0.3], tolerance: [0, 0], backgroundAlpha: 0 },
+
+    { id: "ping", text: "Кто здесь?", position: [0, 0.18, -0.01], scale: [0.35, 0.35, 0.35], tolerance: [0.2, 0.045],
+      backgroundColor: [30, 32, 44], backgroundAlpha: 200, onClick: true },
+];

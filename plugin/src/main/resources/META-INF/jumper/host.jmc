@@ -1,0 +1,16 @@
+// Дескриптор хоста Jumper: как DisplayLib раскладывает свои файлы.
+// Его читают редакторы (IntelliJ, VS Code, Neovim), чтобы проверять скрипты и подсказывать
+// глобалы и хуки. Плагин сам этот файл не использует.
+String name = "DisplayLib";
+String root = "DisplayLib";                 // plugins/DisplayLib относительно папки JAR (plugins/)
+dyn scripts = ["scripts/**/*.jmp"];
+String access = "scripts.jma";
+dyn configs = ["config.jmc", "screens/**/*.jmc"];
+dyn globals = {
+    player: "padej.displayLib.script.api.PlayerAPI",
+    screen: "padej.displayLib.script.api.ScreenAPI",
+    storage: "padej.displayLib.script.api.StorageAPI",
+    timer: "padej.displayLib.script.api.TimerAPI",
+    log: "padej.displayLib.script.api.LogAPI",
+};
+String hooks = "padej.displayLib.script.api.ScreenHooks";

@@ -1,0 +1,49 @@
+// demo_menu: главное меню демонстраций DisplayLib. Открой: /displaylib open demo_menu
+// Все демо-экраны сделаны в одних пропорциях: фон [12, 5, 1] (1.5 × 1.25 блока), заголовок scale 0.5 на y = 1.125,
+// кнопки scale 0.4 рядами через 0.2 (y = 0.9 … 0.3), tolerance = половина ширины текста × 0.05 по высоте,
+// виджеты на z = -0.01 (чуть ближе к игроку, чем фон). Переходы между экранами - morph.
+
+String id = "demo_menu";
+String screenType = "PRIVATE";
+int tickRate = 4;
+dyn morph = { enabled: true, duration: 6, steps: 3 };
+
+dyn background = { color: [40, 40, 48], alpha: 200, scale: [12, 5, 1] };
+
+// общий стиль кнопок меню
+dyn btn = { scale: [0.4, 0.4, 0.4], backgroundColor: [30, 32, 44], backgroundAlpha: 200, hoveredBackgroundColor: [60, 64, 88], hoveredBackgroundAlpha: 230 };
+
+dyn widgets = [
+    { id: "title", text: [ { text: "DisplayLib", color: "#47a2b6" }, { text: " demo", color: "gray" } ],
+      position: [0, 1.125, -0.01], scale: [0.5, 0.5, 0.5], tolerance: [0, 0] },
+
+    // левая колонка
+    { id: "widgets", text: "Виджеты",   position: [-0.35, 0.9, -0.01], scale: btn.scale, tolerance: [0.23, 0.05],
+      backgroundColor: btn.backgroundColor, backgroundAlpha: btn.backgroundAlpha, hoveredBackgroundColor: btn.hoveredBackgroundColor, hoveredBackgroundAlpha: btn.hoveredBackgroundAlpha,
+      onClick: { switchTo: "demo_widgets" } },
+    { id: "hover",   text: "Наведение", position: [-0.35, 0.7, -0.01], scale: btn.scale, tolerance: [0.27, 0.05],
+      backgroundColor: btn.backgroundColor, backgroundAlpha: btn.backgroundAlpha, hoveredBackgroundColor: btn.hoveredBackgroundColor, hoveredBackgroundAlpha: btn.hoveredBackgroundAlpha,
+      onClick: { switchTo: "demo_hover" } },
+    { id: "frames",  text: "Кадры",     position: [-0.35, 0.5, -0.01], scale: btn.scale, tolerance: [0.17, 0.05],
+      backgroundColor: btn.backgroundColor, backgroundAlpha: btn.backgroundAlpha, hoveredBackgroundColor: btn.hoveredBackgroundColor, hoveredBackgroundAlpha: btn.hoveredBackgroundAlpha,
+      onClick: { switchTo: "demo_frames" } },
+
+    // правая колонка
+    { id: "script",  text: "Скрипт",    position: [0.35, 0.9, -0.01], scale: btn.scale, tolerance: [0.2, 0.05],
+      backgroundColor: btn.backgroundColor, backgroundAlpha: btn.backgroundAlpha, hoveredBackgroundColor: btn.hoveredBackgroundColor, hoveredBackgroundAlpha: btn.hoveredBackgroundAlpha,
+      onClick: { switchTo: "demo_script" } },
+    { id: "player",  text: "Игрок",     position: [0.35, 0.7, -0.01], scale: btn.scale, tolerance: [0.17, 0.05],
+      backgroundColor: btn.backgroundColor, backgroundAlpha: btn.backgroundAlpha, hoveredBackgroundColor: btn.hoveredBackgroundColor, hoveredBackgroundAlpha: btn.hoveredBackgroundAlpha,
+      onClick: { switchTo: "demo_player" } },
+    { id: "timers",  text: "Таймеры",   position: [0.35, 0.5, -0.01], scale: btn.scale, tolerance: [0.23, 0.05],
+      backgroundColor: btn.backgroundColor, backgroundAlpha: btn.backgroundAlpha, hoveredBackgroundColor: btn.hoveredBackgroundColor, hoveredBackgroundAlpha: btn.hoveredBackgroundAlpha,
+      onClick: { switchTo: "demo_timers" } },
+
+    { id: "morph", text: [ { text: "Morph ", color: "white" }, { atlas: "minecraft:gui", sprite: "icon/trial_available" } ],
+      position: [-0.35, 0.3, -0.01], scale: btn.scale, tolerance: [0.22, 0.05],
+      backgroundColor: [31, 72, 81], backgroundAlpha: 200, hoveredBackgroundColor: [46, 105, 117], hoveredBackgroundAlpha: 230,
+      onClick: { switchTo: "morph_menu" } },
+    { id: "close", text: "Закрыть", position: [0.35, 0.3, -0.01], scale: [0.4, 0.4, 0.4], tolerance: [0.21, 0.05],
+      backgroundColor: [90, 30, 30], backgroundAlpha: 180, hoveredBackgroundColor: [150, 50, 50], hoveredBackgroundAlpha: 220,
+      onClick: { close: true } },
+];

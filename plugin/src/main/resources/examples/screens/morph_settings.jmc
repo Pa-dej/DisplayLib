@@ -1,0 +1,83 @@
+// morph_settings: экран DisplayLib (конфиг Jumper, .jmc)
+
+String id = "morph_settings";
+String screenType = "PRIVATE";
+int tickRate = 4;
+dyn morph = { enabled: true, duration: 4, steps: 4 };
+
+dyn background = { color: [255, 255, 255], alpha: 200, scale: [12, 5, 1] };
+
+dyn widgets = [
+  {
+    id: "title",
+    type: "TEXT_BUTTON",
+    text: [ { text: "Morph Settings", color: "dark_gray" } ],
+    position: [0, 1.125, -0.01],
+    scale: [0.5, 0.5, 0.8],
+    tolerance: [0, 0],
+  },
+  {
+    id: "hint",
+    type: "TEXT_BUTTON",
+    text: [ { text: "test ", color: "gold" }, { atlas: "minecraft:items", sprite: "item/acacia_chest_boat" } ],
+    position: [0, 0.9, -0.01],
+    scale: [0.4, 0.4, 0.4],
+    tolerance: [0, 0],
+    backgroundColor: [0, 0, 0],
+    backgroundAlpha: 30,
+    hoveredBackgroundColor: [60, 60, 60],
+    hoveredBackgroundAlpha: 30,
+  },
+  {
+    id: "shop",
+    type: "TEXT_BUTTON",
+    text: "Магазин",
+    position: [-0.545, 0.7, -0.01],
+    scale: [0.4, 0.4, 0.6],
+    tolerance: [0.21, 0.05],
+    backgroundColor: [20, 90, 40],
+    backgroundAlpha: 200,
+    hoveredBackgroundColor: [40, 140, 70],
+    hoveredBackgroundAlpha: 230,
+    hoverAnimation: { type: "TRANSLATE", offset: [0.07, 0, 0], duration: 4, easing: "LINEAR" },
+    onClick: { switchTo: "morph_shop" },
+  },
+  {
+    id: "settings",
+    type: "TEXT_BUTTON",
+    text: "Menu",
+    position: [-0.63, 0.5, -0.01],
+    scale: [0.4, 0.4, 0.6],
+    tolerance: [0.12, 0.05],
+    backgroundColor: [84, 19, 91],
+    backgroundAlpha: 200,
+    hoveredBackgroundColor: [138, 37, 143],
+    hoveredBackgroundAlpha: 230,
+    hoverAnimation: { type: "TRANSLATE", offset: [0.07, 0, 0], duration: 4, easing: "LINEAR" },
+    onClick: { switchTo: "morph_menu" },
+  },
+  {
+    id: "item",
+    type: "SPRITE_BUTTON",
+    atlas: "minecraft:items",
+    sprite: "item/amethyst_shard",
+    position: [0, 0, -0.01],
+    scale: [1, 1, 1],
+    tolerance: [0, 0],
+    tooltip: "Яблоко",
+  },
+  {
+    id: "close",
+    type: "TEXT_BUTTON",
+    text: "Закрыть",
+    position: [-0.54, 0.3, -0.01],
+    scale: [0.4, 0.4, 0.4],
+    tolerance: [0.21, 0.05],
+    backgroundColor: [90, 30, 30],
+    backgroundAlpha: 180,
+    hoveredBackgroundColor: [150, 50, 50],
+    hoveredBackgroundAlpha: 220,
+    hoverAnimation: { type: "TRANSLATE", offset: [0.07, 0, 0], duration: 4, easing: "LINEAR" },
+    onClick: { close: true },
+  },
+];

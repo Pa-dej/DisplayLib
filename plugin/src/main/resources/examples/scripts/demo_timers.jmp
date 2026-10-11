@@ -1,0 +1,53 @@
+// demo_timers.jmp: TimerAPI и модуль lib/util.jmp (Policy.allowModules() в scripts.jma)
+
+import "lib/util.jmp";
+
+int everyId = -1;      // id повторяющегося таймера, -1 = выключен
+int ticks = 0;
+
+void status() { screen.widget("status").text("Активных таймеров: " + timer.active()); }
+
+// Секундомер: timer.every(период, fn) - повторять, timer.cancel(id) - остановить
+void tick(dyn widget, dyn player) {
+    if (everyId >= 0) {
+        timer.cancel(everyId);
+        everyId = -1;
+        widget.text("Старт секундомера");
+        widget.bgColor(31, 72, 81);
+    } else {
+        ticks = 0;
+        everyId = timer.every(20, () -> {
+            ticks = ticks + 20;
+            screen.widget("clock").text(fmtTicks(ticks));      // из модуля: "12 с", "1 мин 5 с"
+        });
+        widget.text("Стоп секундомера");
+        widget.bgColor(90, 30, 30);
+    }
+    status();
+}
+
+// timer.times(период, сколько, fn(i)): отсчёт 5…1, потом текст
+void countdown(dyn widget, dyn player) {
+    widget.enabled(false);
+    timer.times(20, 6, (i) -> {                          // i = 1..6: 5, 4, 3, 2, 1, Пуск!
+        int left = 6 - i;
+        widget.text(left > 0 ? "Отсчёт " + left : "Пуск!");
+        player.sound("block.note_block.hat", 0.8, left > 0 ? 1.0 : 1.8);
+        if (left == 0) timer.after(20, () -> { widget.text("Отсчёт 5"); widget.enabled(true); });
+    });
+    status();
+}
+
+// timer.after(тики, fn) - один раз
+void later(dyn widget, dyn player) {
+    widget.text("Жду…");
+    timer.after(40, () -> {
+        widget.text("Через 2 с");
+        player.message("Прошло 2 секунды", "#47a2b6");
+    });
+    status();
+}
+
+void onClose() {
+    log.info("demo_timers: закрыт, таймеров было " + timer.active() + " - все отменены");
+}

@@ -1,0 +1,16 @@
+// demo_public.jmp: публичный экран - один на всех, игрок приходит в обработчик аргументом (глобал player == null)
+
+int count = 0;
+
+void onOpen() { log.info("demo_public открыт, public=" + screen.isPublic()); }
+
+void votes(dyn widget, dyn player) {
+    count = count + 1;
+    widget.text("Голосов: " + count);
+    screen.widget("last").text([ { text: "Последний: ", color: "gray" }, { text: player.name(), color: "white" } ]);
+    player.sound("entity.experience_orb.pickup", 0.6, 1.2);
+}
+
+void ping(dyn widget, dyn player) {
+    player.message("Это публичный экран: ты " + player.name() + ", голосов " + count, "#47a2b6");
+}

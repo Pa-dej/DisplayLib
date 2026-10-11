@@ -1,0 +1,90 @@
+// morph_shop: экран DisplayLib (конфиг Jumper, .jmc)
+
+String id = "morph_shop";
+String screenType = "PRIVATE";
+int tickRate = 4;
+dyn morph = { enabled: true, duration: 8, steps: 4 };
+
+dyn background = { color: [40, 40, 48], alpha: 200, scale: [12, 5, 1] };
+
+dyn widgets = [
+  {
+    id: "title",
+    type: "TEXT_BUTTON",
+    text: [ { text: "Morph Shop", color: "#aaaaaa" } ],
+    position: [0, 1.125, -0.01],
+    scale: [0.5, 0.5, 0.8],
+    tolerance: [0, 0],
+  },
+  {
+    id: "hint",
+    type: "TEXT_BUTTON",
+    text: [ { text: "test ", color: "#c0c0c0" }, { atlas: "minecraft:items", sprite: "item/gold_ingot" } ],
+    position: [-0.005, 0, -0.01],
+    scale: [0.4, 0.4, 0.4],
+    tolerance: [0, 0],
+  },
+  {
+    id: "shop",
+    type: "TEXT_BUTTON",
+    text: "Menu",
+    position: [0.62, 0.7, -0.01],
+    scale: [0.4, 0.4, 0.6],
+    tolerance: [0.12, 0.05],
+    backgroundColor: [128, 128, 192],
+    backgroundAlpha: 200,
+    hoveredBackgroundColor: [128, 128, 255],
+    hoveredBackgroundAlpha: 230,
+    hoverAnimation: { type: "TRANSLATE", offset: [-0.07, 0, 0], duration: 4, easing: "LINEAR" },
+    onClick: { switchTo: "morph_menu" },
+  },
+  {
+    id: "settings",
+    type: "TEXT_BUTTON",
+    text: "Настройки",
+    position: [0.475, 0.5, -0.01],
+    scale: [0.4, 0.4, 0.6],
+    tolerance: [0.27, 0.05],
+    backgroundColor: [90, 70, 20],
+    backgroundAlpha: 200,
+    hoveredBackgroundColor: [140, 110, 40],
+    hoveredBackgroundAlpha: 230,
+    hoverAnimation: { type: "TRANSLATE", offset: [-0.07, 0, 0], duration: 4, easing: "LINEAR" },
+    onClick: { switchTo: "morph_settings" },
+  },
+  {
+    id: "item",
+    type: "TEXT_BUTTON",
+    text: [ { atlas: "minecraft:particles", sprite: "small_gust_0" } ],
+    frames: [ [ { atlas: "minecraft:particles", sprite: "small_gust_0" } ], [ { atlas: "minecraft:particles", sprite: "small_gust_1" } ], [ { atlas: "minecraft:particles", sprite: "small_gust_2" } ], [ { atlas: "minecraft:particles", sprite: "small_gust_3" } ], [ { atlas: "minecraft:particles", sprite: "small_gust_4" } ], [ { atlas: "minecraft:particles", sprite: "small_gust_5" } ], [ { atlas: "minecraft:particles", sprite: "small_gust_6" } ] ],
+    frameInterval: 4,
+    hoveredFrames: [ [ { atlas: "minecraft:particles", sprite: "soul_0" } ], [ { atlas: "minecraft:particles", sprite: "soul_1" } ], [ { atlas: "minecraft:particles", sprite: "soul_2" } ], [ { atlas: "minecraft:particles", sprite: "soul_3" } ], [ { atlas: "minecraft:particles", sprite: "soul_4" } ], [ { atlas: "minecraft:particles", sprite: "soul_5" } ], [ { atlas: "minecraft:particles", sprite: "soul_6" } ], [ { atlas: "minecraft:particles", sprite: "soul_7" } ], [ { atlas: "minecraft:particles", sprite: "soul_8" } ], [ { atlas: "minecraft:particles", sprite: "soul_9" } ], [ { atlas: "minecraft:particles", sprite: "soul_10" } ] ],
+    position: [-0.65, 0.425, -0.01],
+    scale: [1, 1, 1],
+    tolerance: [0.1, 0.1],
+    tooltip: "Яблоко",
+  },
+  {
+    id: "item_2",
+    type: "TEXT_BUTTON",
+    text: [ { atlas: "minecraft:gui", sprite: "icon/trial_available" }, { text: "", color: "gray" } ],
+    position: [-0.65, 0.625, -0.01],
+    scale: [1, 1, 1],
+    tolerance: [0, 0],
+    tooltip: "Яблоко",
+  },
+  {
+    id: "close",
+    type: "TEXT_BUTTON",
+    text: "Закрыть",
+    position: [0.53, 0.3, -0.01],
+    scale: [0.4, 0.4, 0.4],
+    tolerance: [0.21, 0.05],
+    backgroundColor: [90, 30, 30],
+    backgroundAlpha: 180,
+    hoveredBackgroundColor: [150, 50, 50],
+    hoveredBackgroundAlpha: 220,
+    hoverAnimation: { type: "TRANSLATE", offset: [-0.06, 0, 0], duration: 4, easing: "LINEAR" },
+    onClick: { close: true },
+  },
+];

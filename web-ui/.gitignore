@@ -1,0 +1,8 @@
+node_modules/
+dist/
+public/assets/minecraft/
+public/assets/sprite-index.json
+public/assets/icon-pack.json
+DisplayLib-icons.zip
+_tmp/
+*.tgz
