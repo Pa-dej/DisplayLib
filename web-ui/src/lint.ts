@@ -21,7 +21,7 @@ export function visualRect(w: Widget): Rect {
     const hw = (calibration.itemSize * w.scale[0]) / 2, hh = (calibration.itemSize * w.scale[1]) / 2;
     return { l: tx - hw, r: tx + hw, b: ty - hh, t: ty + hh };
   }
-  const L = layout(widgetText(w));
+  const L = layout(widgetText(w), w.lineWidth);
   const wb = L.bgW * calibration.px * w.scale[0], hb = L.bgH * calibration.px * w.scale[1];
   return { l: tx - wb / 2, r: tx + wb / 2, b: ty, t: ty + hb }; // якорь - низ по центру
 }
@@ -30,7 +30,7 @@ export function visualRect(w: Widget): Rect {
 export function hitRect(w: Widget): Rect {
   const tx = w.position[0] + w.translation[0];
   let ty = w.position[1] + w.translation[1];
-  if (w.type !== 'ITEM_BUTTON') ty += (layout(widgetText(w)).bgH / 2) * calibration.px * w.scale[1];
+  if (w.type !== 'ITEM_BUTTON') ty += (layout(widgetText(w), w.lineWidth).bgH / 2) * calibration.px * w.scale[1];
   return { l: tx - w.tolerance[0], r: tx + w.tolerance[0], b: ty - w.tolerance[1], t: ty + w.tolerance[1] };
 }
 

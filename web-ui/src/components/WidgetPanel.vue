@@ -130,6 +130,7 @@ function fmt(n: number) { return (Math.round(n * 1000) / 1000).toString(); }
           </div>
         </div>
       </div>
+      <div class="field"><label>lineWidth</label><div class="row"><input type="number" min="1" step="10" style="width:72px" :value="w.lineWidth" @focus="snapshot()" @input="w.lineWidth = Math.max(1, Math.round(Number(text($event))) || 200); touch()" /><span class="hint">px шрифта; дальше текст переносится (клиент: 200 ≈ 33 символа)</span></div></div>
       <div class="field"><label>alignment</label><select :value="w.alignment" @change="snapshot(); w.alignment = ($event.target as HTMLSelectElement).value as any; touch()"><option>LEFT</option><option>CENTERED</option><option>RIGHT</option></select></div>
       <div class="field"><label>Фон</label><ColorInput v-model="w.backgroundColor" :alpha="w.backgroundAlpha" @update:alpha="w.backgroundAlpha = $event" /></div>
       <div class="field"><label>Фон hover</label><ColorInput v-model="w.hoveredBackgroundColor" :alpha="w.hoveredBackgroundAlpha" @update:alpha="w.hoveredBackgroundAlpha = $event" /></div>

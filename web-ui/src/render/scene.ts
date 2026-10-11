@@ -493,7 +493,7 @@ export class ScreenScene {
     const text = widgetText(w, hovered);
     const bg = hovered ? w.hoveredBackgroundColor : w.backgroundColor;
     const alpha = hovered ? w.hoveredBackgroundAlpha : w.backgroundAlpha;
-    const { texture, layout: L } = buildTextTexture(text, w.alignment, bg, alpha);
+    const { texture, layout: L } = buildTextTexture(text, w.alignment, bg, alpha, 4, w.lineWidth);
     return this.textNode(w.uid, texture, L.bgW, L.bgH, w.scale, w.translation, w.position, calibration.textDepthOffset, w.tolerance, true, w.rotation);
   }
 
@@ -942,6 +942,6 @@ export function widgetText(w: Widget, hovered = false, tick = editorTick()): Ric
 
 /** Размер текстового виджета в блоках (для инспектора). */
 export function textSizeBlocks(w: Widget): { w: number; h: number } {
-  const L = layout(widgetText(w));
+  const L = layout(widgetText(w), w.lineWidth);
   return { w: L.bgW * calibration.px * w.scale[0], h: L.bgH * calibration.px * w.scale[1] };
 }

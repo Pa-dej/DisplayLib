@@ -58,6 +58,8 @@ public class TextDisplayButtonWidget implements Widget {
     private Vector3f translation;
     /** Поворот в плоскости экрана, градусы (+ = против часовой для зрителя), вокруг центра текста. */
     private float rotationDeg = 0.0f;
+    /** Ширина переноса, px шрифта. */
+    private int lineWidth = 200;
     private Transformation hoveredTransformation;
     private int hoveredTransformationDuration;
     private padej.displayLib.config.HoverAnimation hoverAnimation;
@@ -115,6 +117,7 @@ public class TextDisplayButtonWidget implements Widget {
         TextDisplayButtonWidget widget = init(location, viewer, config);
         widget.display = entity;
         entity.setAlignment(widget.textAlignment);
+        entity.setLineWidth(widget.lineWidth);
         entity.setPersistent(false);
         return widget;
     }
@@ -149,6 +152,7 @@ public class TextDisplayButtonWidget implements Widget {
         widget.soundPitch = config.getSoundPitch();
         widget.translation = config.getTranslation();
         widget.rotationDeg = config.getRotation();
+        widget.lineWidth = config.getLineWidth();
         widget.hoveredTransformation = config.getHoveredTransformation();
         widget.hoveredTransformationDuration = config.getHoveredTransformationDuration();
         widget.hoverAnimation = config.getHoverAnimation();
@@ -220,6 +224,7 @@ public class TextDisplayButtonWidget implements Widget {
         display = (TextDisplay) location.getWorld().spawnEntity(location, EntityType.TEXT_DISPLAY);
         display.text(text);
         display.setBackgroundColor(backgroundArgb());
+        display.setLineWidth(lineWidth);
         
         // Применяем выравнивание текста
         display.setAlignment(textAlignment);
@@ -295,7 +300,7 @@ public class TextDisplayButtonWidget implements Widget {
      * ширину шрифта сервер не знает, так что для длинных строк это приближение.
      */
     float hitCenterOffsetY() {
-        int lines = estimateLines(text);
+        int lines = estimateSize(text, lineWidth)[1];
         float heightPx = lines * LINE_HEIGHT;
         return heightPx / 2.0f * TEXT_PIXEL * scaleY;
     }
@@ -314,7 +319,9 @@ public class TextDisplayButtonWidget implements Widget {
      * Оценка размера текста в px шрифта: {@code [ширина самой длинной строки, число строк]}
      * по той же таблице ширин и переносу, что и {@link #estimateLines}.
      */
-    public static int[] estimateSize(Component c) {
+    public static int[] estimateSize(Component c) { return estimateSize(c, LINE_WIDTH); }
+
+    public static int[] estimateSize(Component c, int lineWidth) {
         if (c == null) return new int[]{0, 1};
         // собираем «токены»: ширина слова и признак переноса строки
         java.util.List<int[]> words = new java.util.ArrayList<>(); // [width, isNewline]
@@ -335,7 +342,7 @@ public class TextDisplayButtonWidget implements Widget {
         int lines = 1, lineW = 0, maxW = 0;
         for (int[] w : words) {
             if (w[1] == 1) { lines++; lineW = 0; continue; }
-            if (lineW > 0 && lineW + w[0] > LINE_WIDTH) { lines++; lineW = w[0]; }
+            if (lineW > 0 && lineW + w[0] > lineWidth) { lines++; lineW = w[0]; }
             else lineW += w[0];
             maxW = Math.max(maxW, lineW);
         }

@@ -97,8 +97,8 @@ export interface TextLayout {
   bgH: number;
 }
 
-export function layout(t: RichText): TextLayout {
-  const lines = wrap(toRuns(t));
+export function layout(t: RichText, maxWidth = 200): TextLayout {
+  const lines = wrap(toRuns(t), maxWidth);
   const width = Math.max(0, ...lines.map(lineWidth));
   const height = lines.length * calibration.lineHeight;
   return { lines, width, height, bgW: width + calibration.bgLeft + calibration.bgRight, bgH: height + calibration.bgTop + calibration.bgBottom };
@@ -111,8 +111,8 @@ export interface TextTextureResult { texture: THREE.CanvasTexture; layout: TextL
  * [-bgTop, l + bgBottom]; canvas (0,0) = (-bgLeft, -bgTop). Сдвиг на +1 px по x клиент делает
  * через translate(1 - k/2) - его учитывает scene.ts при позиционировании меша.
  */
-export function buildTextTexture(t: RichText, align: 'LEFT' | 'CENTERED' | 'RIGHT', bg: RGB, bgAlpha: number, scale = 4): TextTextureResult {
-  const L = layout(t);
+export function buildTextTexture(t: RichText, align: 'LEFT' | 'CENTERED' | 'RIGHT', bg: RGB, bgAlpha: number, scale = 4, maxWidth = 200): TextTextureResult {
+  const L = layout(t, maxWidth);
   const S = scale;
   const c = document.createElement('canvas');
   c.width = Math.max(1, L.bgW * S);

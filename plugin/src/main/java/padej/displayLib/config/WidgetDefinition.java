@@ -83,6 +83,8 @@ public class WidgetDefinition {
     private float[] translation = {0.0f, 0.0f, 0.0f};
     /** Поворот в плоскости экрана, градусы; положительный - против часовой стрелки для зрителя. Вокруг центра виджета. */
     private float rotation = 0.0f;
+    /** Ширина переноса TextDisplay, px шрифта (клиент: 200). */
+    private int lineWidth = 200;
     
     // ===== Поля для TEXT_BUTTON =====
     
@@ -253,6 +255,8 @@ public class WidgetDefinition {
     
     public float[] getTranslation() { return translation; }
     public float getRotation() { return rotation; }
+    public int getLineWidth() { return lineWidth; }
+    public void setLineWidth(int w) { this.lineWidth = w; }
     public void setRotation(float rotation) { this.rotation = rotation; }
     public void setTranslation(float[] translation) { this.translation = translation; }
     

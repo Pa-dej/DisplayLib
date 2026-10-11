@@ -363,6 +363,9 @@ public class ScreenLoader {
         float[] translation = floats(data, 3, "translation");
         if (translation != null) widget.setTranslation(translation);
 
+        Integer lineWidth = integer(data, "lineWidth", "line_width");
+        if (lineWidth != null && lineWidth > 0) widget.setLineWidth(lineWidth);
+
         Double rotation = number(data, "rotation", "rotate", "angle");
         if (rotation != null) widget.setRotation(rotation.floatValue());
 

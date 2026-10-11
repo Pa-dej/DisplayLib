@@ -149,6 +149,7 @@ public final class ScreenSupport {
                 .setTolerance(t[0], t[1])
                 .setTranslation(new Vector3f(tr[0], tr[1], tr[2]))
                 .setRotation(def.getRotation())
+                .setLineWidth(def.getLineWidth())
                 .setBackgroundColor(Color.fromRGB(bg[0], bg[1], bg[2]))
                 .setBackgroundAlpha(def.getBackgroundAlpha())
                 .setHoveredBackgroundColor(Color.fromRGB(hbg[0], hbg[1], hbg[2]))

@@ -180,6 +180,10 @@ public class TextDisplayButtonConfig {
 
     /** Поворот в плоскости экрана, градусы (+ = против часовой для зрителя). */
     private float rotation = 0.0f;
+    private int lineWidth = 200;
+
+    public TextDisplayButtonConfig setLineWidth(int w) { this.lineWidth = Math.max(1, w); return this; }
+    public int getLineWidth() { return lineWidth; }
 
     public TextDisplayButtonConfig setRotation(float degrees) {
         this.rotation = degrees;

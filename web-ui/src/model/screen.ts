@@ -72,6 +72,8 @@ export interface Widget {
   translation: Vec3;
   /** Поворот в плоскости экрана, градусы; + = против часовой стрелки, вокруг центра виджета. */
   rotation: number;
+  /** Ширина переноса TextDisplay, px шрифта (клиент: 200). */
+  lineWidth: number;
   tooltip: RichText | null;
   tooltipColor: RGB | null;
   tooltipDelay: number;
@@ -197,6 +199,7 @@ export function defaultWidget(type: WidgetType = 'TEXT_BUTTON'): Widget {
     tolerance: type === 'TEXT_BUTTON' ? [0.1, 0.05] : type === 'SPRITE_BUTTON' ? [0.2, 0.2] : [0.12, 0.12],
     translation: [0, 0, 0],
     rotation: 0,
+    lineWidth: 200,
     tooltip: null,
     tooltipColor: null,
     tooltipDelay: 0,
@@ -233,6 +236,7 @@ export const WIDGET_DEFAULTS = {
   tolerance: [0.06, 0.06] as Vec2,
   translation: [0, 0, 0] as Vec3,
   rotation: 0,
+  lineWidth: 200,
   tooltipColor: [134, 135, 136] as RGB,
   tooltipDelay: 0,
   alignment: 'CENTERED' as Alignment,

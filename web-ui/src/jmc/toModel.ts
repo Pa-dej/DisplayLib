@@ -147,6 +147,7 @@ export function tableToWidget(d: JmcTable, index: number, warnings: string[]): W
   const tol = nums(d, 2, 'tolerance'); if (tol) w.tolerance = tol as Vec2;
   const tr = nums(d, 3, 'translation'); if (tr) w.translation = tr as Vec3;
   const rot = num(d, 'rotation', 'rotate', 'angle'); if (rot != null) w.rotation = rot;
+  const lw = num(d, 'lineWidth', 'line_width'); if (lw != null && lw > 0) w.lineWidth = Math.trunc(lw);
   const bc = nums(d, 3, 'backgroundColor', 'background_color'); if (bc) w.backgroundColor = bc as RGB;
   const hbc = nums(d, 3, 'hoveredBackgroundColor', 'hovered_background_color'); if (hbc) w.hoveredBackgroundColor = hbc as RGB;
   const ba = num(d, 'backgroundAlpha', 'background_alpha'); if (ba != null) w.backgroundAlpha = Math.trunc(ba);
