@@ -76,6 +76,12 @@ export interface Widget {
   // TEXT_BUTTON
   text: RichText;
   hoveredText: RichText | null;
+  /** Кадры текстовой анимации (пусто - нет); text = первый кадр */
+  frames: RichText[];
+  frameInterval: number;
+  hoveredFrames: RichText[];
+  /** -1 = как frameInterval */
+  hoveredFrameInterval: number;
   alignment: Alignment;
   backgroundColor: RGB;
   backgroundAlpha: number;
@@ -185,6 +191,10 @@ export function defaultWidget(type: WidgetType = 'TEXT_BUTTON'): Widget {
     hoverAnimation: null,
     text: type === 'TEXT_BUTTON' ? 'Кнопка' : '',
     hoveredText: null,
+    frames: [],
+    frameInterval: 10,
+    hoveredFrames: [],
+    hoveredFrameInterval: -1,
     alignment: 'CENTERED',
     backgroundColor: [60, 60, 60],
     backgroundAlpha: type === 'TEXT_BUTTON' ? 180 : 0,

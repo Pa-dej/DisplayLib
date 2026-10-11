@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import Icon from './Icon.vue';
 import { computed } from 'vue';
-import type { Widget, ActionType } from '../model/screen';
+import type { Widget, ActionType, RichText } from '../model/screen';
 import { defaultHoverAnimation } from '../model/screen';
 import VecInput from './fields/VecInput.vue';
 import ColorInput from './fields/ColorInput.vue';
@@ -16,6 +16,11 @@ import { calibration } from '../render/metrics';
 
 const props = defineProps<{ widget: Widget }>();
 const w = computed(() => props.widget);
+type FrameKey = 'frames' | 'hoveredFrames';
+function addFrame(k: FrameKey) { snapshot(); const last = w.value[k][w.value[k].length - 1]; w.value[k].push(last != null ? cloneRich(last) : (k === 'frames' ? cloneRich(w.value.text) : '')); if (k === 'frames') w.value.text = w.value.frames[0]; touch(); }
+function removeFrame(k: FrameKey, i: number) { snapshot(); w.value[k].splice(i, 1); if (k === 'frames' && w.value.frames.length) w.value.text = w.value.frames[0]; touch(); }
+function setFrame(k: FrameKey, i: number, v: RichText | null) { w.value[k][i] = v ?? ''; if (k === 'frames' && i === 0) w.value.text = w.value.frames[0]; touch(); }
+function cloneRich(r: RichText): RichText { return typeof r === 'string' ? r : r.map((s) => ({ ...s })); }
 const size = computed(() => { void state.revision; void calibration.px; return w.value.type !== 'ITEM_BUTTON' ? textSizeBlocks(w.value) : { w: calibration.itemSize * w.value.scale[0], h: calibration.itemSize * w.value.scale[1] }; });
 const action = computed<ActionType>(() => w.value.onClick?.action ?? 'NONE');
 const funcs = computed(() => currentScriptInfo.value?.functions ?? []);
@@ -90,6 +95,32 @@ function fmt(n: number) { return (Math.round(n * 1000) / 1000).toString(); }
       <h3>Текст</h3>
       <div class="field stack"><label>text</label><RichTextInput v-model="w.text" placeholder="Текст кнопки" /></div>
       <div class="field stack"><label>hoveredText <span class="hint">При наведении (по умолчанию тот же)</span></label><RichTextInput v-model="w.hoveredText" nullable placeholder="Как text" /></div>
+      <div class="field stack"><label>frames <span class="hint">Кадры анимации: сменяются каждые N тиков; text = первый кадр</span></label>
+        <div class="frames">
+          <div v-for="(fr, i) in w.frames" :key="i" class="frame-row">
+            <span class="kind">{{ i + 1 }}</span>
+            <RichTextInput class="grow" :model-value="fr" @update:model-value="setFrame('frames', i, $event)" placeholder="Кадр" />
+            <button class="btn sm icon" title="Удалить кадр" @click="removeFrame('frames', i)"><Icon name="times" /></button>
+          </div>
+          <div class="row">
+            <button class="btn sm" @click="addFrame('frames')"><Icon name="plus" /> Кадр</button>
+            <template v-if="w.frames.length"><label class="hint">frameInterval</label><input type="number" min="1" step="1" style="width:64px" :value="w.frameInterval" @focus="snapshot()" @input="w.frameInterval = Math.max(1, Math.round(Number(text($event)))); touch()" /><span class="hint">тиков</span></template>
+          </div>
+        </div>
+      </div>
+      <div class="field stack"><label>hoveredFrames <span class="hint">Кадры при наведении (вместо hoveredText)</span></label>
+        <div class="frames">
+          <div v-for="(fr, i) in w.hoveredFrames" :key="i" class="frame-row">
+            <span class="kind">{{ i + 1 }}</span>
+            <RichTextInput class="grow" :model-value="fr" @update:model-value="setFrame('hoveredFrames', i, $event)" placeholder="Кадр" />
+            <button class="btn sm icon" title="Удалить кадр" @click="removeFrame('hoveredFrames', i)"><Icon name="times" /></button>
+          </div>
+          <div class="row">
+            <button class="btn sm" @click="addFrame('hoveredFrames')"><Icon name="plus" /> Кадр</button>
+            <template v-if="w.hoveredFrames.length"><label class="hint">hoveredFrameInterval</label><input type="number" min="0" step="1" style="width:64px" :value="w.hoveredFrameInterval > 0 ? w.hoveredFrameInterval : ''" :placeholder="String(w.frameInterval)" @focus="snapshot()" @input="w.hoveredFrameInterval = Math.round(Number(text($event))) || -1; touch()" /><span class="hint">тиков</span></template>
+          </div>
+        </div>
+      </div>
       <div class="field"><label>alignment</label><select :value="w.alignment" @change="snapshot(); w.alignment = ($event.target as HTMLSelectElement).value as any; touch()"><option>LEFT</option><option>CENTERED</option><option>RIGHT</option></select></div>
       <div class="field"><label>Фон</label><ColorInput v-model="w.backgroundColor" :alpha="w.backgroundAlpha" @update:alpha="w.backgroundAlpha = $event" /></div>
       <div class="field"><label>Фон hover</label><ColorInput v-model="w.hoveredBackgroundColor" :alpha="w.hoveredBackgroundAlpha" @update:alpha="w.hoveredBackgroundAlpha = $event" /></div>

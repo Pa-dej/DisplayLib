@@ -90,6 +90,8 @@ function widgetToJmc(w: Widget, opts: WriteOptions): string {
   if (w.type === 'TEXT_BUTTON') {
     f.push(`text: ${richText(w.text)}`);
     if (w.hoveredText != null) f.push(`hoveredText: ${richText(w.hoveredText)}`);
+    if (w.frames.length) { f.push(`frames: [ ${w.frames.map(richText).join(', ')} ]`); f.push(`frameInterval: ${w.frameInterval}`); }
+    if (w.hoveredFrames.length) { f.push(`hoveredFrames: [ ${w.hoveredFrames.map(richText).join(', ')} ]`); if (w.hoveredFrameInterval > 0 || v) f.push(`hoveredFrameInterval: ${w.hoveredFrameInterval > 0 ? w.hoveredFrameInterval : w.frameInterval}`); }
   } else if (w.type === 'SPRITE_BUTTON') {
     const at = atlasFor(w.atlas, w.sprite); if (at) f.push(`atlas: ${jstr(at)}`);
     f.push(`sprite: ${jstr(spriteFor(w.atlas, w.sprite))}`);

@@ -117,6 +117,10 @@ function tableToWidget(d: JmcTable, index: number, warnings: string[]): Widget |
   const ft = rich(get(d, 'formattedText', 'formatted_text')); if (ft != null) w.text = ft;
   const ht = rich(get(d, 'hoveredText', 'hovered_text')); if (ht != null) w.hoveredText = ht;
   const fht = rich(get(d, 'formattedHoveredText', 'formatted_hovered_text')); if (fht != null) w.hoveredText = fht;
+  const fr = get(d, 'frames'); if (Array.isArray(fr)) { w.frames = fr.map((x) => rich(x)).filter((x): x is RichText => x != null); if (w.frames.length) w.text = w.frames[0]; }
+  const fi = num(d, 'frameInterval', 'frame_interval'); if (fi != null) w.frameInterval = Math.max(1, Math.trunc(fi));
+  const hfr = get(d, 'hoveredFrames', 'hovered_frames'); if (Array.isArray(hfr)) { w.hoveredFrames = hfr.map((x) => rich(x)).filter((x): x is RichText => x != null); }
+  const hfi = num(d, 'hoveredFrameInterval', 'hovered_frame_interval'); if (hfi != null) w.hoveredFrameInterval = Math.trunc(hfi);
   const mat = str(d, 'material'); if (mat != null) w.material = mat.trim().toUpperCase();
   const sp = str(d, 'sprite'); if (sp != null) w.sprite = sp.trim();
   const at = str(d, 'atlas'); if (at != null) w.atlas = at.trim();

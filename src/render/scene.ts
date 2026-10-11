@@ -649,8 +649,21 @@ export class ScreenScene {
 
   // ---------------------------------------------------------------- цикл
 
+  /** Последний показанный кадр по виджету - перестраиваем только когда кадр сменился. */
+  private frameShown = new Map<string, number>();
+  private tickFrames(): void {
+    if (!this.screen) return;
+    const tick = editorTick();
+    for (const w of this.screen.widgets) {
+      if (w.type !== 'TEXT_BUTTON' || (!w.frames.length && !w.hoveredFrames.length)) continue;
+      const fi = frameIndexAt(w, this.hoverPreview && this.hovered === w.uid, tick);
+      if (this.frameShown.get(w.uid) !== fi) { this.frameShown.set(w.uid, fi); if (this.nodes.has(w.uid)) this.rebuildWidget(w.uid); }
+    }
+  }
+
   private loop = (): void => {
     this.frame = requestAnimationFrame(this.loop);
+    this.tickFrames();
     const w = this.canvas.clientWidth, h = this.canvas.clientHeight;
     const pr = this.renderer.getPixelRatio();
     if (w && h && (this.canvas.width !== Math.floor(w * pr) || this.canvas.height !== Math.floor(h * pr))) {
@@ -669,13 +682,28 @@ export class ScreenScene {
 
 function round(v: number): number { return Math.round(v * 1000) / 1000; }
 
-/** Что показывает TextDisplay виджета: текст (или hoveredText) либо спрайт SPRITE_BUTTON. */
-export function widgetText(w: Widget, hovered = false): RichText {
+/** Текущий серверный «тик» редактора (50 мс) - для кадровой анимации текста в предпросмотре. */
+export function editorTick(): number { return Math.floor(performance.now() / 50); }
+
+/** Индекс кадра виджета в этот тик: активный набор - hoveredFrames при наведении, иначе frames; -1 - кадров нет. */
+export function frameIndexAt(w: Widget, hovered: boolean, tick: number): number {
+  if (w.type !== 'TEXT_BUTTON') return -1;
+  const set = hovered && w.hoveredFrames.length ? w.hoveredFrames : (!hovered || w.hoveredText == null) ? w.frames : [];
+  if (set.length < 2) return -1;
+  const interval = set === w.hoveredFrames ? (w.hoveredFrameInterval > 0 ? w.hoveredFrameInterval : w.frameInterval) : w.frameInterval;
+  return Math.floor(tick / Math.max(1, interval)) % set.length;
+}
+
+/** Что показывает TextDisplay виджета: текст (или hoveredText), кадр анимации, либо спрайт SPRITE_BUTTON. */
+export function widgetText(w: Widget, hovered = false, tick = editorTick()): RichText {
   if (w.type === 'SPRITE_BUTTON') {
     const sp = hovered && w.hoveredSprite ? w.hoveredSprite : w.sprite;
     return [{ text: '', sprite: sp || 'item/barrier', atlas: w.atlas ?? undefined }];
   }
-  return hovered && w.hoveredText != null ? w.hoveredText : w.text;
+  const fi = frameIndexAt(w, hovered, tick);
+  if (fi >= 0) return (hovered && w.hoveredFrames.length ? w.hoveredFrames : w.frames)[fi];
+  if (hovered && w.hoveredText != null) return w.hoveredText;
+  return w.frames.length ? w.frames[0] : w.text;
 }
 
 /** Размер текстового виджета в блоках (для инспектора). */
