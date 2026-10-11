@@ -5,13 +5,17 @@
       <stop offset="1" stop-color="#2f849a"/>
     </linearGradient>
   </defs>
-  <!-- экран -->
-  <rect x="118" y="146" width="276" height="196" rx="18" fill="#0f1c22" stroke="url(#g)" stroke-width="14"/>
-  <rect x="150" y="178" width="212" height="24" rx="6" fill="#47a2b6" opacity="0.9"/>
-  <rect x="150" y="218" width="150" height="20" rx="6" fill="#47a2b6" opacity="0.55"/>
-  <rect x="150" y="254" width="96" height="20" rx="6" fill="#47a2b6" opacity="0.55"/>
-  <rect x="266" y="254" width="96" height="20" rx="6" fill="#47a2b6" opacity="0.35"/>
-  <rect x="150" y="290" width="212" height="20" rx="6" fill="#47a2b6" opacity="0.35"/>
-  <!-- рамка-кадрирование (знак редактора) -->
-  <path fill="url(#g)" d="M488 352h-40V96c0-17.67-14.33-32-32-32H192v56h168v232c0 13.25 10.75 24 24 24h48c13.25 0 24-10.75 24-24v-40h40c13.25 0 24-10.75 24-24v-8c0-13.26-10.75-24-24-24M160 24c0-13.26-10.75-24-24-24H88C74.75 0 64 10.74 64 24v40H24C10.75 64 0 74.74 0 88v8c0 13.25 10.75 24 24 24h40v256c0 17.67 14.33 32 32 32h224v-56H160z" opacity="0.95"/>
+  <!-- уголки кадрирования: знак редактора -->
+  <path d="M96 200V120a24 24 0 0 1 24-24h80" fill="none" stroke="url(#g)" stroke-width="30" stroke-linecap="round"/>
+  <path d="M416 312v80a24 24 0 0 1-24 24h-80" fill="none" stroke="url(#g)" stroke-width="30" stroke-linecap="round"/>
+  <!-- экран: TextDisplay с рядами виджетов -->
+  <rect x="128" y="146" width="256" height="220" rx="20" fill="#0f1c22" stroke="url(#g)" stroke-width="14"/>
+  <rect x="160" y="180" width="192" height="26" rx="7" fill="#6ec2d3"/>
+  <rect x="160" y="222" width="192" height="22" rx="7" fill="#47a2b6" opacity="0.8"/>
+  <rect x="160" y="260" width="90" height="22" rx="7" fill="#47a2b6" opacity="0.55"/>
+  <rect x="262" y="260" width="90" height="22" rx="7" fill="#47a2b6" opacity="0.55"/>
+  <rect x="160" y="298" width="192" height="22" rx="7" fill="#47a2b6" opacity="0.35"/>
+  <!-- курсор-клик -->
+  <circle cx="352" cy="320" r="30" fill="#1b1b1f" stroke="#6ec2d3" stroke-width="10"/>
+  <circle cx="352" cy="320" r="9" fill="#6ec2d3"/>
 </svg>
