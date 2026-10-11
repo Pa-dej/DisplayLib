@@ -13,7 +13,6 @@
 // предметов (items.ts) по последней части имени, но только пока текстуры клиента не скопированы;
 // при скопированных текстурах отсутствие файла = «missing texture», как в игре.
 import { reactive } from 'vue';
-import { assetUrl, clientSpriteIndex } from '../clientjar';
 import itemsJson from '../items.json';
 import { loadSheet } from './items';
 
@@ -112,7 +111,7 @@ export function spriteImage(sprite: string, atlas?: string | null): { canvas: HT
       spriteState.revision++;
     };
     img.onerror = () => tryLoad(i + 1);
-    img.src = assetUrl(paths[i]);
+    img.src = paths[i];
   };
   tryLoad(0);
   return e;
@@ -155,9 +154,6 @@ export const SPRITE_NAMES: string[] = Object.keys(DATA.items).sort().flatMap((n)
 export const spriteIndex = reactive<{ loaded: boolean; byAtlas: Record<string, string[]> }>({ loaded: false, byAtlas: {} });
 
 export async function loadSpriteIndex(): Promise<void> {
-  // ресурсы из jar клиента (загружены пользователем) важнее статического индекса
-  const fromJar = clientSpriteIndex();
-  if (fromJar) { spriteIndex.byAtlas = fromJar; spriteIndex.loaded = true; cache.clear(); spriteState.revision++; return; }
   try {
     const res = await fetch('assets/sprite-index.json');
     if (!res.ok) return;

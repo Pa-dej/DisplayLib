@@ -5,7 +5,6 @@
 // advance = ширина + 1; пробел - из провайдера "space"; провайдер "unihex" (unifont) пропускается.
 // Если файлов нет - запасной шрифт через canvas (размеры примерные, вид другой).
 
-import { assetUrl } from '../clientjar';
 export interface Glyph {
   canvas: HTMLCanvasElement | null; // null у пробела/пустого
   w: number;      // ширина в текстовых пикселях (без промежутка)
@@ -49,7 +48,7 @@ export class BitmapFont {
   }
 
   private async loadFontFile(base: string, path: string, depth: number): Promise<void> {
-    const res = await fetch(assetUrl(base + path));
+    const res = await fetch(base + path);
     if (!res.ok) throw new Error(path + ': HTTP ' + res.status);
     const json = (await res.json()) as { providers: Provider[] };
     for (const p of json.providers) {
@@ -141,7 +140,7 @@ function loadImage(url: string): Promise<HTMLImageElement | null> {
     const img = new Image();
     img.onload = () => resolve(img);
     img.onerror = () => resolve(null);
-    img.src = assetUrl(url);
+    img.src = url;
   });
 }
 

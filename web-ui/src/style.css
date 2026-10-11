@@ -211,6 +211,3 @@ kbd { font-family: var(--vp-font-family-mono); font-size: 11px; padding: 1px 5px
 .btn.danger:hover { color: var(--vp-c-danger-1); border-color: var(--vp-c-danger-1); }
 .btn.primary .icon { color: #fff; }
 textarea.line { min-height: 28px; height: 28px; resize: none; overflow: hidden; line-height: 20px; padding: 3px 8px; white-space: pre-wrap; }
-/* кнопка client.jar, пока ресурсы не загружены: мягко подсвечена рамкой */
-.btn.pulse { border-color: var(--vp-c-warning-1); color: var(--vp-c-warning-1); }
-.btn.pulse:hover { border-color: var(--vp-c-brand-1); color: var(--vp-c-brand-1); }

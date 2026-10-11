@@ -11,7 +11,6 @@ import { state, saveCurrent, saveAll, undo, redo, newScreen, currentDoc, restore
 import { font } from './render/font';
 import { loadSheet } from './render/items';
 import { loadSpriteIndex } from './render/sprites';
-import { clientAssets, importClientJar, restoreClientJar, forgetClientJar } from './clientjar';
 
 const importOpen = ref(false);
 const exportOpen = ref(false);
@@ -25,28 +24,7 @@ function toggleTheme() {
 }
 
 
-const jarInput = ref<HTMLInputElement | null>(null);
-async function onJarPicked(ev: Event) {
-  const input = ev.target as HTMLInputElement;
-  const file = input.files?.[0]; input.value = '';
-  if (!file) return;
-  try {
-    notify('Распаковываю ' + file.name + '…');
-    await importClientJar(file);
-    await Promise.all([font.load(), loadSpriteIndex()]);
-    state.revision++;
-    notify('Ресурсы клиента ' + (clientAssets.version || '') + ': ' + clientAssets.files + ' файлов, шрифт и спрайты из игры');
-  } catch (e) { fail('Не удалось прочитать jar: ' + (e as Error).message); }
-}
-async function onForgetJar() {
-  await forgetClientJar();
-  await Promise.all([font.load(), loadSpriteIndex()]);
-  state.revision++;
-  notify('Ресурсы клиента забыты');
-}
-
 onMounted(async () => {
-  await restoreClientJar();
   await Promise.all([font.load(), loadSheet(), loadSpriteIndex()]);
   ready.value = true;
   restoreSession();
@@ -73,9 +51,6 @@ onMounted(async () => {
       </div>
       <div class="spacer"></div>
       <span class="status" :class="{ error: !!state.error }">{{ state.error || state.message }}</span>
-      <input ref="jarInput" type="file" accept=".jar,.zip" style="display:none" @change="onJarPicked" />
-      <button v-if="clientAssets.loaded" class="btn icon" style="color:var(--vp-c-brand-1)" :title="'Ресурсы клиента ' + clientAssets.version + ' (' + clientAssets.files + ' файлов) загружены. Нажмите, чтобы забыть'" @click="onForgetJar"><Icon name="cube" /></button>
-      <button v-else class="btn icon" :class="{ pulse: !font.loaded && !clientAssets.busy }" :disabled="clientAssets.busy" title="Загрузить client.jar: редактор достанет из jar клиента шрифт и текстуры для предпросмотра (.minecraft/versions/1.21.11/1.21.11.jar). Файл остаётся на вашем компьютере" @click="jarInput?.click()"><Icon name="cube" /></button>
       <button class="btn icon" @click="toggleTheme" :title="dark ? 'Светлая тема' : 'Тёмная тема'"><Icon :name="dark ? 'sun' : 'moon'" /></button>
     </header>
     <Sidebar />
