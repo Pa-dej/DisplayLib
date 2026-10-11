@@ -38,6 +38,8 @@ jobs:
           cp -r web-ui/dist/. docs/.vitepress/dist/editor/
           touch docs/.vitepress/dist/.nojekyll
       - uses: actions/configure-pages@v5
+        with:
+          enablement: true   # включить Pages (Source: GitHub Actions), если ещё не включены
       - uses: actions/upload-pages-artifact@v3
         with:
           path: docs/.vitepress/dist
