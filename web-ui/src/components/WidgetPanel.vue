@@ -83,6 +83,10 @@ function fmt(n: number) { return (Math.round(n * 1000) / 1000).toString(); }
       <div class="field"><label>position</label><VecInput v-model="w.position" :labels="['X вправо', 'Y вверх', 'Z от игрока (−0.01 = ближе)']" /></div>
       <div class="field"><label>scale</label><VecInput v-model="w.scale" :labels="['x', 'y', 'z']" :step="0.05" /></div>
       <div class="field"><label>translation</label><VecInput v-model="w.translation" :labels="['x', 'y', 'z']" :step="0.01" /></div>
+      <div class="field"><label>rotation</label><div class="row">
+        <input type="range" min="-180" max="180" step="1" class="grow" :value="w.rotation" title="Поворот в плоскости экрана: вправо - против часовой, влево - по часовой" @pointerdown="snapshot()" @input="w.rotation = Number(text($event)); touch()" @dblclick="snapshot(); w.rotation = 0; touch()" />
+        <input type="number" step="1" style="width:64px" :value="w.rotation" @focus="snapshot()" @input="w.rotation = Number(text($event)) || 0; touch()" /><span class="hint">°</span>
+      </div></div>
       <div class="field"><label>tolerance</label><VecInput v-model="w.tolerance" :labels="['Полуширина', 'Полувысота']" :step="0.01" :min="0" /></div>
       <div class="hint">tolerance - зона наведения (голубой прямоугольник): центр в position + translation, у текста и спрайтов - по центру нарисованного текста</div>
     </div>

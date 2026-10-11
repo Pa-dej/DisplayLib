@@ -68,6 +68,8 @@ export interface Widget {
   scale: Vec3;
   tolerance: Vec2;
   translation: Vec3;
+  /** Поворот в плоскости экрана, градусы; + = против часовой стрелки, вокруг центра виджета. */
+  rotation: number;
   tooltip: RichText | null;
   tooltipColor: RGB | null;
   tooltipDelay: number;
@@ -158,7 +160,7 @@ export function defaultHoverAnimation(): HoverAnimation {
     scale: [1.1, 1.1, 1.0],
     offset: [0, 0.02, 0],
     rotation: [0, 15, 0],
-    axis: [0, 1, 0],
+    axis: [0, 0, 1],
     translation: [0, 0, 0],
     delay: 0,
     loop: false,
@@ -188,6 +190,7 @@ export function defaultWidget(type: WidgetType = 'TEXT_BUTTON'): Widget {
     scale: type === 'TEXT_BUTTON' ? [0.5, 0.5, 0.5] : type === 'SPRITE_BUTTON' ? [2, 2, 1] : [0.25, 0.25, 0.05],
     tolerance: type === 'TEXT_BUTTON' ? [0.1, 0.05] : type === 'SPRITE_BUTTON' ? [0.2, 0.2] : [0.12, 0.12],
     translation: [0, 0, 0],
+    rotation: 0,
     tooltip: null,
     tooltipColor: null,
     tooltipDelay: 0,
@@ -221,6 +224,7 @@ export const WIDGET_DEFAULTS = {
   scale: [0.15, 0.15, 0.15] as Vec3,
   tolerance: [0.06, 0.06] as Vec2,
   translation: [0, 0, 0] as Vec3,
+  rotation: 0,
   tooltipColor: [134, 135, 136] as RGB,
   tooltipDelay: 0,
   alignment: 'CENTERED' as Alignment,

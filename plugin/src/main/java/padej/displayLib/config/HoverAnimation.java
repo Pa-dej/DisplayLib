@@ -243,14 +243,33 @@ public class HoverAnimation {
      * Применяет hover анимацию к display entity с правильной easing интерполяцией
      */
     public void applyHoverAnimation(org.bukkit.entity.Display display, Vector3f originalTranslation, Vector3f originalScale, boolean isHovering) {
+        applyHoverAnimation(display, originalTranslation, originalScale, isHovering, null);
+    }
+
+    /** Ось поворота в локальных координатах сущности: у ItemDisplay кадр развёрнут на 180° вокруг Y (yaw + 180), X и Z меняют знак. */
+    private static Quaternionf rotationFor(org.bukkit.entity.Display display, float degrees, float ax, float ay, float az) {
+        boolean item = display instanceof org.bukkit.entity.ItemDisplay;
+        return new Quaternionf().rotateAxis((float) Math.toRadians(degrees), item ? -ax : ax, ay, item ? -az : az);
+    }
+
+    private static Quaternionf composed(Quaternionf base, Quaternionf hover) {
+        return base == null ? hover : new Quaternionf(base).mul(hover);
+    }
+
+    /**
+     * То же, с базовым (статическим) поворотом виджета: hover-поворот складывается с ним,
+     * а возврат идёт к нему, а не к единичному кватерниону.
+     */
+    public void applyHoverAnimation(org.bukkit.entity.Display display, Vector3f originalTranslation, Vector3f originalScale, boolean isHovering, Quaternionf baseRotation) {
         if (display == null || !display.isValid()) return;
+        Quaternionf base = baseRotation != null ? baseRotation : new Quaternionf();
         
         java.util.function.DoubleUnaryOperator easingFn = padej.displayLib.utils.EasedAnimation.getEasingFunction(easing);
         
         if (isHovering) {
             // Применяем hover эффект
             switch (type) {
-                case PRESET -> applyPresetAnimation(display, originalTranslation, originalScale, easingFn);
+                case PRESET -> applyPresetAnimation(display, originalTranslation, originalScale, easingFn, base);
                 case SCALE -> {
                     Vector3f targetScale = new Vector3f(
                         originalScale.x * scale[0],
@@ -280,11 +299,7 @@ public class HoverAnimation {
                     }
                 }
                 case ROTATE -> {
-                    // Упрощенная реализация поворота
-                    Quaternionf targetRotation = new Quaternionf().rotateAxis(
-                        (float) Math.toRadians(rotation[1]),
-                        axis[0], axis[1], axis[2]
-                    );
+                    Quaternionf targetRotation = composed(base, rotationFor(display, rotation[1], axis[0], axis[1], axis[2]));
                     org.bukkit.util.Transformation targetTransform = new org.bukkit.util.Transformation(
                         originalTranslation,
                         targetRotation,
@@ -299,7 +314,7 @@ public class HoverAnimation {
                         // Для комбинированных эффектов применяем каждый отдельно
                         for (HoverAnimation effect : effects) {
                             if (effect != null) {
-                                effect.applyHoverAnimation(display, originalTranslation, originalScale, true);
+                                effect.applyHoverAnimation(display, originalTranslation, originalScale, true, base);
                             }
                         }
                     }
@@ -317,7 +332,7 @@ public class HoverAnimation {
         } else if (reverseOnExit) {
             // Возвращаем к исходному состоянию
             switch (type) {
-                case PRESET -> applyPresetReverseAnimation(display, originalTranslation, originalScale, easingFn);
+                case PRESET -> applyPresetReverseAnimation(display, originalTranslation, originalScale, easingFn, base);
                 case SCALE -> {
                     Vector3f currentScale = display.getTransformation().getScale();
                     
@@ -339,8 +354,7 @@ public class HoverAnimation {
                     }
                 }
                 case ROTATE -> {
-                    Quaternionf currentRotation = display.getTransformation().getLeftRotation();
-                    Quaternionf originalRotation = new Quaternionf();
+                    Quaternionf originalRotation = new Quaternionf(base);
                     // Для простоты используем прямое применение трансформации
                     org.bukkit.util.Transformation originalTransform = new org.bukkit.util.Transformation(
                             originalTranslation,
@@ -354,7 +368,7 @@ public class HoverAnimation {
                     if (effects != null && effects.length > 0) {
                         for (HoverAnimation effect : effects) {
                             if (effect != null) {
-                                effect.applyHoverAnimation(display, originalTranslation, originalScale, false);
+                                effect.applyHoverAnimation(display, originalTranslation, originalScale, false, base);
                             }
                         }
                     }
@@ -375,7 +389,7 @@ public class HoverAnimation {
         }
     }
     
-    private void applyPresetAnimation(org.bukkit.entity.Display display, Vector3f originalTranslation, Vector3f originalScale, java.util.function.DoubleUnaryOperator easingFn) {
+    private void applyPresetAnimation(org.bukkit.entity.Display display, Vector3f originalTranslation, Vector3f originalScale, java.util.function.DoubleUnaryOperator easingFn, Quaternionf base) {
         switch (preset) {
             case BOUNCE, SCALE, PULSE -> {
                 Vector3f targetScale = new Vector3f(
@@ -406,11 +420,7 @@ public class HoverAnimation {
                 }
             }
             case WOBBLE, SPIN -> {
-                // Упрощенная реализация поворота
-                Quaternionf targetRotation = new Quaternionf().rotateAxis(
-                    (float) Math.toRadians(15.0f * intensity),
-                    0.0f, 1.0f, 0.0f
-                );
+                Quaternionf targetRotation = composed(base, rotationFor(display, 15.0f * intensity, 0.0f, 1.0f, 0.0f));
                 org.bukkit.util.Transformation targetTransform = new org.bukkit.util.Transformation(
                     originalTranslation,
                     targetRotation,
@@ -426,7 +436,7 @@ public class HoverAnimation {
         }
     }
     
-    private void applyPresetReverseAnimation(org.bukkit.entity.Display display, Vector3f originalTranslation, Vector3f originalScale, java.util.function.DoubleUnaryOperator easingFn) {
+    private void applyPresetReverseAnimation(org.bukkit.entity.Display display, Vector3f originalTranslation, Vector3f originalScale, java.util.function.DoubleUnaryOperator easingFn, Quaternionf base) {
         switch (preset) {
             case BOUNCE, SCALE, PULSE -> {
                 Vector3f currentScale = display.getTransformation().getScale();
@@ -449,8 +459,7 @@ public class HoverAnimation {
                 }
             }
             case WOBBLE, SPIN -> {
-                Quaternionf currentRotation = display.getTransformation().getLeftRotation();
-                Quaternionf originalRotation = new Quaternionf();
+                Quaternionf originalRotation = new Quaternionf(base);
                 // Для простоты используем прямое применение трансформации
                 org.bukkit.util.Transformation originalTransform = new org.bukkit.util.Transformation(
                         originalTranslation,

@@ -15,6 +15,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.entity.TextDisplay;
 import org.bukkit.util.Transformation;
 import org.joml.AxisAngle4f;
+import org.joml.Quaternionf;
 import org.joml.Vector3f;
 
 import java.time.Duration;
@@ -54,6 +55,8 @@ public class TextDisplayButtonWidget implements Widget {
     private float soundVolume = 0.5f;
     private float soundPitch = 2.0f;
     private Vector3f translation;
+    /** Поворот в плоскости экрана, градусы (+ = против часовой для зрителя), вокруг центра текста. */
+    private float rotationDeg = 0.0f;
     private Transformation hoveredTransformation;
     private int hoveredTransformationDuration;
     private padej.displayLib.config.HoverAnimation hoverAnimation;
@@ -143,6 +146,7 @@ public class TextDisplayButtonWidget implements Widget {
         widget.soundVolume = config.getSoundVolume();
         widget.soundPitch = config.getSoundPitch();
         widget.translation = config.getTranslation();
+        widget.rotationDeg = config.getRotation();
         widget.hoveredTransformation = config.getHoveredTransformation();
         widget.hoveredTransformationDuration = config.getHoveredTransformationDuration();
         widget.hoverAnimation = config.getHoverAnimation();
@@ -173,9 +177,25 @@ public class TextDisplayButtonWidget implements Widget {
 
     /** Целевая трансформация виджета в обычном (не наведённом) состоянии. */
     public Transformation targetTransformation() {
-        return new Transformation(
-                translation != null ? new Vector3f(translation) : new Vector3f(),
-                new AxisAngle4f(), new Vector3f(scaleX, scaleY, scaleZ), new AxisAngle4f());
+        return new Transformation(effectiveTranslation(), baseRotation(), new Vector3f(scaleX, scaleY, scaleZ), new Quaternionf());
+    }
+
+    /** Статический поворот (left rotation): вокруг локальной Z - для TextDisplay она смотрит на зрителя. */
+    Quaternionf baseRotation() {
+        return new Quaternionf().rotateZ((float) Math.toRadians(rotationDeg));
+    }
+
+    /**
+     * translation с поправкой на поворот вокруг центра текста: якорь TextDisplay - низ по центру,
+     * поэтому при повороте R вокруг центра c = (0, h/2) якорь сдвигается на c - R·c.
+     * Зона наведения не меняется: её центр и есть центр поворота.
+     */
+    Vector3f effectiveTranslation() {
+        Vector3f t = translation != null ? new Vector3f(translation) : new Vector3f();
+        if (rotationDeg == 0.0f) return t;
+        float hc = hitCenterOffsetY();
+        double a = Math.toRadians(rotationDeg);
+        return t.add((float) (hc * Math.sin(a)), (float) (hc - hc * Math.cos(a)), 0.0f);
     }
 
     /** Целевой цвет фона (ARGB) в обычном состоянии. */
@@ -202,15 +222,7 @@ public class TextDisplayButtonWidget implements Widget {
         // Применяем выравнивание текста
         display.setAlignment(textAlignment);
 
-        // Проверяем translation на null и используем значение по умолчанию
-        Vector3f finalTranslation = translation != null ? translation : new Vector3f(0, 0, 0);
-
-        display.setTransformation(new Transformation(
-                finalTranslation,
-                new AxisAngle4f(),
-                new Vector3f(scaleX, scaleY, scaleZ),
-                new AxisAngle4f()
-        ));
+        display.setTransformation(targetTransformation());
 
         display.setInterpolationDuration(1);
         display.setTeleportDuration(1);
@@ -428,7 +440,7 @@ public class TextDisplayButtonWidget implements Widget {
             if (hoverAnimation != null) {
                 // Используем новую систему анимации с правильной easing интерполяцией
                 try {
-                    hoverAnimation.applyHoverAnimation(display, translation, baseScale, true);
+                    hoverAnimation.applyHoverAnimation(display, effectiveTranslation(), baseScale, true, baseRotation());
                 } catch (Exception e) {
                     DisplayLib.getInstance().getLogger().log(java.util.logging.Level.WARNING, "Error applying hover animation", e);
                 }
@@ -444,18 +456,13 @@ public class TextDisplayButtonWidget implements Widget {
             if (hoverAnimation != null && hoverAnimation.isReverseOnExit()) {
                 // Используем новую систему для возврата
                 try {
-                    hoverAnimation.applyHoverAnimation(display, translation, baseScale, false);
+                    hoverAnimation.applyHoverAnimation(display, effectiveTranslation(), baseScale, false, baseRotation());
                 } catch (Exception e) {
                     DisplayLib.getInstance().getLogger().log(java.util.logging.Level.WARNING, "Error reversing hover animation", e);
                 }
             } else if (hoveredTransformation != null) {
                 // Fallback на старую систему
-                Animation.applyTransformationWithInterpolation(display, new Transformation(
-                        translation,
-                        new AxisAngle4f(),
-                        new Vector3f(scaleX, scaleY, scaleZ),
-                        new AxisAngle4f()
-                ), hoveredTransformationDuration);
+                Animation.applyTransformationWithInterpolation(display, targetTransformation(), hoveredTransformationDuration);
             }
         }
     }
@@ -505,6 +512,17 @@ public class TextDisplayButtonWidget implements Widget {
         if (isShowingTooltip && viewer != null) {
             viewer.clearTitle();
             isShowingTooltip = false;
+        }
+    }
+
+    /** Поворот в плоскости экрана, градусы (+ = против часовой для зрителя). */
+    public float getRotation() { return rotationDeg; }
+
+    /** Повернуть виджет; плавно за {@code ticks} тиков (0/1 - сразу). Если виджет наведён, применится при уходе курсора. */
+    public void setRotation(float degrees, int ticks) {
+        this.rotationDeg = degrees;
+        if (display != null && display.isValid() && !isHovered) {
+            Animation.applyTransformationWithInterpolation(display, targetTransformation(), Math.max(1, ticks));
         }
     }
 

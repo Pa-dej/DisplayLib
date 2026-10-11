@@ -105,6 +105,7 @@ function widgetToJmc(w: Widget, opts: WriteOptions): string {
   f.push(`scale: ${arr(w.scale)}`);
   if (v || !same(w.tolerance, WIDGET_DEFAULTS.tolerance)) f.push(`tolerance: ${arr(w.tolerance)}`);
   if (v || !same(w.translation, WIDGET_DEFAULTS.translation)) f.push(`translation: ${arr(w.translation)}`);
+  if (v || w.rotation) f.push(`rotation: ${jnum(w.rotation)}`);
   if (w.type !== 'ITEM_BUTTON') {
     if (w.type === 'TEXT_BUTTON' && (v || w.alignment !== 'CENTERED')) f.push(`alignment: ${jstr(w.alignment)}`);
     if (v || !same(w.backgroundColor, WIDGET_DEFAULTS.backgroundColor) || w.backgroundAlpha !== 0) f.push(`backgroundColor: ${arr(w.backgroundColor)}`);

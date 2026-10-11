@@ -339,7 +339,7 @@ export class ScreenScene {
     const bg = hovered ? w.hoveredBackgroundColor : w.backgroundColor;
     const alpha = hovered ? w.hoveredBackgroundAlpha : w.backgroundAlpha;
     const { texture, layout: L } = buildTextTexture(text, w.alignment, bg, alpha);
-    return this.textNode(w.uid, texture, L.bgW, L.bgH, w.scale, w.translation, w.position, calibration.textDepthOffset, w.tolerance, true);
+    return this.textNode(w.uid, texture, L.bgW, L.bgH, w.scale, w.translation, w.position, calibration.textDepthOffset, w.tolerance, true, w.rotation);
   }
 
   private buildBackground(b: Background): Node {
@@ -353,7 +353,7 @@ export class ScreenScene {
   }
 
   private textNode(uid: string, texture: THREE.Texture, bgW: number, bgH: number, scale: [number, number, number], tr: [number, number, number],
-    pos: [number, number, number], depth: number, tol: [number, number] | null, selectable: boolean): Node {
+    pos: [number, number, number], depth: number, tol: [number, number] | null, selectable: boolean, rotationDeg = 0): Node {
     const px = calibration.px;
     const wBlocks = bgW * px, hBlocks = bgH * px;
     const geo = new THREE.PlaneGeometry(wBlocks, hBlocks);
@@ -365,6 +365,8 @@ export class ScreenScene {
     const centerY = (bgH / 2) * px;
     mesh.position.set(centerX * scale[0] + tr[0] * calibration.translationXSign, centerY * scale[1] + tr[1], tr[2]);
     mesh.scale.set(scale[0], scale[1], 1);
+    // поворот вокруг центра текста (плагин сдвигает якорь так, чтобы центр оставался на месте); зона наведения не вращается
+    mesh.rotation.z = THREE.MathUtils.degToRad(rotationDeg);
     mesh.userData.uid = selectable ? uid : null;
     const group = new THREE.Group();
     group.add(mesh);
@@ -386,13 +388,14 @@ export class ScreenScene {
     const hovered = this.hoverPreview && this.hovered === w.uid && w.glowOnHover;
     mesh.position.set(w.translation[0] * calibration.translationXSign, w.translation[1], w.translation[2]);
     mesh.scale.set(w.scale[0], w.scale[1], 1);
+    mesh.rotation.z = THREE.MathUtils.degToRad(w.rotation);
     mesh.userData.uid = w.uid;
     const group = new THREE.Group();
     group.add(mesh);
     if (hovered) {
       const gc = w.glowColor ? new THREE.Color(w.glowColor[0] / 255, w.glowColor[1] / 255, w.glowColor[2] / 255) : new THREE.Color(0xffffff);
       const edge = new THREE.LineSegments(new THREE.EdgesGeometry(geo), new THREE.LineBasicMaterial({ color: gc }));
-      edge.position.copy(mesh.position); edge.scale.copy(mesh.scale);
+      edge.position.copy(mesh.position); edge.scale.copy(mesh.scale); edge.rotation.copy(mesh.rotation);
       group.add(edge);
     }
     group.position.copy(this.worldPos(w.position, calibration.itemDepthOffset));

@@ -165,6 +165,18 @@ public class TextDisplayButtonConfig {
         return translation != null ? translation : new Vector3f(0, 0, 0);
     }
 
+    /** Поворот в плоскости экрана, градусы (+ = против часовой для зрителя). */
+    private float rotation = 0.0f;
+
+    public TextDisplayButtonConfig setRotation(float degrees) {
+        this.rotation = degrees;
+        return this;
+    }
+
+    public float getRotation() {
+        return rotation;
+    }
+
     public TextDisplayButtonConfig setHoveredTransformation(Transformation transformation, int duration) {
         this.hoveredTransformation = transformation;
         this.hoveredTransformationDuration = duration;

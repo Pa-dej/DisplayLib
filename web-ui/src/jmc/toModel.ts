@@ -134,6 +134,7 @@ function tableToWidget(d: JmcTable, index: number, warnings: string[]): Widget |
   const sc = nums(d, 3, 'scale'); if (sc) w.scale = sc as Vec3;
   const tol = nums(d, 2, 'tolerance'); if (tol) w.tolerance = tol as Vec2;
   const tr = nums(d, 3, 'translation'); if (tr) w.translation = tr as Vec3;
+  const rot = num(d, 'rotation', 'rotate', 'angle'); if (rot != null) w.rotation = rot;
   const bc = nums(d, 3, 'backgroundColor', 'background_color'); if (bc) w.backgroundColor = bc as RGB;
   const hbc = nums(d, 3, 'hoveredBackgroundColor', 'hovered_background_color'); if (hbc) w.hoveredBackgroundColor = hbc as RGB;
   const ba = num(d, 'backgroundAlpha', 'background_alpha'); if (ba != null) w.backgroundAlpha = Math.trunc(ba);
@@ -192,6 +193,7 @@ function parseAnim(d: JmcTable, warnings: string[]): HoverAnimation | null {
   const pr = str(d, 'preset'); if (pr != null) { const e = enumValue(['BOUNCE', 'SCALE', 'PULSE', 'GLOW', 'WOBBLE', 'LIFT'] as const, pr); if (e) a.preset = e; }
   const inten = num(d, 'intensity'); if (inten != null) a.intensity = inten;
   for (const k of ['scale', 'offset', 'rotation', 'axis', 'translation'] as const) { const v = nums(d, 3, k); if (v) a[k] = v as Vec3; }
+  const ang = num(d, 'angle'); if (ang != null) a.rotation = [0, ang, 0];
   const ef = list(d, 'effects');
   if (ef) for (const e of ef) if (e && typeof e === 'object' && !Array.isArray(e)) { const x = parseAnim(e as JmcTable, warnings); if (x) a.effects.push(x); }
   return a;

@@ -363,6 +363,9 @@ public class ScreenLoader {
         float[] translation = floats(data, 3, "translation");
         if (translation != null) widget.setTranslation(translation);
 
+        Double rotation = number(data, "rotation", "rotate", "angle");
+        if (rotation != null) widget.setRotation(rotation.floatValue());
+
         int[] backgroundColor = ints(data, 3, "backgroundColor", "background_color");
         if (backgroundColor != null) widget.setBackgroundColor(backgroundColor);
 
@@ -545,6 +548,8 @@ public class ScreenLoader {
 
         float[] rotation = floats(data, 3, "rotation");
         if (rotation != null) animation.setRotation(rotation);
+        Double angle = number(data, "angle"); // скаляр: угол вокруг axis
+        if (angle != null) animation.setRotation(new float[] {0.0f, angle.floatValue(), 0.0f});
 
         float[] axis = floats(data, 3, "axis");
         if (axis != null) animation.setAxis(axis);

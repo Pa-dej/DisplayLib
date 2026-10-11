@@ -147,6 +147,18 @@ public class ItemDisplayButtonConfig {
         return translation != null ? translation : new Vector3f(0, 0, 0);
     }
 
+    /** Поворот в плоскости экрана, градусы (+ = против часовой для зрителя). */
+    private float rotation = 0.0f;
+
+    public ItemDisplayButtonConfig setRotation(float degrees) {
+        this.rotation = degrees;
+        return this;
+    }
+
+    public float getRotation() {
+        return rotation;
+    }
+
     public Material getMaterial() {
         return material;
     }

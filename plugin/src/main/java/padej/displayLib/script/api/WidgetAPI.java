@@ -164,6 +164,20 @@ public final class WidgetAPI {
 
     // ---- общие ----
 
+    /** Поворот в плоскости экрана, градусы (+ = против часовой). */
+    public double rotation() {
+        return widget instanceof TextDisplayButtonWidget t ? t.getRotation()
+                : widget instanceof ItemDisplayButtonWidget i ? i.getRotation() : 0;
+    }
+
+    /** Повернуть: {@code rotation(45)} - сразу, {@code rotation(45, 10)} - плавно за 10 тиков (клиент интерполирует). */
+    public void rotation(double degrees) { rotation(degrees, 1); }
+
+    public void rotation(double degrees, int ticks) {
+        if (widget instanceof TextDisplayButtonWidget t) t.setRotation((float) degrees, ticks);
+        else if (widget instanceof ItemDisplayButtonWidget i) i.setRotation((float) degrees, ticks);
+    }
+
     public boolean visible() {
         return widget.isValid() && widget.isVisible();
     }

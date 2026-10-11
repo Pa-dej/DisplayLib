@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { computed } from 'vue';
 import Icon from './Icon.vue';
 import type { HoverAnimation } from '../model/screen';
 import { defaultHoverAnimation } from '../model/screen';
@@ -11,6 +12,9 @@ const TYPES = ['PRESET', 'SCALE', 'TRANSLATE', 'ROTATE', 'TRANSFORM', 'COMBINED'
 const EASINGS = ['LINEAR', 'EASE_IN', 'EASE_OUT', 'EASE_IN_OUT', 'BOUNCE', 'ELASTIC'] as const;
 const PRESETS = ['BOUNCE', 'SCALE', 'PULSE', 'GLOW', 'WOBBLE', 'LIFT'] as const;
 function set<K extends keyof HoverAnimation>(k: K, v: HoverAnimation[K]) { snapshot(); props.anim[k] = v; touch(); }
+function setAngle(deg: number) { props.anim.rotation = [0, deg, 0]; touch(); }
+const axisPreset = computed(() => { const [x, y, z] = props.anim.axis; return x === 0 && y === 0 && z !== 0 ? 'z' : x === 0 && z === 0 && y !== 0 ? 'y' : y === 0 && z === 0 && x !== 0 ? 'x' : 'custom'; });
+function setAxisPreset(p: string) { snapshot(); if (p === 'z') props.anim.axis = [0, 0, 1]; else if (p === 'y') props.anim.axis = [0, 1, 0]; else if (p === 'x') props.anim.axis = [1, 0, 0]; else props.anim.axis = [0.5, 0.5, 0.5]; touch(); }
 function addEffect() { snapshot(); props.anim.effects.push({ ...defaultHoverAnimation(), type: 'SCALE' }); touch(); }
 function removeEffect(i: number) { snapshot(); props.anim.effects.splice(i, 1); touch(); }
 </script>
@@ -27,8 +31,18 @@ function removeEffect(i: number) { snapshot(); props.anim.effects.splice(i, 1); 
     <div v-if="anim.type === 'SCALE' || anim.type === 'TRANSFORM'" class="field"><label>Масштаб</label><VecInput v-model="anim.scale" :labels="['x', 'y', 'z']" /></div>
     <div v-if="anim.type === 'TRANSLATE'" class="field"><label>Смещение</label><VecInput v-model="anim.offset" :labels="['x', 'y', 'z']" :step="0.01" /></div>
     <template v-if="anim.type === 'ROTATE'">
-      <div class="field"><label>Градусы</label><VecInput v-model="anim.rotation" :labels="['x', 'y', 'z']" :step="1" /></div>
-      <div class="field"><label>Ось</label><VecInput v-model="anim.axis" :labels="['x', 'y', 'z']" :step="1" /></div>
+      <div class="field"><label>Угол</label><div class="row">
+        <input type="range" min="-180" max="180" step="1" class="grow" :value="anim.rotation[1]" @pointerdown="snapshot()" @input="setAngle(Number(($event.target as HTMLInputElement).value))" />
+        <input type="number" step="1" style="width:64px" :value="anim.rotation[1]" @focus="snapshot()" @input="setAngle(Number(($event.target as HTMLInputElement).value) || 0)" /><span class="hint">°</span>
+      </div></div>
+      <div class="field"><label>Ось</label><select :value="axisPreset" @change="setAxisPreset(($event.target as HTMLSelectElement).value)">
+        <option value="z">Z - в плоскости экрана (по/против часовой)</option>
+        <option value="y">Y - вокруг вертикали (разворот боком)</option>
+        <option value="x">X - наклон вперёд/назад</option>
+        <option value="custom">Своя ось</option>
+      </select></div>
+      <div v-if="axisPreset === 'custom'" class="field"><label></label><VecInput v-model="anim.axis" :labels="['x', 'y', 'z']" :step="0.1" /></div>
+      <div class="hint">Складывается со статическим rotation виджета; + = против часовой для зрителя</div>
     </template>
     <div v-if="anim.type === 'TRANSFORM'" class="field"><label>Translation</label><VecInput v-model="anim.translation" :labels="['x', 'y', 'z']" :step="0.01" /></div>
     <div class="field"><label>Длительность</label><div class="row"><input type="number" min="1" step="1" :value="anim.duration" @focus="snapshot()" @input="anim.duration = Math.max(1, Math.round(Number(($event.target as HTMLInputElement).value))); touch()" /><span class="hint">Тиков (в игре x2)</span></div></div>

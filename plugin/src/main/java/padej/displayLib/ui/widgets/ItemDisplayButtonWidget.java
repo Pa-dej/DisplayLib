@@ -17,6 +17,7 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.util.Transformation;
 import org.joml.AxisAngle4f;
 import org.joml.Matrix4f;
+import org.joml.Quaternionf;
 import org.joml.Vector3f;
 
 import java.time.Duration;
@@ -48,6 +49,8 @@ public class ItemDisplayButtonWidget implements Widget {
     private Runnable updateCallback;
     private org.bukkit.inventory.meta.ItemMeta itemMeta;
     private Vector3f translation;
+    /** Поворот в плоскости экрана, градусы (+ = против часовой для зрителя). */
+    private float rotationDeg = 0.0f;
     private Transformation hoveredTransformation;
     private int hoveredTransformationDuration;
     private padej.displayLib.config.HoverAnimation hoverAnimation;
@@ -125,6 +128,7 @@ public class ItemDisplayButtonWidget implements Widget {
         widget.soundPitch = config.getSoundPitch();
         widget.itemMeta = config.getItemMeta();
         widget.translation = config.getTranslation();
+        widget.rotationDeg = config.getRotation();
         widget.hoveredTransformation = config.getHoveredTransformation();
         widget.hoveredTransformationDuration = config.getHoveredTransformationDuration();
         widget.hoverAnimation = config.getHoverAnimation();
@@ -152,9 +156,13 @@ public class ItemDisplayButtonWidget implements Widget {
 
     /** Целевая трансформация в обычном состоянии. */
     public Transformation targetTransformation() {
-        return new Transformation(
-                translation != null ? new Vector3f(translation) : new Vector3f(),
-                new AxisAngle4f(), new Vector3f(scaleX, scaleY, scaleZ), new AxisAngle4f());
+        return new Transformation(translation != null ? new Vector3f(translation) : new Vector3f(),
+                baseRotation(), new Vector3f(scaleX, scaleY, scaleZ), new Quaternionf());
+    }
+
+    /** Статический поворот: сущность развёрнута к зрителю на yaw+180, её локальная Z смотрит от зрителя - знак угла обратный. */
+    Quaternionf baseRotation() {
+        return new Quaternionf().rotateZ((float) -Math.toRadians(rotationDeg));
     }
 
     /** Целевой предмет. */
@@ -187,12 +195,7 @@ public class ItemDisplayButtonWidget implements Widget {
             display.setGlowColorOverride(glowColor);
         }
 
-        display.setTransformation(new Transformation(
-                translation,
-                new AxisAngle4f(),
-                new Vector3f(scaleX, scaleY, scaleZ),
-                new AxisAngle4f()
-        ));
+        display.setTransformation(targetTransformation());
 
         display.setInterpolationDuration(1);
         display.setTeleportDuration(1);
@@ -332,7 +335,7 @@ public class ItemDisplayButtonWidget implements Widget {
         if (hoverAnimation != null) {
             // Используем новую систему анимации с правильной easing интерполяцией
             try {
-                hoverAnimation.applyHoverAnimation(display, translation, baseScale, isHovered);
+                hoverAnimation.applyHoverAnimation(display, translation, baseScale, isHovered, baseRotation());
             } catch (Exception e) {
                 DisplayLib.getInstance().getLogger().log(java.util.logging.Level.WARNING, "Error applying item hover animation", e);
             }
@@ -341,12 +344,7 @@ public class ItemDisplayButtonWidget implements Widget {
             if (isHovered) {
                 Animation.applyTransformationWithInterpolation(display, hoveredTransformation, hoveredTransformationDuration);
             } else {
-                Animation.applyTransformationWithInterpolation(display, new Transformation(
-                        translation,
-                        new AxisAngle4f(),
-                        new Vector3f(scaleX, scaleY, scaleZ),
-                        new AxisAngle4f()
-                ), hoveredTransformationDuration);
+                Animation.applyTransformationWithInterpolation(display, targetTransformation(), hoveredTransformationDuration);
             }
         }
     }
@@ -396,6 +394,17 @@ public class ItemDisplayButtonWidget implements Widget {
         if (isShowingTooltip && viewer != null) {
             viewer.clearTitle();
             isShowingTooltip = false;
+        }
+    }
+
+    /** Поворот в плоскости экрана, градусы (+ = против часовой для зрителя). */
+    public float getRotation() { return rotationDeg; }
+
+    /** Повернуть виджет; плавно за {@code ticks} тиков (0/1 - сразу). Если виджет наведён, применится при уходе курсора. */
+    public void setRotation(float degrees, int ticks) {
+        this.rotationDeg = degrees;
+        if (display != null && display.isValid() && !isHovered) {
+            Animation.applyTransformationWithInterpolation(display, targetTransformation(), Math.max(1, ticks));
         }
     }
 
