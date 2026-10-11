@@ -29,7 +29,8 @@ interface HistoryEntry { path: string; before: Screen; json: string }
 interface State {
   docs: ScreenDoc[];
   current: string | null;      // path текущего экрана
-  selected: string | null;     // uid виджета
+  selected: string | null;     // uid виджета (главный в выделении: у него гизмо и панель свойств)
+  extra: string[];             // остальные выделенные (Shift+клик, рамка)
   hovered: string | null;
   /** счётчик запросов «открыть вкладку скрипта» (Preview следит) */
   openScript: number;
@@ -43,12 +44,31 @@ interface State {
 }
 
 export const state = reactive<State>({
-  docs: [], current: null, selected: null, hovered: null,
+  docs: [], current: null, selected: null, extra: [], hovered: null,
   openScript: 0, message: '', error: '', undo: [], redo: [], revision: 0, posRevision: 0, busy: false,
 });
 
 export const currentDoc = computed(() => state.docs.find((d) => d.path === state.current) ?? null);
 export const currentScreen = computed(() => currentDoc.value?.screen ?? null);
+/** Все выделенные uid: главный + остальные (без мусора после удаления). */
+export const selectedUids = computed(() => {
+  const s = currentScreen.value; if (!s) return [] as string[];
+  const ids = new Set<string>(); if (state.selected) ids.add(state.selected); for (const u of state.extra) ids.add(u);
+  return s.widgets.filter((w) => ids.has(w.uid)).map((w) => w.uid);
+});
+export const selectedWidgets = computed(() => { const s = currentScreen.value; const ids = new Set(selectedUids.value); return s ? s.widgets.filter((w) => ids.has(w.uid)) : []; });
+export function isSelected(uid: string): boolean { return state.selected === uid || state.extra.includes(uid); }
+/** Выбрать один (обычный клик) или добавить/убрать из выделения (Shift/Ctrl+клик). */
+export function select(uid: string | null, additive = false): void {
+  if (!additive || !uid) { state.selected = uid; state.extra = []; return; }
+  if (state.selected === uid) { state.selected = state.extra.shift() ?? null; return; } // снять главный - следующий становится главным
+  if (state.extra.includes(uid)) { state.extra = state.extra.filter((u) => u !== uid); return; }
+  if (!state.selected) { state.selected = uid; return; }
+  state.extra = [...state.extra, uid];
+}
+export function selectMany(uids: string[]): void {
+  state.selected = uids[0] ?? null; state.extra = uids.slice(1);
+}
 export const selectedWidget = computed(() => currentScreen.value?.widgets.find((w) => w.uid === state.selected) ?? null);
 /** Функции/хуки скрипта текущего экрана - по его тексту (файл или живой шаблон). */
 export const currentScriptInfo = computed(() => { void state.revision; const d = currentDoc.value; return d ? scanScript(scriptTextOf(d)) : null; });
@@ -232,9 +252,21 @@ export function duplicateWidget(uid: string): void {
   state.selected = c.uid; touch();
 }
 
+export function removeWidgets(uids: string[]): void {
+  const s = currentScreen.value; if (!s || !uids.length) return;
+  snapshot();
+  const set = new Set(uids);
+  const first = s.widgets.findIndex((w) => set.has(w.uid));
+  for (let i = s.widgets.length - 1; i >= 0; i--) if (set.has(s.widgets[i].uid)) s.widgets.splice(i, 1);
+  state.extra = [];
+  state.selected = s.widgets[Math.min(Math.max(0, first), s.widgets.length - 1)]?.uid ?? null;
+  touch();
+}
+
 export function removeWidget(uid: string): void {
   const s = currentScreen.value!; const i = s.widgets.findIndex((w) => w.uid === uid); if (i < 0) return;
   snapshot(); s.widgets.splice(i, 1);
+  state.extra = state.extra.filter((u) => u !== uid);
   if (state.selected === uid) state.selected = s.widgets[Math.min(i, s.widgets.length - 1)]?.uid ?? null;
   touch();
 }
@@ -386,4 +418,4 @@ export function ensureHandler(name: string): void {
 }
 
 // Сброс выделения при смене экрана
-watch(() => state.current, () => { state.selected = null; state.hovered = null; });
+watch(() => state.current, () => { state.selected = null; state.extra = []; state.hovered = null; });

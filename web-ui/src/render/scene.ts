@@ -16,7 +16,10 @@ import { computeSnap, type Guide, type Rect } from './snap';
 import { IDENTITY, isIdentity, targetOf, durationMs, easingOf, tweenAt, type HoverDelta, type HoverTween } from './hoverAnim';
 
 export interface SceneCallbacks {
-  onSelect(uid: string | null): void;
+  /** additive - Shift/Ctrl зажат: добавить/убрать из выделения, а не заменить. */
+  onSelect(uid: string | null, additive?: boolean): void;
+  /** Рамка выделения: виджеты, попавшие в прямоугольник. */
+  onSelectMany(uids: string[]): void;
   onMove(uid: string, pos: [number, number, number]): void;
   onHover(uid: string | null): void;
 }
@@ -59,6 +62,11 @@ export class ScreenScene {
   private gizmoStart: THREE.Vector3 | null = null;
   private screen: Screen | null = null;
   private selected: string | null = null;
+  /** Остальные выделенные (без гизмо, с рамкой). */
+  private extraSelected: string[] = [];
+  private extraBoxes: THREE.Box3Helper[] = [];
+  /** Рамка выделения (Shift+драг по пустому): экранные координаты. */
+  private marquee: { x0: number; y0: number; x1: number; y1: number; el: HTMLDivElement } | null = null;
   private hovered: string | null = null;
   private frame = 0;
   /** Идущие hover-анимации по uid (переживают перестройку узла). */
@@ -135,6 +143,7 @@ export class ScreenScene {
   /** Сбросить незавершённое взаимодействие (уход со вкладки, alt-tab): перетаскивание, захват курсора, гизмо. */
   cancelInteraction(): void {
     if (this.dragging) { try { this.canvas.releasePointerCapture(this.dragging.pointerId); } catch { /* ignore */ } }
+    if (this.marquee) { this.marquee.el.remove(); this.marquee = null; }
     this.dragging = null;
     this.downAt = null;
     this.gizmoDragging = false;
@@ -201,6 +210,16 @@ export class ScreenScene {
   }
 
   /** Центр камеры на выбранном виджете (или на всём содержимом). */
+  /** Прямоугольники видимых виджетов в плоскости экрана (мировые x/y; x модели = x · positionXSign). */
+  widgetRects(uids: string[]): Map<string, Rect> {
+    const out = new Map<string, Rect>();
+    for (const uid of uids) {
+      const n = this.nodes.get(uid); if (!n) continue;
+      out.set(uid, this.rectAt(n, n.group.position.x, n.group.position.y));
+    }
+    return out;
+  }
+
   focusSelected(): void {
     const n = this.selected ? this.nodes.get(this.selected) : null;
     const box = n ? new THREE.Box3().setFromObject(n.group) : this.contentBox();
@@ -263,6 +282,11 @@ export class ScreenScene {
     if (this.screen !== s) { this.tweens.clear(); this.deltas.clear(); }
     this.screen = s;
     this.rebuildAll();
+  }
+
+  setSelection(primary: string | null, extra: string[]): void {
+    this.extraSelected = extra.filter((u) => u !== primary);
+    this.setSelected(primary);
   }
 
   setSelected(uid: string | null): void {
@@ -482,6 +506,16 @@ export class ScreenScene {
 
   private updateSelectionBox(): void {
     if (this.selectionBox) { this.scene.remove(this.selectionBox); this.selectionBox.geometry.dispose(); this.selectionBox = null; }
+    for (const b of this.extraBoxes) { this.scene.remove(b); b.geometry.dispose(); }
+    this.extraBoxes = [];
+    for (const uid of this.extraSelected) {
+      const m = this.nodes.get(uid); if (!m) continue;
+      m.mesh.updateWorldMatrix(true, false);
+      const box = new THREE.Box3().setFromObject(m.mesh); box.expandByScalar(0.01);
+      const h = new THREE.Box3Helper(box, new THREE.Color(0xffc400));
+      (h.material as THREE.LineBasicMaterial).depthTest = false; (h.material as THREE.LineBasicMaterial).transparent = true; (h.material as THREE.LineBasicMaterial).opacity = 0.6;
+      h.renderOrder = 11; this.scene.add(h); this.extraBoxes.push(h);
+    }
     const n = this.selected ? this.nodes.get(this.selected) : null;
     if (!n) return;
     n.mesh.updateWorldMatrix(true, false);
@@ -553,8 +587,14 @@ export class ScreenScene {
     if (this.inViewHelper(e)) { this.controls.enabled = false; return; }
     this.setPointer(e);
     const uid = this.pick();
-    if (!uid) return; // пустое место: OrbitControls вращает; выделение снимется по клику без движения
-    this.cb.onSelect(uid);
+    const additive = e.shiftKey || e.ctrlKey || e.metaKey;
+    if (!uid) {
+      // пустое место: Shift - рамка выделения, иначе OrbitControls вращает; выделение снимется по клику без движения
+      if (e.shiftKey) { this.startMarquee(e); this.controls.enabled = false; this.canvas.setPointerCapture(e.pointerId); }
+      return;
+    }
+    if (additive) { this.cb.onSelect(uid, true); this.controls.enabled = false; return; } // добавить к выделению без перетаскивания
+    if (!this.isSelected(uid)) this.cb.onSelect(uid);
     const w = this.screen?.widgets.find((x) => x.uid === uid);
     const n = this.nodes.get(uid);
     if (!w || !n) return;
@@ -570,8 +610,46 @@ export class ScreenScene {
     this.tweens.delete(uid); this.deltas.delete(uid); this.applyDelta(n, IDENTITY);
   };
 
+  private isSelected(uid: string): boolean { return this.selected === uid || this.extraSelected.includes(uid); }
+
+  private startMarquee(e: PointerEvent): void {
+    const r = this.canvas.getBoundingClientRect();
+    const el = document.createElement('div');
+    el.className = 'marquee';
+    this.canvas.parentElement?.appendChild(el);
+    this.marquee = { x0: e.clientX - r.left, y0: e.clientY - r.top, x1: e.clientX - r.left, y1: e.clientY - r.top, el };
+    this.drawMarquee();
+  }
+  private drawMarquee(): void {
+    const m = this.marquee; if (!m) return;
+    const l = Math.min(m.x0, m.x1), t = Math.min(m.y0, m.y1);
+    Object.assign(m.el.style, { left: l + 'px', top: t + 'px', width: Math.abs(m.x1 - m.x0) + 'px', height: Math.abs(m.y1 - m.y0) + 'px' });
+  }
+  /** Виджеты, чей центр (проекция mesh) попал в рамку. */
+  private finishMarquee(): void {
+    const m = this.marquee; if (!m) return;
+    m.el.remove(); this.marquee = null;
+    const l = Math.min(m.x0, m.x1), r = Math.max(m.x0, m.x1), t = Math.min(m.y0, m.y1), b = Math.max(m.y0, m.y1);
+    if (r - l < 3 && b - t < 3) return;
+    const W = this.canvas.clientWidth, H = this.canvas.clientHeight;
+    const out: string[] = [];
+    for (const n of this.nodes.values()) {
+      if (n.locked) continue;
+      n.mesh.updateWorldMatrix(true, false);
+      const c = new THREE.Box3().setFromObject(n.mesh).getCenter(new THREE.Vector3()).project(this.camera);
+      if (c.z > 1) continue;
+      const x = (c.x + 1) / 2 * W, y = (1 - c.y) / 2 * H;
+      if (x >= l && x <= r && y >= t && y <= b) out.push(n.uid);
+    }
+    // порядок как в списке виджетов
+    const order = new Map((this.screen?.widgets ?? []).map((w, i) => [w.uid, i]));
+    out.sort((a, b2) => (order.get(a) ?? 0) - (order.get(b2) ?? 0));
+    this.cb.onSelectMany(out);
+  }
+
   private onMoveEv = (e: PointerEvent): void => {
     this.setPointer(e);
+    if (this.marquee) { const r = this.canvas.getBoundingClientRect(); this.marquee.x1 = e.clientX - r.left; this.marquee.y1 = e.clientY - r.top; this.drawMarquee(); return; }
     if (this.dragging) {
       const d = this.dragging;
       if (!d.moved && Math.hypot(e.clientX - this.downAt!.x, e.clientY - this.downAt!.y) < 3) return;
@@ -609,6 +687,7 @@ export class ScreenScene {
   private onUp = (e: PointerEvent): void => {
     const down = this.downAt;
     this.downAt = null;
+    if (this.marquee) { try { this.canvas.releasePointerCapture(e.pointerId); } catch { /* ignore */ } this.finishMarquee(); this.controls.enabled = true; return; }
     if (this.dragging) {
       try { this.canvas.releasePointerCapture(e.pointerId); } catch { /* ignore */ }
       this.dragging = null;
@@ -621,9 +700,9 @@ export class ScreenScene {
     const moved = Math.hypot(e.clientX - down.x, e.clientY - down.y) >= 3;
     if (moved) return;
     if (this.inViewHelper(e)) { this.viewHelper.handleClick(e as unknown as MouseEvent); return; }
-    // клик по пустому месту без движения - снять выделение
+    // клик по пустому месту без движения - снять выделение (с Shift - оставить)
     this.setPointer(e);
-    if (!this.pick()) this.cb.onSelect(null);
+    if (!this.pick() && !e.shiftKey && !e.ctrlKey && !e.metaKey) this.cb.onSelect(null);
   };
 
   private onLeave = (e: PointerEvent): void => {

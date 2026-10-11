@@ -3,8 +3,9 @@ import Icon from './Icon.vue';
 import { onMounted, onBeforeUnmount, ref, watch, computed } from 'vue';
 import { ScreenScene } from '../render/scene';
 import Splitter from './Splitter.vue';
-import { state, currentDoc, currentScreen, currentText, snapshot, snapshotCoalesced, touch, touchPosition, selectedWidget, scriptTextOf, scriptNameOf, scriptStatus, setScriptText, resetScriptToTemplate } from '../store';
+import { state, currentDoc, currentScreen, currentText, snapshot, snapshotCoalesced, touch, touchPosition, selectedWidget, selectedWidgets, selectedUids, select, selectMany, removeWidgets, scriptTextOf, scriptNameOf, scriptStatus, setScriptText, resetScriptToTemplate } from '../store';
 import { calibration } from '../render/metrics';
+import { alignRects, distributeRects, type AlignKind, type DistributeKind } from '../render/align';
 import { spriteState } from '../render/sprites';
 
 const canvas = ref<HTMLCanvasElement | null>(null);
@@ -29,12 +30,20 @@ let dragSnapshotTaken = false;
 
 onMounted(() => {
   scene = new ScreenScene(canvas.value!, {
-    onSelect: (uid) => { state.selected = uid; dragSnapshotTaken = false; },
+    onSelect: (uid, additive) => { select(uid, additive); dragSnapshotTaken = false; },
+    onSelectMany: (uids) => { selectMany(uids); dragSnapshotTaken = false; },
     onMove: (uid, pos) => {
       const w = currentScreen.value?.widgets.find((x) => x.uid === uid); if (!w) return;
       if (!dragSnapshotTaken) { snapshot(); dragSnapshotTaken = true; }
-      if (w.position[0] === pos[0] && w.position[1] === pos[1]) return;
-      w.position = pos; touchPosition(); scene?.updatePosition(uid);
+      if (w.position[0] === pos[0] && w.position[1] === pos[1] && w.position[2] === pos[2]) return;
+      // остальные выделенные едут на ту же дельту
+      const d = [pos[0] - w.position[0], pos[1] - w.position[1], pos[2] - w.position[2]];
+      w.position = pos; scene?.updatePosition(uid);
+      for (const o of selectedWidgets.value) {
+        if (o.uid === uid || o.locked) continue;
+        o.position = [r(o.position[0] + d[0]), r(o.position[1] + d[1]), r(o.position[2] + d[2])]; scene?.updatePosition(o.uid);
+      }
+      touchPosition();
     },
     onHover: (uid) => { state.hovered = uid; },
   });
@@ -48,7 +57,7 @@ onBeforeUnmount(() => { scene?.dispose(); window.removeEventListener('blur', onW
 
 // смена экрана или любая правка модели -> перестроить (дёшево: экраны маленькие)
 watch(() => [state.current, state.revision], () => scene?.setScreen(currentScreen.value));
-watch(() => state.selected, (uid) => scene?.setSelected(uid));
+watch(() => [state.selected, state.extra] as const, () => scene?.setSelection(state.selected, state.extra), { deep: true });
 watch(() => state.hovered, (uid) => scene?.setHovered(uid));
 watch(calibration, () => scene?.rebuildAll(), { deep: true });
 watch(() => spriteState.revision, () => scene?.rebuildAll()); // догрузился спрайт атласа
@@ -64,14 +73,30 @@ function onWindowBlur() { scene?.cancelInteraction(); }
 function nudge(e: KeyboardEvent) {
   if (e.code === 'KeyF' && !e.ctrlKey && !e.metaKey) { scene?.focusSelected(); return; }
   if ((e.code === 'Digit1' || e.code === 'Digit3' || e.code === 'Digit7') && !e.altKey) { scene?.alignTo(e.code === 'Digit1' ? 'z' : e.code === 'Digit3' ? 'x' : 'y', e.ctrlKey); e.preventDefault(); return; }
-  const w = selectedWidget.value; if (!w || w.locked) return;
+  if (e.key === 'Delete' || (e.key === 'Backspace' && !e.ctrlKey)) { if (selectedUids.value.length) { e.preventDefault(); removeWidgets(selectedUids.value); } return; }
+  if (e.code === 'KeyA' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); selectMany((currentScreen.value?.widgets ?? []).filter((w) => !w.hidden && !w.locked).map((w) => w.uid)); return; }
+  const ws = selectedWidgets.value.filter((w) => !w.locked); if (!ws.length) return;
   const step = e.shiftKey ? 0.5 : e.altKey ? 0.01 : 0.1;
   const d: Record<string, [number, number, number]> = { ArrowLeft: [-step, 0, 0], ArrowRight: [step, 0, 0], ArrowUp: [0, step, 0], ArrowDown: [0, -step, 0], PageUp: [0, 0, -step], PageDown: [0, 0, step] };
   const v = d[e.key]; if (!v) return;
-  e.preventDefault(); snapshotCoalesced('nudge:' + w.uid + ':' + e.key);
-  w.position = [r(w.position[0] + v[0]), r(w.position[1] + v[1]), r(w.position[2] + v[2])]; touch();
+  e.preventDefault(); snapshotCoalesced('nudge:' + ws.map((w) => w.uid).join(',') + ':' + e.key);
+  for (const w of ws) w.position = [r(w.position[0] + v[0]), r(w.position[1] + v[1]), r(w.position[2] + v[2])];
+  touch();
 }
 function r(v: number) { return Math.round(v * 1000) / 1000; }
+
+const multi = computed(() => selectedUids.value.length >= 2);
+function applyShifts(sh: Map<string, { dx: number; dy: number }>) {
+  if (!sh.size) return;
+  snapshot();
+  for (const w of selectedWidgets.value) {
+    const d = sh.get(w.uid); if (!d || w.locked) continue;
+    w.position = [r(w.position[0] + d.dx * calibration.positionXSign), r(w.position[1] + d.dy), w.position[2]];
+  }
+  touch();
+}
+function alignSel(kind: AlignKind) { if (scene) applyShifts(alignRects(scene.widgetRects(selectedUids.value), kind)); }
+function distributeSel(kind: DistributeKind) { if (scene) applyShifts(distributeRects(scene.widgetRects(selectedUids.value), kind)); }
 </script>
 
 <template>
@@ -88,7 +113,25 @@ function r(v: number) { return Math.round(v * 1000) / 1000; }
       <label class="btn sm" title="Прилипание к краям, центрам и равным зазорам других виджетов (Ctrl при перетаскивании - отключить)"><input type="checkbox" v-model="smartGuides" /> <Icon name="magic" /> Направляющие</label>
       <label class="btn sm" title="Виджет под курсором показывается как при наведении в игре: hover-текст/фон и hover-анимация (масштаб, смещение, поворот) с длительностью и easing плагина"><input type="checkbox" v-model="hoverPreview" /> <Icon name="hand-pointer" /> Hover</label>
     </div>
-    <div class="preview-legend">ЛКМ: виджет - выбрать/тащить (Shift: шаг 0.5, Alt: 0.01, Ctrl: без направляющих), пусто - вращать · СКМ/ПКМ - сдвиг · колесо - зум · стрелки: x/y, PgUp/PgDn: ближе/дальше · гизмо в углу - оси</div>
+    <div v-if="multi" class="preview-toolbar align-bar">
+      <span class="btn sm static"><Icon name="object-group" /> {{ selectedUids.length }}</span>
+      <span class="btn-group">
+        <button class="btn sm icon" title="По левому краю" @click="alignSel('left')"><Icon name="align-left" /></button>
+        <button class="btn sm icon" title="По центру (горизонтально)" @click="alignSel('hcenter')"><Icon name="align-center" /></button>
+        <button class="btn sm icon" title="По правому краю" @click="alignSel('right')"><Icon name="align-right" /></button>
+      </span>
+      <span class="btn-group">
+        <button class="btn sm icon rot" title="По верхнему краю" @click="alignSel('top')"><Icon name="align-left" /></button>
+        <button class="btn sm icon rot" title="По середине (вертикально)" @click="alignSel('vcenter')"><Icon name="align-center" /></button>
+        <button class="btn sm icon rot" title="По нижнему краю" @click="alignSel('bottom')"><Icon name="align-right" /></button>
+      </span>
+      <span class="btn-group">
+        <button class="btn sm" title="Равные промежутки по горизонтали (крайние на месте)" :disabled="selectedUids.length < 3" @click="distributeSel('h')"><Icon name="arrows-alt-h" /> ⋯</button>
+        <button class="btn sm" title="Равные промежутки по вертикали" :disabled="selectedUids.length < 3" @click="distributeSel('v')"><Icon name="arrows-alt-v" /> ⋮</button>
+      </span>
+      <button class="btn sm danger" title="Удалить выделенные (Delete)" @click="removeWidgets(selectedUids)"><Icon name="trash" /></button>
+    </div>
+    <div class="preview-legend">ЛКМ: виджет - выбрать/тащить (Shift: шаг 0.5, Alt: 0.01, Ctrl: без направляющих), Shift+клик - к выделению, Shift+тащить по пустому - рамка, Ctrl+A - все; пусто - вращать · СКМ/ПКМ - сдвиг · колесо - зум · стрелки: x/y, PgUp/PgDn: ближе/дальше · гизмо в углу - оси</div>
   </div>
   <Splitter v-if="tab !== 'none'" css-var="--codebar-h" dir="h" :sign="-1" :min="80" :max="900" />
   <div class="codebar" :class="{ collapsed: tab === 'none' }">
