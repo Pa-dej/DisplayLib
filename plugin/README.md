@@ -53,6 +53,7 @@ plugins/DisplayLib/
 /displaylib list              # Список экранов
 /displaylib close             # Закрыть экран
 /displaylib reload            # Перечитать экраны, политику и скрипты (админ)
+/displaylib validate          # Перечитать и показать проблемы: дубли id, клики в никуда, нет скрипта/функции (админ)
 ```
 
 ## Экран (`screens/*.jmc`)
@@ -116,7 +117,7 @@ dyn widgets = [
 Поля виджетов: `id`, `type`, `position`, `scale`, `tolerance`, `translation`, `rotation` (градусы в плоскости экрана, + = против часовой, вокруг центра виджета; зона наведения не поворачивается), `text`, `hoveredText`,
 `alignment`, `backgroundColor`, `backgroundAlpha`, `hoveredBackgroundColor`, `hoveredBackgroundAlpha`,
 `material`, `glowOnHover`, `glowColor`, `sprite`, `atlas`, `hoveredSprite`, `tooltip`, `tooltipColor`, `tooltipDelay`,
-`onClick`, `hoverAnimation` (у `ROTATE` - `angle` и `axis`: `[0, 0, 1]` - в плоскости экрана, `[0, 1, 0]` - вокруг вертикали; складывается со статическим `rotation`). Тип можно не писать: есть `material` - `ITEM_BUTTON`, есть `sprite` - `SPRITE_BUTTON`,
+`clickSound` (ключ звука `ui.button.click` / константа `UI_BUTTON_CLICK` / таблица `{ sound, volume, pitch }` / `false`), `hoverSound` (то же, играет при наведении; считается hover-реакцией), `onClick`, `hoverAnimation` (у `ROTATE` - `angle` и `axis`: `[0, 0, 1]` - в плоскости экрана, `[0, 1, 0]` - вокруг вертикали; складывается со статическим `rotation`). Тип можно не писать: есть `material` - `ITEM_BUTTON`, есть `sprite` - `SPRITE_BUTTON`,
 иначе `TEXT_BUTTON`. `SPRITE_BUTTON` - это TextDisplay с компонентом-объектом (`{"atlas": ..., "sprite": ...}`),
 поэтому у него есть фон, hover и `tolerance` как у текстовой кнопки; из скрипта - `widget.sprite("item/apple")`.
 Атласы клиента: `minecraft:items`, `minecraft:blocks`, `minecraft:gui` для иконок эффектов (`mob_effect/speed`), `minecraft:gui`
@@ -239,7 +240,7 @@ void onClose() { log.info("shop closed, sold=" + sold); }
 |---|---|
 | `player` | `name()`, `uuid()`, `op()`, `online()`, `gamemode()`, `gamemode(mode)`, `health()`, `health(v)`, `message(text)`, `message(text, "#hex")`, `sound(name[, volume[, pitch]])`, `command(cmd)`, `handle()` (Bukkit `Player`, если открыт политикой) |
 | `screen` | `id()`, `isPublic()`, `close()`, `switchTo(id)`, `widget(id)`, `widgets()`, `data(key)`, `data(key, value)` |
-| виджет | `id()`, `type()`, `valid()`, `text()`, `text(v)`, `hoveredText(v)`, `bgColor(r, g, b)`, `bgAlpha(a)`, `visible()`, `visible(b)`, `enabled()`, `enabled(b)`, `tooltip()`, `tooltip(v)`, `rotation()`, `rotation(deg[, ticks])` |
+| виджет | `id()`, `type()`, `valid()`, `text()`, `text(v)`, `hoveredText(v)`, `bgColor(r, g, b)`, `bgAlpha(a)`, `visible()`, `visible(b)`, `enabled()`, `enabled(b)`, `tooltip()`, `tooltip(v)`, `rotation()`, `rotation(deg[, ticks])`, `scale()`, `scale(s[, ticks])`, `scale(x, y, z[, ticks])`, `translation()`, `translation(x, y, z[, ticks])` - с `ticks` плавно (интерполяция клиента) |
 | `storage` | `get(key)`, `get(key, default)`, `set(key, value)`, `has(key)`, `remove(key)`, `clear()`, `size()` - на игрока, в памяти сервера |
 | `timer` | `after(ticks, fn)`, `every(ticks, fn)`, `times(period, count, i -> ...)`, `cancel(id)`, `cancelAll()`, `active()` - 20 тиков = 1 с |
 | `log` | `info(msg)`, `warn(msg)`, `error(msg)` |
@@ -288,6 +289,7 @@ int scriptTimeoutMs = 1000;    // сторожевой таймер: вызов 
 | `/displaylib open <screen_id> [player] [x y z] [yaw pitch]` | Открыть приватный экран | - |
 | `/displaylib close` | Закрыть свой экран | - |
 | `/displaylib list` | Список загруженных экранов | - |
+| `/displaylib validate` | Перезагрузить и показать проблемы экранов (клики, которые не сработают; дубли id; скрипты) | `displaylib.admin` |
 | `/displaylib openpublic <screen_id> <x> <y> <z> [yaw] [pitch]` | Поставить публичный экран в мире | `displaylib.admin` |
 | `/displaylib closepublic <screen_id>` | Убрать публичный экран | `displaylib.admin` |
 | `/displaylib listpublic` | Список публичных экранов | `displaylib.admin` |

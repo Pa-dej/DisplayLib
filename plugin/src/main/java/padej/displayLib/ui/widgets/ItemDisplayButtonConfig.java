@@ -27,6 +27,19 @@ public class ItemDisplayButtonConfig {
     private Color glowColor;
     private org.bukkit.Sound clickSound = org.bukkit.Sound.UI_BUTTON_CLICK;
     private boolean soundEnabled = true;
+    /** Звук при наведении (null - нет). */
+    private padej.displayLib.config.SoundSpec hoverSound;
+
+    public ItemDisplayButtonConfig setHoverSound(padej.displayLib.config.SoundSpec s) { this.hoverSound = s; return this; }
+    public padej.displayLib.config.SoundSpec getHoverSound() { return hoverSound; }
+
+    /** Звук клика из конфига: NONE - выключить, иначе звук/громкость/высота. */
+    public ItemDisplayButtonConfig setClickSound(padej.displayLib.config.SoundSpec s) {
+        if (s == null) return this;
+        if (!s.enabled()) { this.soundEnabled = false; return this; }
+        this.clickSound = s.sound(); this.soundVolume = s.volume(); this.soundPitch = s.pitch(); this.soundEnabled = true;
+        return this;
+    }
     private float soundVolume = 0.5f;
     private float soundPitch = 1.0f;
     private double horizontalTolerance = 0.06;

@@ -90,6 +90,49 @@ public final class ScreenAnalyzer {
     }
 
     /**
+     * Отчёт для {@code /displaylib validate}: по каждому экрану - проблемы, которые в игре проявятся как
+     * «кнопка не работает» (дубли id, клик в никуда, нет скрипта/функции), и список статичных виджетов.
+     * Экраны уже загружены и проанализированы; тут только собираются строки для чата.
+     */
+    public static java.util.List<String> report(Map<String, ScreenDefinition> screens, Path scriptsDir, Access access, Logger log) {
+        java.util.List<String> out = new java.util.ArrayList<>();
+        Map<String, ScriptInfo> scripts = new HashMap<>();
+        for (ScreenDefinition screen : new java.util.TreeMap<>(screens).values()) {
+            java.util.List<String> lines = new java.util.ArrayList<>();
+            boolean publicScreen = screen.getScreenType() == ScreenDefinition.ScreenType.PUBLIC;
+            if (screen.getScript() != null) {
+                Path path = scriptsDir.resolve(screen.getScript()).normalize();
+                if (!Files.isRegularFile(path)) lines.add("§cскрипт " + screen.getScript() + " не найден");
+            }
+            ScriptInfo script = screen.getScript() == null ? null
+                    : scripts.computeIfAbsent(screen.getScript(), f -> parseScript(scriptsDir, f, access, log));
+            if (script != null && !script.parsed()) lines.add("§cскрипт " + screen.getScript() + " не разбирается");
+            Map<String, Integer> ids = new HashMap<>();
+            if (screen.getWidgets() != null) {
+                for (WidgetDefinition def : screen.getWidgets()) if (def.getId() != null) ids.merge(def.getId(), 1, Integer::sum);
+                int index = 0;
+                for (WidgetDefinition def : screen.getWidgets()) {
+                    index++;
+                    String name = def.getId() != null ? def.getId() : "#" + index;
+                    if (def.getId() != null && ids.get(def.getId()) > 1) lines.add("§c" + name + ": id повторяется");
+                    WidgetDefinition.ClickAction action = def.getOnClick();
+                    if (action != null && action.getAction() != WidgetDefinition.ClickAction.ActionType.NONE) {
+                        String why = clickReason(def, screens, script, publicScreen);
+                        if (why != null) lines.add("§e" + name + ": клик не сработает - " + why);
+                    }
+                    if (def.getType() == WidgetDefinition.WidgetType.ITEM_BUTTON && def.getMaterial() == null) lines.add("§c" + name + ": нет material");
+                    if (def.getType() == WidgetDefinition.WidgetType.SPRITE_BUTTON && def.getSprite() == null) lines.add("§c" + name + ": нет sprite");
+                }
+            }
+            Set<String> inert = screen.getInertWidgetIds();
+            int total = screen.getWidgets() != null ? screen.getWidgets().size() : 0;
+            out.add("§f" + screen.getId() + " §7(" + total + " виджетов, статичных " + (inert != null ? inert.size() : 0) + ")" + (lines.isEmpty() ? " §aok" : ""));
+            for (String l : lines) out.add("  " + l);
+        }
+        return out;
+    }
+
+    /**
      * Почему виджет можно не тикать; {@code null}, если он интерактивен.
      */
     static String inertReason(WidgetDefinition def, ScreenDefinition screen, Map<String, ScreenDefinition> screens,
@@ -139,6 +182,7 @@ public final class ScreenAnalyzer {
      */
     public static boolean hasHoverVisual(WidgetDefinition def, boolean withHoverAnimation) {
         if (def.getTooltip() != null) return true;
+        if (def.getHoverSound() != null && def.getHoverSound().enabled()) return true;
         if (withHoverAnimation && def.getHoverAnimation() != null) return true;
         if (withHoverAnimation && def.getHoveredFrames() != null) return true;
         if (def.getType() == WidgetDefinition.WidgetType.ITEM_BUTTON) {

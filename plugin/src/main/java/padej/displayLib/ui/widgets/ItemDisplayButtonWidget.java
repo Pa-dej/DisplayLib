@@ -44,6 +44,7 @@ public class ItemDisplayButtonWidget implements Widget {
     private ItemDisplay.ItemDisplayTransform displayTransform = ItemDisplay.ItemDisplayTransform.NONE;
     private org.bukkit.Sound clickSound = org.bukkit.Sound.UI_BUTTON_CLICK;
     private boolean soundEnabled = true;
+    private padej.displayLib.config.SoundSpec hoverSound;
     private float soundVolume = 0.5f;
     private float soundPitch = 1.0f;
     private Runnable updateCallback;
@@ -124,6 +125,7 @@ public class ItemDisplayButtonWidget implements Widget {
         widget.verticalTolerance = config.getToleranceVertical();
         widget.clickSound = config.getClickSound();
         widget.soundEnabled = config.isSoundEnabled();
+        widget.hoverSound = config.getHoverSound();
         widget.soundVolume = config.getSoundVolume();
         widget.soundPitch = config.getSoundPitch();
         widget.itemMeta = config.getItemMeta();
@@ -311,6 +313,7 @@ public class ItemDisplayButtonWidget implements Widget {
         if (currentlyHovered != isHovered) {
             isHovered = currentlyHovered;
             onHoverStateChanged();
+            if (isHovered && hoverSound != null) hoverSound.play(viewer);
         }
 
         if (isHovered) {
@@ -399,6 +402,30 @@ public class ItemDisplayButtonWidget implements Widget {
 
     /** Поворот в плоскости экрана, градусы (+ = против часовой для зрителя). */
     public float getRotation() { return rotationDeg; }
+
+    public float[] getScale() { return new float[] {scaleX, scaleY, scaleZ}; }
+    public float[] getTranslation() { Vector3f t = translation != null ? translation : new Vector3f(); return new float[] {t.x, t.y, t.z}; }
+
+    /** Сменить масштаб (плавно за ticks тиков - интерполяция клиента). Hover-анимации дальше считаются от нового. */
+    public void setScale(float x, float y, float z, int ticks) {
+        this.scaleX = x; this.scaleY = y; this.scaleZ = z;
+        this.baseScale = new Vector3f(x, y, z);
+        this.positionCached = false;
+        applyBase(ticks);
+    }
+
+    /** Сменить translation (локальные оси сущности: x вправо, y вверх для зрителя). */
+    public void setTranslation(float x, float y, float z, int ticks) {
+        this.translation = new Vector3f(x, y, z);
+        this.positionCached = false;
+        applyBase(ticks);
+    }
+
+    private void applyBase(int ticks) {
+        if (display != null && display.isValid() && !isHovered) {
+            Animation.applyTransformationWithInterpolation(display, targetTransformation(), Math.max(1, ticks));
+        }
+    }
 
     /** Повернуть виджет; плавно за {@code ticks} тиков (0/1 - сразу). Если виджет наведён, применится при уходе курсора. */
     public void setRotation(float degrees, int ticks) {

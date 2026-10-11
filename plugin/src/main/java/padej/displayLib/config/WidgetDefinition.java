@@ -228,6 +228,10 @@ public class WidgetDefinition {
     
     /** Анимация при наведении курсора */
     private HoverAnimation hoverAnimation;
+    /** Звук клика; null - дефолт виджета (текст: block.dispenser.fail, предмет: ui.button.click). */
+    private SoundSpec clickSound;
+    /** Звук при наведении; null - нет. */
+    private SoundSpec hoverSound;
     
     public WidgetDefinition() {}
     
@@ -323,6 +327,10 @@ public class WidgetDefinition {
     public ClickAction getOnClick() { return onClick; }
     public void setOnClick(ClickAction onClick) { this.onClick = onClick; }
     
+    public SoundSpec getClickSound() { return clickSound; }
+    public void setClickSound(SoundSpec s) { this.clickSound = s; }
+    public SoundSpec getHoverSound() { return hoverSound; }
+    public void setHoverSound(SoundSpec s) { this.hoverSound = s; }
     public HoverAnimation getHoverAnimation() { return hoverAnimation; }
     public void setHoverAnimation(HoverAnimation hoverAnimation) { this.hoverAnimation = hoverAnimation; }
     

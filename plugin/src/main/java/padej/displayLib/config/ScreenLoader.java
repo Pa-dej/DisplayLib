@@ -366,6 +366,12 @@ public class ScreenLoader {
         Double rotation = number(data, "rotation", "rotate", "angle");
         if (rotation != null) widget.setRotation(rotation.floatValue());
 
+        SoundSpec defClick = new SoundSpec(org.bukkit.Sound.UI_BUTTON_CLICK, 0.5f, 1.0f);
+        SoundSpec click = SoundSpec.parse(JmcValues.toJava(get(data, "clickSound", "click_sound", "sound")), defClick, m -> plugin.getLogger().warning(where + ": " + m));
+        if (click != null) widget.setClickSound(click);
+        SoundSpec hover = SoundSpec.parse(JmcValues.toJava(get(data, "hoverSound", "hover_sound")), new SoundSpec(org.bukkit.Sound.UI_BUTTON_CLICK, 0.3f, 1.6f), m -> plugin.getLogger().warning(where + ": " + m));
+        if (hover != null) widget.setHoverSound(hover);
+
         int[] backgroundColor = ints(data, 3, "backgroundColor", "background_color");
         if (backgroundColor != null) widget.setBackgroundColor(backgroundColor);
 

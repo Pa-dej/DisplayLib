@@ -29,7 +29,7 @@ public class DisplayLibCommand implements CommandExecutor, TabCompleter {
             if (sender instanceof Player player) {
                 showHelp(player);
             } else {
-                sender.sendMessage("§cИспользование: /displaylib <open|close|list|reload|examples>");
+                sender.sendMessage("§cИспользование: /displaylib <open|close|list|reload|validate|examples>");
             }
             return true;
         }
@@ -322,6 +322,17 @@ public class DisplayLibCommand implements CommandExecutor, TabCompleter {
                 sender.sendMessage("§aЭкраны, политика и скрипты перезагружены");
             }
             
+            case "validate" -> {
+                if (sender instanceof Player player && !player.hasPermission("displaylib.admin")) {
+                    sender.sendMessage("§cНет прав доступа");
+                    return true;
+                }
+                plugin.getScriptEngine().reload();
+                plugin.getScreenRegistry().reloadAll();
+                sender.sendMessage("§eПроверка экранов §7(после перезагрузки; ошибки разбора - в консоли):");
+                for (String line : plugin.getScreenRegistry().validate()) sender.sendMessage("§7- " + line);
+            }
+
             case "list" -> {
                 var screens = plugin.getScreenRegistry().getAllScreens();
                 sender.sendMessage("§eДоступные экраны §7(виджетов, из них не тикаемых):");
@@ -383,7 +394,7 @@ public class DisplayLibCommand implements CommandExecutor, TabCompleter {
         if (args.length == 1) {
             List<String> commands = Arrays.asList("open", "close", "list");
             if (sender.hasPermission("displaylib.admin")) {
-                commands = Arrays.asList("open", "close", "list", "reload", "examples", "openpublic", "closepublic", "listpublic");
+                commands = Arrays.asList("open", "close", "list", "reload", "validate", "examples", "openpublic", "closepublic", "listpublic");
             }
             return commands.stream()
                     .filter(cmd -> cmd.toLowerCase().startsWith(args[0].toLowerCase()))

@@ -103,6 +103,13 @@ public class ScreenRegistry {
      * Статический разбор всех экранов: список не тикаемых виджетов ({@link ScreenAnalyzer}).
      * Пересчитывается целиком при любой загрузке: цели {@code switchTo} зависят от других экранов.
      */
+    /** Отчёт о проблемах экранов для {@code /displaylib validate}. */
+    public java.util.List<String> validate() {
+        java.nio.file.Path scriptsDir = plugin.getDataFolder().toPath().resolve("scripts").toAbsolutePath().normalize();
+        me.padej.jumper.runtime.Access access = plugin.getScriptEngine() != null ? plugin.getScriptEngine().getAccess() : null;
+        return ScreenAnalyzer.report(screens, scriptsDir, access, plugin.getLogger());
+    }
+
     public void analyze() {
         java.nio.file.Path scriptsDir = plugin.getDataFolder().toPath().resolve("scripts").toAbsolutePath().normalize();
         me.padej.jumper.runtime.Access access = plugin.getScriptEngine() != null ? plugin.getScriptEngine().getAccess() : null;

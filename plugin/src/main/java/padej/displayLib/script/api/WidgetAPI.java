@@ -164,6 +164,34 @@ public final class WidgetAPI {
 
     // ---- общие ----
 
+    /** Масштаб [x, y, z]. */
+    public java.util.List<Double> scale() {
+        float[] s = widget instanceof TextDisplayButtonWidget t ? t.getScale() : widget instanceof ItemDisplayButtonWidget i ? i.getScale() : new float[3];
+        return java.util.List.of((double) s[0], (double) s[1], (double) s[2]);
+    }
+
+    /** Сменить масштаб: {@code scale(0.5)} (равномерно), {@code scale(0.5, 0.5, 1)}, с последним аргументом ticks - плавно. */
+    public void scale(double s) { scale(s, s, s, 1); }
+    public void scale(double s, int ticks) { scale(s, s, s, ticks); }
+    public void scale(double x, double y, double z) { scale(x, y, z, 1); }
+    public void scale(double x, double y, double z, int ticks) {
+        if (widget instanceof TextDisplayButtonWidget t) t.setScale((float) x, (float) y, (float) z, ticks);
+        else if (widget instanceof ItemDisplayButtonWidget i) i.setScale((float) x, (float) y, (float) z, ticks);
+    }
+
+    /** translation [x, y, z] - смещение сущности относительно позиции (x вправо, y вверх для зрителя). */
+    public java.util.List<Double> translation() {
+        float[] s = widget instanceof TextDisplayButtonWidget t ? t.getTranslation() : widget instanceof ItemDisplayButtonWidget i ? i.getTranslation() : new float[3];
+        return java.util.List.of((double) s[0], (double) s[1], (double) s[2]);
+    }
+
+    /** Сместить виджет: {@code translation(0, 0.1, 0)} сразу, {@code translation(0, 0.1, 0, 10)} - плавно за 10 тиков. Зона наведения едет вместе. */
+    public void translation(double x, double y, double z) { translation(x, y, z, 1); }
+    public void translation(double x, double y, double z, int ticks) {
+        if (widget instanceof TextDisplayButtonWidget t) t.setTranslation((float) x, (float) y, (float) z, ticks);
+        else if (widget instanceof ItemDisplayButtonWidget i) i.setTranslation((float) x, (float) y, (float) z, ticks);
+    }
+
     /** Поворот в плоскости экрана, градусы (+ = против часовой). */
     public double rotation() {
         return widget instanceof TextDisplayButtonWidget t ? t.getRotation()

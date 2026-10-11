@@ -165,6 +165,8 @@ public final class ScreenSupport {
         if (withHoverAnimation && def.getHoverAnimation() != null) {
             cfg.setHoverAnimation(def.getHoverAnimation());
         }
+        cfg.setClickSound(def.getClickSound());
+        cfg.setHoverSound(def.getHoverSound());
 
         // Кадры текстовой анимации: text/hoveredText = первый кадр, дальше тикает TextDisplayButtonWidget.tickFrames
         if (def.getFrames() != null && def.getType() != WidgetDefinition.WidgetType.SPRITE_BUTTON) {
@@ -209,6 +211,8 @@ public final class ScreenSupport {
         if (withHoverAnimation && def.getHoverAnimation() != null) {
             cfg.setHoverAnimation(def.getHoverAnimation());
         }
+        cfg.setClickSound(def.getClickSound());
+        cfg.setHoverSound(def.getHoverSound());
 
         return cfg;
     }

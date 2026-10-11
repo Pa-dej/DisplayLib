@@ -32,6 +32,19 @@ public class TextDisplayButtonConfig {
     private double verticalTolerance = 0.06;
     private org.bukkit.Sound clickSound = org.bukkit.Sound.BLOCK_DISPENSER_FAIL;
     private boolean soundEnabled = true;
+    /** Звук при наведении (null - нет). */
+    private padej.displayLib.config.SoundSpec hoverSound;
+
+    public TextDisplayButtonConfig setHoverSound(padej.displayLib.config.SoundSpec s) { this.hoverSound = s; return this; }
+    public padej.displayLib.config.SoundSpec getHoverSound() { return hoverSound; }
+
+    /** Звук клика из конфига: NONE - выключить, иначе звук/громкость/высота. */
+    public TextDisplayButtonConfig setClickSound(padej.displayLib.config.SoundSpec s) {
+        if (s == null) return this;
+        if (!s.enabled()) { this.soundEnabled = false; return this; }
+        this.clickSound = s.sound(); this.soundVolume = s.volume(); this.soundPitch = s.pitch(); this.soundEnabled = true;
+        return this;
+    }
     private float soundVolume = 0.5f;
     private float soundPitch = 2.0f;
     private boolean textShadowEnabled = false;
