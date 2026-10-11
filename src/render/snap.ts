@@ -21,6 +21,11 @@ interface Cand { delta: number; guide: Guide; score: number }
 const cx = (r: Rect) => (r.l + r.r) / 2;
 const cy = (r: Rect) => (r.b + r.t) / 2;
 
+/** Расстояние между центрами - при равной точности ближний объект выигрывает у дальнего. */
+const dist = (a: Rect, b: Rect) => Math.hypot(cx(a) - cx(b), cy(a) - cy(b));
+/** Штраф за дальность: до 5 % порога, чтобы не перебивать точность, но решать ничьи в пользу соседей. */
+const far = (a: Rect, b: Rect, thr: number) => thr * 0.05 * Math.min(1, dist(a, b) / 10);
+
 /**
  * @param m      прямоугольник перетаскиваемого виджета в кандидатной позиции
  * @param others остальные прямоугольники (виджеты, фон)
@@ -34,13 +39,30 @@ export function computeSnap(m: Rect, others: Rect[], thr: number, axes: { x: num
   // --- выравнивание по краям/центрам
   for (const o of others) {
     const ox = [o.l, cx(o), o.r], oy = [o.b, cy(o), o.t];
+    const f = far(m, o, thr);
     for (let i = 0; i < 3; i++) for (let j = 0; j < 3; j++) {
       if (i !== j && i + j !== 2) continue; // край-край, центр-центр, край-противоположный край
       const d = ox[j] - mx[i];
-      if (Math.abs(d) <= thr) vx.push({ delta: d, score: Math.abs(d) + (i === j ? 0 : thr * 0.01), guide: { dir: 'v', at: ox[j], from: Math.min(m.b, o.b), to: Math.max(m.t, o.t), kind: 'align' } });
+      if (Math.abs(d) <= thr) vx.push({ delta: d, score: Math.abs(d) + (i === j ? 0 : thr * 0.01) + f, guide: { dir: 'v', at: ox[j], from: Math.min(m.b, o.b), to: Math.max(m.t, o.t), kind: 'align' } });
       const e = oy[j] - my[i];
-      if (Math.abs(e) <= thr) vy.push({ delta: e, score: Math.abs(e) + (i === j ? 0 : thr * 0.01), guide: { dir: 'h', at: oy[j], from: Math.min(m.l, o.l), to: Math.max(m.r, o.r), kind: 'align' } });
+      if (Math.abs(e) <= thr) vy.push({ delta: e, score: Math.abs(e) + (i === j ? 0 : thr * 0.01) + f, guide: { dir: 'h', at: oy[j], from: Math.min(m.l, o.l), to: Math.max(m.r, o.r), kind: 'align' } });
     }
+  }
+  // --- зеркало: центр m на том же расстоянии от оси экрана, что центр другого виджета, но с другой стороны.
+  // Так выравниваются кнопки разной ширины симметрично относительно центра - точка опоры у них центр.
+  for (const ax of axes.x) for (const o of others) {
+    const oc = cx(o); if (Math.abs(oc - ax) < 1e-6) continue;
+    const want = 2 * ax - oc, d = want - cx(m);
+    if (Math.abs(d) > thr) continue;
+    const at = (cy(m) + cy(o)) / 2;
+    vx.push({ delta: d, score: Math.abs(d) + thr * 0.012 + far(m, o, thr), guide: { dir: 'h', at, from: Math.min(oc, want), to: Math.max(oc, want), kind: 'gap', gaps: [[Math.min(oc, ax), Math.max(oc, ax)], [Math.min(ax, want), Math.max(ax, want)]] } });
+  }
+  for (const ay of axes.y) for (const o of others) {
+    const oc = cy(o); if (Math.abs(oc - ay) < 1e-6) continue;
+    const want = 2 * ay - oc, d = want - cy(m);
+    if (Math.abs(d) > thr) continue;
+    const at = (cx(m) + cx(o)) / 2;
+    vy.push({ delta: d, score: Math.abs(d) + thr * 0.012 + far(m, o, thr), guide: { dir: 'v', at, from: Math.min(oc, want), to: Math.max(oc, want), kind: 'gap', gaps: [[Math.min(oc, ay), Math.max(oc, ay)], [Math.min(ay, want), Math.max(ay, want)]] } });
   }
   // --- оси экрана (центр и т.п.): только центр и края виджета
   for (const ax of axes.x) for (let i = 0; i < 3; i++) {
@@ -72,7 +94,13 @@ function gapCandidates(m: Rect, others: Rect[], thr: number, axis: 'x' | 'y', ou
   const overlaps = (a: Rect, b: Rect) => plo(a) < phi(b) && plo(b) < phi(a);
   const row = others.filter((o) => overlaps(o, m)).sort((a, b) => lo(a) - lo(b));
   const size = hi(m) - lo(m);
+  const mid = (r: Rect) => (lo(r) + hi(r)) / 2;
   const dir: 'v' | 'h' = axis === 'x' ? 'v' : 'h';
+  const edgeDeltas: number[] = [];
+  const pushEdge = (delta: number, at: number, gaps: [number, number][], from: number, to: number) => {
+    if (Math.abs(delta) <= thr) edgeDeltas.push(delta);
+    pushGap(out, delta, thr, dir, at, gaps, from, to);
+  };
   const line = (a: Rect, b: Rect) => { // положение поперечной линии для отрисовки зазора: середина пересечения
     const p1 = Math.max(plo(a), plo(b), plo(m)), p2 = Math.min(phi(a), phi(b), phi(m));
     return (p1 + p2) / 2;
@@ -84,14 +112,35 @@ function gapCandidates(m: Rect, others: Rect[], thr: number, axis: 'x' | 'y', ou
     if (g <= 1e-6) continue;
     const at = line(A, B);
     // 1) m справа от B с тем же зазором
-    pushGap(out, hi(B) + g - lo(m), thr, dir, at, [[hi(A), lo(B)], [hi(B), hi(B) + g]], hi(A), hi(B) + g + size);
+    pushEdge(hi(B) + g - lo(m), at, [[hi(A), lo(B)], [hi(B), hi(B) + g]], hi(A), hi(B) + g + size);
     // 2) m слева от A с тем же зазором
-    pushGap(out, lo(A) - g - hi(m), thr, dir, at, [[lo(A) - g, lo(A)], [hi(A), lo(B)]], lo(A) - g - size, lo(B));
+    pushEdge(lo(A) - g - hi(m), at, [[lo(A) - g, lo(A)], [hi(A), lo(B)]], lo(A) - g - size, lo(B));
     // 3) m между A и B с равными зазорами по обе стороны
     const free = g - size;
     if (free > 1e-6) {
       const want = hi(A) + free / 2;
-      pushGap(out, want - lo(m), thr, dir, at, [[hi(A), want], [want + size, lo(B)]], hi(A), lo(B));
+      pushEdge(want - lo(m), at, [[hi(A), want], [want + size, lo(B)]], hi(A), lo(B));
+    }
+  }
+  // равные расстояния между ЦЕНТРАМИ (виджеты разной ширины): шаг центров A→B повторяется для m
+  // справа от B, слева от A, либо центр m - посередине между центрами A и B
+  for (let i = 0; i < row.length; i++) for (let j = i + 1; j < row.length; j++) {
+    const A = row[i], B = row[j];
+    const step = mid(B) - mid(A);
+    if (step <= 1e-6) continue;
+    const at = line(A, B);
+    const cm = mid(m);
+    const wants: [number, [number, number][]][] = [
+      [mid(B) + step, [[mid(A), mid(B)], [mid(B), mid(B) + step]]],
+      [mid(A) - step, [[mid(A) - step, mid(A)], [mid(A), mid(B)]]],
+      [(mid(A) + mid(B)) / 2, [[mid(A), (mid(A) + mid(B)) / 2], [(mid(A) + mid(B)) / 2, mid(B)]]],
+    ];
+    for (const [want, gaps] of wants) {
+      const delta = want - cm;
+      if (Math.abs(delta) > thr) continue;
+      if (edgeDeltas.some((e) => Math.abs(e - delta) < 1e-6)) continue; // совпало с зазором по краям - он уже есть
+      const lo0 = Math.min(gaps[0][0], gaps[1][0]), hi0 = Math.max(gaps[0][1], gaps[1][1]);
+      out.push({ delta, score: Math.abs(delta) + thr * 0.008, guide: { dir: dir === 'v' ? 'h' : 'v', at, from: lo0, to: hi0, kind: 'gap', gaps } });
     }
   }
   // равные зазоры с одним соседом с каждой стороны: A | m | B, где m уже между ними

@@ -467,10 +467,7 @@ export class ScreenScene {
     if (this.smartGuides && !axis.includes('Z') && axis.length) {
       const plane = new THREE.Plane(new THREE.Vector3(0, 0, 1), -pos.z);
       const m = this.rectAt(n, pos.x, pos.y);
-      const others: Rect[] = [];
-      for (const [id, o] of this.nodes) if (id !== uid) others.push(this.rectAt(o, o.group.position.x, o.group.position.y));
-      if (this.bgNode) others.push(this.rectAt(this.bgNode, this.bgNode.group.position.x, this.bgNode.group.position.y));
-      const r = computeSnap(m, others, this.worldPerPixel(plane) * 8);
+      const r = computeSnap(m, this.snapPartners(uid, plane), this.worldPerPixel(plane) * 8, this.snapAxes());
       if (axis.includes('X')) pos.x += r.dx;
       if (axis.includes('Y')) pos.y += r.dy;
       guides = r.guides.filter((g) => (g.dir === 'v' ? axis.includes('X') : axis.includes('Y')));
@@ -517,10 +514,7 @@ export class ScreenScene {
         const thr = this.worldPerPixel(d.plane) * 8;
         const n = this.nodes.get(d.uid)!;
         const m = this.rectAt(n, gx, gy);
-        const others: Rect[] = [];
-        for (const [uid, o] of this.nodes) if (uid !== d.uid) others.push(this.rectAt(o, o.group.position.x, o.group.position.y));
-        if (this.bgNode) others.push(this.rectAt(this.bgNode, this.bgNode.group.position.x, this.bgNode.group.position.y));
-        const r = computeSnap(m, others, thr);
+        const r = computeSnap(m, this.snapPartners(d.uid, d.plane), thr, this.snapAxes());
         gx += r.dx; gy += r.dy; guides = r.guides;
       }
       this.showGuides(guides, d.plane);
@@ -573,6 +567,49 @@ export class ScreenScene {
     const box = new THREE.Box3().setFromObject(n.mesh); // мировой бокс при текущей позиции группы
     const ox = n.group.position.x, oy = n.group.position.y;
     return { l: box.min.x - ox + x, r: box.max.x - ox + x, b: box.min.y - oy + y, t: box.max.y - oy + y };
+  }
+
+  /**
+   * Прямоугольники, к которым можно прилипать: остальные виджеты и фон, но только те, что сейчас
+   * видны в окне (хотя бы частично). Привязка к объекту за кадром сбивает с толку - непонятно,
+   * к чему прилипло; дальность среди видимых учитывает сам snap (ближний выигрывает ничью).
+   */
+  private snapPartners(exclude: string, plane: THREE.Plane): Rect[] {
+    const out: Rect[] = [];
+    const z = -plane.constant;
+    const visible = (r: Rect): boolean => {
+      let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity, behind = 0;
+      for (const [x, y] of [[r.l, r.b], [r.r, r.b], [r.l, r.t], [r.r, r.t]]) {
+        const v = new THREE.Vector3(x, y, z).project(this.camera);
+        if (v.z > 1) { behind++; continue; }
+        minX = Math.min(minX, v.x); maxX = Math.max(maxX, v.x); minY = Math.min(minY, v.y); maxY = Math.max(maxY, v.y);
+      }
+      if (behind === 4) return false;
+      const pad = 0.05; // чуть-чуть за край окна - тоже считается видимым
+      return maxX >= -1 - pad && minX <= 1 + pad && maxY >= -1 - pad && minY <= 1 + pad;
+    };
+    for (const [uid, o] of this.nodes) {
+      if (uid === exclude) continue;
+      const r = this.rectAt(o, o.group.position.x, o.group.position.y);
+      if (visible(r)) out.push(r);
+    }
+    if (this.bgNode) {
+      const r = this.rectAt(this.bgNode, this.bgNode.group.position.x, this.bgNode.group.position.y);
+      if (visible(r)) out.push(r);
+    }
+    return out;
+  }
+
+  /** Оси экрана для прилипания и зеркала: центр координат и центр фона, если он смещён. */
+  private snapAxes(): { x: number[]; y: number[] } {
+    const x = [0], y = [0];
+    if (this.bgNode) {
+      const r = this.rectAt(this.bgNode, this.bgNode.group.position.x, this.bgNode.group.position.y);
+      const bx = (r.l + r.r) / 2, by = (r.b + r.t) / 2;
+      if (Math.abs(bx) > 1e-6) x.push(bx);
+      if (Math.abs(by) > 1e-6) y.push(by);
+    }
+    return { x, y };
   }
 
   private guideMat = new THREE.LineBasicMaterial({ color: 0xff3fa4, depthTest: false, transparent: true, opacity: 0.95 });
