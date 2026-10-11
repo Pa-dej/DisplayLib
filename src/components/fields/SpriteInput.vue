@@ -20,7 +20,7 @@ const note = computed(() => {
   const blocks = spriteIndex.byAtlas['minecraft:blocks'] ?? [];
   const exactItem = items.includes('item/' + s);
   const blockFaces = blocks.filter((n) => n.startsWith('block/' + s)).length;
-  if (!exactItem && blockFaces && hasItem(s)) return `item/${s} - иконка как в инвентаре (3D-модель): в игре нужна с ресурспаком DisplayLib-icons.zip; без него - грани block/${s}…`;
+  if (!exactItem && blockFaces && hasItem(s)) return `У ${s} нет плоской item-текстуры (3D-блок): в тексте доступны только грани block/${s}…`;
   return '';
 });
 const preview = computed(() => { void spriteState.revision; return props.modelValue ? spriteImage(props.modelValue, props.atlas) : null; });
@@ -39,12 +39,12 @@ function iconOf(h: { atlas: string; sprite: string }): string { void spriteState
 </script>
 <template>
   <div class="row">
-    <span class="item-icon sprite-icon" :style="previewUrl ? { backgroundImage: `url(${previewUrl})` } : {}" :title="preview?.done && !preview.exact ? 'Нет ' + texturePath(modelValue, atlas) + (preview.canvas ? ' - иконка из ресурспака DisplayLib-icons (без него в игре шахматка)' : ' - в игре будет «missing texture»') : texturePath(modelValue, atlas)"></span>
+    <span class="item-icon sprite-icon" :style="previewUrl ? { backgroundImage: `url(${previewUrl})` } : {}" :title="preview?.done && !preview.exact ? 'Нет ' + texturePath(modelValue, atlas) + ' - в игре будет «missing texture»' : texturePath(modelValue, atlas)"></span>
     <div class="autocomplete grow">
       <input type="text" :value="modelValue" @focus="snapshot(); open = true; q = ''" @blur="close" @input="onInput" placeholder="Имя: heart, mace, hud/heart/full…" :style="preview && preview.done && !preview.canvas ? { borderColor: 'var(--vp-c-warning-1)' } : {}" />
       <div v-if="open && (list.length || note)" class="list">
         <div v-if="note" class="note">{{ note }}</div>
-        <div v-for="h in list" :key="h.atlas + '|' + h.sprite" @mousedown.prevent="pick(h)"><span class="item-icon sprite-icon" style="width:16px;height:16px" :style="iconOf(h) ? { backgroundImage: `url(${iconOf(h)})` } : {}"></span>{{ h.sprite }} <span class="hint" :title="h.pack ? 'Иконка как в инвентаре; в игре отображается только с ресурспаком DisplayLib-icons.zip' : ''">{{ h.pack ? 'Иконка · ресурспак' : atlasLabel(h.atlas) }}</span></div>
+        <div v-for="h in list" :key="h.atlas + '|' + h.sprite" @mousedown.prevent="pick(h)"><span class="item-icon sprite-icon" style="width:16px;height:16px" :style="iconOf(h) ? { backgroundImage: `url(${iconOf(h)})` } : {}"></span>{{ h.sprite }} <span class="hint">{{ atlasLabel(h.atlas) }}</span></div>
       </div>
     </div>
   </div>

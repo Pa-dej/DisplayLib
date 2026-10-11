@@ -118,10 +118,10 @@ export function spriteImage(sprite: string, atlas?: string | null): { canvas: HT
 }
 
 async function fallback(key: string, e: Entry): Promise<void> {
-  // Файла нет среди текстур клиента: иконка из листа предметов (пререндер 3D-модели). В игре такой спрайт
-  // есть только с ресурспаком DisplayLib-icons.zip (он добавляет item/<name>.png из того же листа).
+  // Файла нет среди текстур клиента. Если текстуры скопированы (есть индекс) - в игре будет
+  // «missing texture», и показываем шахматку честно. Без текстур вовсе - приблизительная иконка из листа предметов.
   const name = key.replace(/^.*\//, '').replace(/^minecraft:/, '');
-  const it = DATA.items[name];
+  const it = spriteIndex.loaded ? undefined : DATA.items[name];
   const sheet = it ? await loadSheet() : null;
   if (it && sheet) {
     const c = document.createElement('canvas');
@@ -159,8 +159,6 @@ export async function loadSpriteIndex(): Promise<void> {
     if (!res.ok) return;
     spriteIndex.byAtlas = await res.json();
     spriteIndex.loaded = true;
-    const r2 = await fetch('assets/icon-pack.json');
-    if (r2.ok) iconPack.names = await r2.json();
   } catch { /* нет индекса - подсказки по листу предметов */ }
 }
 
@@ -177,10 +175,8 @@ export function spriteNames(atlas?: string | null): string[] {
   return SPRITE_NAMES;
 }
 
-export interface SpriteHit { atlas: string; sprite: string; /** есть только в ресурспаке DisplayLib-icons */ pack?: boolean }
+export interface SpriteHit { atlas: string; sprite: string }
 
-/** Имена иконок из ресурспака DisplayLib-icons (item/<name> для блоков без плоской текстуры). */
-export const iconPack = reactive<{ names: string[] }>({ names: [] });
 
 /** Короткая подпись атласа для списка подсказок. */
 export function atlasLabel(atlas: string): string {
@@ -205,16 +201,10 @@ export function searchSprites(q: string, atlas?: string | null, limit = 40): Spr
     if (!a || a === 'minecraft:items') pools.push(['minecraft:items', SPRITE_NAMES.filter((n) => n.startsWith('item/'))]);
     if (!a || a === 'minecraft:blocks') pools.push(['minecraft:blocks', SPRITE_NAMES.filter((n) => n.startsWith('block/'))]);
   }
-  // иконки предметов-блоков из ресурспака: item/barrel и т.п. - сразу после настоящих items
-  const packHits: [string, string[], boolean][] = (!a || a === 'minecraft:items') && iconPack.names.length
-    ? [['minecraft:items', iconPack.names.map((n) => 'item/' + n), true]] : [];
-  const all: [string, string[], boolean][] = [...pools.map(([id, names]) => [id, names, false] as [string, string[], boolean])];
-  const itemsAt = all.findIndex(([id]) => id === 'minecraft:items');
-  all.splice(itemsAt >= 0 ? itemsAt + 1 : all.length, 0, ...packHits);
   const starts: SpriteHit[] = [], inside: SpriteHit[] = [];
-  for (const [id, names, pack] of all) {
+  for (const [id, names] of pools) {
     for (const n of names) {
-      const hit: SpriteHit = pack ? { atlas: id, sprite: n, pack: true } : { atlas: id, sprite: n };
+      const hit: SpriteHit = { atlas: id, sprite: n };
       if (!s) { if (starts.length < limit) starts.push(hit); continue; }
       const base = n.replace(/^.*\//, '');
       if (base.startsWith(s) || n.startsWith(s)) starts.push(hit);

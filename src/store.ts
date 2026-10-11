@@ -1,6 +1,6 @@
 // Состояние редактора: открытая папка плагина, экраны, выделение, история правок.
 import { reactive, computed, watch } from 'vue';
-import { type Screen, type Widget, type WidgetType, cloneDeep, defaultScreen, defaultWidget, newUid } from './model/screen';
+import { type Screen, type Widget, type WidgetType, type Vec3, type HoverAnimation, cloneDeep, defaultScreen, defaultWidget, newUid } from './model/screen';
 import { parseJmc } from './jmc/parser';
 import { tableToScreen } from './jmc/toModel';
 import { screenToJmc } from './jmc/writer';
@@ -158,6 +158,33 @@ export function addWidget(type: WidgetType): Widget {
   s.widgets.push(w);
   state.selected = w.uid; touch();
   return w;
+}
+
+/**
+ * Изменить общий размер экрана в k раз, сохранив пропорции: позиции, масштабы, tolerance и translation
+ * виджетов и фона, а также линейные величины hover-анимаций (offset, translation, в т.ч. во вложенных
+ * effects). Относительные величины (scale анимации - множитель, intensity, повороты) не трогаются.
+ */
+export function scaleScreen(k: number): void {
+  const s = currentScreen.value; if (!s || !(k > 0) || k === 1) return;
+  snapshot();
+  const r = (v: number) => Math.round(v * k * 10000) / 10000;
+  const v3 = (v: Vec3): Vec3 => [r(v[0]), r(v[1]), r(v[2])];
+  const anim = (a: HoverAnimation | null): void => {
+    if (!a) return;
+    a.offset = v3(a.offset); a.translation = v3(a.translation);
+    for (const e of a.effects) anim(e);
+  };
+  if (s.background) {
+    const b = s.background;
+    b.scale = v3(b.scale); b.position = v3(b.position); b.translation = v3(b.translation);
+  }
+  for (const w of s.widgets) {
+    w.position = v3(w.position); w.scale = v3(w.scale); w.translation = v3(w.translation);
+    w.tolerance = [r(w.tolerance[0]), r(w.tolerance[1])];
+    anim(w.hoverAnimation);
+  }
+  touch();
 }
 
 export function duplicateWidget(uid: string): void {

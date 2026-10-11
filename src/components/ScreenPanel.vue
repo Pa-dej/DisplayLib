@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import Icon from './Icon.vue';
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import type { Screen } from '../model/screen';
 import { defaultBackground } from '../model/screen';
 import VecInput from './fields/VecInput.vue';
 import ColorInput from './fields/ColorInput.vue';
-import { state, currentDoc, snapshot, touch, deleteCurrent, showScript, scriptNameOf, scriptStatus } from '../store';
+import { state, currentDoc, snapshot, touch, deleteCurrent, showScript, scriptNameOf, scriptStatus, scaleScreen } from '../store';
 import { calibration } from '../render/metrics';
 import { layout } from '../render/text';
 
@@ -21,6 +21,8 @@ const bgSize = computed(() => {
 });
 function toggleBg() { snapshot(); s.value.background = s.value.background ? null : defaultBackground(); touch(); }
 function fmt(n: number) { return (Math.round(n * 100) / 100).toString(); }
+const scaleK = ref(1);
+function applyScale() { if (scaleK.value > 0 && scaleK.value !== 1) { scaleScreen(scaleK.value); scaleK.value = 1; } }
 const idBad = computed(() => !/^[A-Za-z0-9_\-]+$/.test(s.value.id));
 </script>
 <template>
@@ -31,6 +33,17 @@ const idBad = computed(() => !/^[A-Za-z0-9_\-]+$/.test(s.value.id));
       <div class="field"><label>Тип</label><select :value="s.screenType" @change="snapshot(); s.screenType = ($event.target as HTMLSelectElement).value as any; touch()"><option value="PRIVATE">PRIVATE - для одного игрока</option><option value="PUBLIC">PUBLIC - стоит в мире</option></select></div>
       <div class="hint" v-if="s.screenType === 'PUBLIC'">Публичный: открывается командой <code>/dlib openpublic {{ s.id }} x y z</code>, глобал <code>player</code> В скрипте равен null, игрок приходит аргументом обработчика; hover-анимации, switchTo и close не работают.</div>
       <div class="hint" v-else>Приватный: <code>/dlib open {{ s.id }}</code> - экран появляется в 2 блоках перед игроком.</div>
+    </div>
+
+    <div class="section">
+      <h3>Размер экрана</h3>
+      <div class="field"><label>Масштаб ×</label><div class="row">
+        <input type="number" min="0.05" step="0.05" v-model.number="scaleK" style="width:80px" @keydown.enter="applyScale" />
+        <button class="btn sm" @click="applyScale" :disabled="!(scaleK > 0) || scaleK === 1">Применить</button>
+        <button class="btn sm" title="Уменьшить вдвое" @click="scaleK = 0.5; applyScale()">½</button>
+        <button class="btn sm" title="Увеличить вдвое" @click="scaleK = 2; applyScale()">×2</button>
+      </div></div>
+      <div class="hint">Умножает позиции, масштабы, tolerance и translation всех виджетов и фона, а также смещения hover-анимаций - пропорции экрана сохраняются. Относительные величины (scale анимации, повороты) не меняются. Отменяется через Ctrl+Z.</div>
     </div>
 
     <div class="section">
