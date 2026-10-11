@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import Icon from './Icon.vue';
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import type { Screen } from '../model/screen';
 import { defaultBackground, ANCHOR_PRESETS, anchorPresetName, type Vec2 } from '../model/screen';
 import VecInput from './fields/VecInput.vue';
@@ -19,7 +19,27 @@ const bgSize = computed(() => {
   const L = layout(b.text);
   return { w: L.bgW * calibration.px * b.scale[0], h: L.bgH * calibration.px * b.scale[1] };
 });
-function setAnchor(v: Vec2) { if (!s.value.background) return; snapshot(); s.value.background.anchor = [...v] as Vec2; touch(); }
+// Якорь сдвигает только фон (так и в плагине). С галочкой «виджеты вместе с фоном» редактор сдвигает
+// и все виджеты на ту же величину, чтобы раскладка относительно фона не менялась.
+const anchorFollow = ref(localStorage.getItem('displaylib.anchorFollow') !== '0');
+watch(anchorFollow, (v) => localStorage.setItem('displaylib.anchorFollow', v ? '1' : '0'));
+function anchorOffset(a: Vec2): [number, number] {
+  const sz = bgSize.value; if (!sz) return [0, 0];
+  return [-(a[0] - 0.5) * sz.w, -a[1] * sz.h];
+}
+function setAnchor(v: Vec2, snap = true) {
+  const b = s.value.background; if (!b) return;
+  if (snap) snapshot(); // из VecInput снимок уже сделан по фокусу
+  const before = anchorOffset(b.anchor);
+  b.anchor = [v[0], v[1]];
+  if (anchorFollow.value) {
+    const after = anchorOffset(b.anchor);
+    const dx = after[0] - before[0], dy = after[1] - before[1];
+    const r = (n: number) => Math.round(n * 1000) / 1000;
+    for (const w of s.value.widgets) w.position = [r(w.position[0] + dx), r(w.position[1] + dy), w.position[2]];
+  }
+  touch();
+}
 function toggleBg() { snapshot(); s.value.background = s.value.background ? null : defaultBackground(); touch(); }
 function fmt(n: number) { return (Math.round(n * 100) / 100).toString(); }
 const scaleK = ref(1);
@@ -87,7 +107,8 @@ const idBad = computed(() => !/^[A-Za-z0-9_\-]+$/.test(s.value.id));
             <button v-for="p in ANCHOR_PRESETS" :key="p.name" class="btn sm icon" :class="{ primary: anchorPresetName(s.background.anchor) === p.name }" :title="p.name" @click="setAnchor(p.value)">{{ p.label }}</button>
           </div>
           <div class="grow">
-            <VecInput v-model="s.background.anchor" :labels="['x', 'y']" :step="0.05" />
+            <VecInput :model-value="s.background.anchor" :labels="['x', 'y']" :step="0.05" @update:model-value="setAnchor($event as Vec2, false)" />
+            <label class="row hint" style="margin-top:4px"><input type="checkbox" v-model="anchorFollow" /> Виджеты вместе с фоном</label>
             <div class="hint">Какая точка фона стоит в начале координат (position [0,0,0] виджетов): доли ширины и высоты, x слева направо, y снизу вверх. [0.5, 0] - низ по центру (как раньше), [0.5, 0.5] - центр.</div>
           </div>
         </div></div>
