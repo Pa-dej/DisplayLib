@@ -46,6 +46,13 @@ npm run preview    # отдать dist/ на http://localhost:4173
 а также смещения hover-анимаций (offset, translation, вложенные effects) - пропорции сохраняются.
 Относительные величины (scale анимации, intensity, повороты) не меняются. Отмена - Ctrl+Z.
 
+## Ресурсы клиента из jar
+
+Кнопка «Загрузить client.jar» (`src/clientjar.ts`): пользователь выбирает jar клиента, fflate распаковывает в браузере
+`assets/minecraft/font/*.json`, `textures/{font,item,block,gui/sprites,mob_effect,particle,painting,entity/banner,entity/shield,trims}`
+и `version.json`; файлы живут в IndexedDB (`displaylib/client`) и подставляются через `assetUrl()` вместо `public/assets/...`;
+индекс спрайтов строится из содержимого jar (`clientSpriteIndex()`). Так опубликованный редактор обходится без файлов Mojang.
+
 ## Как считается предпросмотр
 
 Формулы клиента (`DisplayRenderer.TextDisplayRenderer`): пиксель текста = 1/40 блока, строка 10 px,

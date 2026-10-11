@@ -7,10 +7,11 @@ import Inspector from './components/Inspector.vue';
 import ImportDialog from './components/ImportDialog.vue';
 import Splitter from './components/Splitter.vue';
 import ExportDialog from './components/ExportDialog.vue';
-import { state, saveCurrent, saveAll, undo, redo, newScreen, currentDoc, restoreSession } from './store';
+import { state, saveCurrent, saveAll, undo, redo, newScreen, currentDoc, restoreSession, notify, fail } from './store';
 import { font } from './render/font';
 import { loadSheet } from './render/items';
 import { loadSpriteIndex } from './render/sprites';
+import { clientAssets, importClientJar, restoreClientJar, forgetClientJar } from './clientjar';
 
 const importOpen = ref(false);
 const exportOpen = ref(false);
@@ -24,7 +25,28 @@ function toggleTheme() {
 }
 
 
+const jarInput = ref<HTMLInputElement | null>(null);
+async function onJarPicked(ev: Event) {
+  const input = ev.target as HTMLInputElement;
+  const file = input.files?.[0]; input.value = '';
+  if (!file) return;
+  try {
+    notify('Распаковываю ' + file.name + '…');
+    await importClientJar(file);
+    await Promise.all([font.load(), loadSpriteIndex()]);
+    state.revision++;
+    notify('Ресурсы клиента ' + (clientAssets.version || '') + ': ' + clientAssets.files + ' файлов, шрифт и спрайты из игры');
+  } catch (e) { fail('Не удалось прочитать jar: ' + (e as Error).message); }
+}
+async function onForgetJar() {
+  await forgetClientJar();
+  await Promise.all([font.load(), loadSpriteIndex()]);
+  state.revision++;
+  notify('Ресурсы клиента забыты');
+}
+
 onMounted(async () => {
+  await restoreClientJar();
   await Promise.all([font.load(), loadSheet(), loadSpriteIndex()]);
   ready.value = true;
   restoreSession();
@@ -51,7 +73,9 @@ onMounted(async () => {
       </div>
       <div class="spacer"></div>
       <span class="status" :class="{ error: !!state.error }">{{ state.error || state.message }}</span>
-      <span class="badge" :class="font.loaded ? 'brand' : 'warn'" :title="font.loaded ? 'Шрифт Minecraft из assets/minecraft' : 'Положите font/*.json и textures/font/*.png в public/assets/minecraft (см. README)'">{{ font.loaded ? 'Шрифт MC' : 'Шрифт: запасной' }}</span>
+      <input ref="jarInput" type="file" accept=".jar,.zip" style="display:none" @change="onJarPicked" />
+      <button v-if="clientAssets.loaded" class="badge brand" style="cursor:pointer;border:0" :title="'Шрифт и спрайты из client.jar ' + clientAssets.version + ' (' + clientAssets.files + ' файлов). Нажмите, чтобы забыть'" @click="onForgetJar"><Icon name="check" :size="11" /> {{ clientAssets.version || 'client.jar' }}</button>
+      <button v-else class="btn" :class="font.loaded ? '' : 'warn'" :disabled="clientAssets.busy" title="Выбрать jar клиента Minecraft (.minecraft/versions/1.21.11/1.21.11.jar): редактор достанет из него шрифт и текстуры для предпросмотра. Файл остаётся на вашем компьютере" @click="jarInput?.click()"><Icon name="cube" /> {{ clientAssets.busy ? 'Распаковка…' : font.loaded ? 'Ресурсы: локальные' : 'Загрузить client.jar' }}</button>
       <button class="btn icon" @click="toggleTheme" :title="dark ? 'Светлая тема' : 'Тёмная тема'"><Icon :name="dark ? 'sun' : 'moon'" /></button>
     </header>
     <Sidebar />
