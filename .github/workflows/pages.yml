@@ -28,7 +28,7 @@ jobs:
           node-version: 22
       - name: Build editor
         working-directory: web-ui
-        run: npm ci && npm run build
+        run: npm ci && npm test && npm run build
       - name: Build docs
         working-directory: docs
         run: npm ci && npm run build

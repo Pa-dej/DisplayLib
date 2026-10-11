@@ -33,7 +33,7 @@ function rich(v: JmcValue): RichText | null {
       if (typeof p === 'string') segs.push({ text: p });
       else if (p && typeof p === 'object') {
         const pt = p as JmcTable;
-        if (pt.sprite != null) segs.push({ text: '', sprite: String(pt.sprite), atlas: pt.atlas == null ? undefined : String(pt.atlas), color: pt.color == null ? undefined : String(pt.color) });
+        if (pt.sprite != null) segs.push({ text: '', sprite: String(pt.sprite), atlas: atlasOrNull(pt.atlas == null ? undefined : String(pt.atlas), String(pt.sprite)), color: pt.color == null ? undefined : String(pt.color) });
         else segs.push({ text: pt.text == null ? '' : String(pt.text), color: pt.color == null ? undefined : String(pt.color) });
       }
     }
@@ -52,6 +52,18 @@ function soundOf(v: JmcValue): import('../model/screen').SoundSpec | 'none' | nu
     return { sound: name ?? 'ui.button.click', volume: num(t, 'volume') ?? 0.5, pitch: num(t, 'pitch') ?? 1 };
   }
   return null;
+}
+
+/** Атлас, который плагин/клиент и так подставили бы по имени: item/… → items, block/… → blocks; такой не храним. */
+function inferredAtlas(sprite: string): string | null {
+  const k = sprite.trim().replace(/^minecraft:/, '');
+  return k.startsWith('item/') ? 'minecraft:items' : k.startsWith('block/') ? 'minecraft:blocks' : null;
+}
+function atlasOrNull(atlas: string | null | undefined, sprite: string): string | undefined {
+  if (atlas == null) return undefined;
+  const a = atlas.trim(); if (!a) return undefined;
+  const full = a.includes(':') ? a : 'minecraft:' + a;
+  return full === inferredAtlas(sprite) ? undefined : a;
 }
 
 export interface ToModelResult { screen: Screen; warnings: string[] }
@@ -135,7 +147,7 @@ export function tableToWidget(d: JmcTable, index: number, warnings: string[]): W
   const hfi = num(d, 'hoveredFrameInterval', 'hovered_frame_interval'); if (hfi != null) w.hoveredFrameInterval = Math.trunc(hfi);
   const mat = str(d, 'material'); if (mat != null) w.material = mat.trim().toUpperCase();
   const sp = str(d, 'sprite'); if (sp != null) w.sprite = sp.trim();
-  const at = str(d, 'atlas'); if (at != null) w.atlas = at.trim();
+  const at = str(d, 'atlas'); if (at != null) w.atlas = atlasOrNull(at, w.sprite) ?? null;
   const hs = str(d, 'hoveredSprite', 'hovered_sprite'); if (hs != null) w.hoveredSprite = hs.trim();
   const spc = str(d, 'spriteColor', 'sprite_color', 'color'); if (spc != null && spc.trim()) w.spriteColor = spc.trim();
   const hsc = str(d, 'hoveredSpriteColor', 'hovered_sprite_color', 'hoveredColor', 'hovered_color'); if (hsc != null && hsc.trim()) w.hoveredSpriteColor = hsc.trim();

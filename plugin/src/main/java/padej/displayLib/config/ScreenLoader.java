@@ -176,6 +176,10 @@ public class ScreenLoader {
         }
         if (script != null && !script.isBlank()) {
             screen.setScript(script.trim());
+        } else {
+            // по умолчанию - scripts/<id>.jmp, если такой файл есть (как в редакторе)
+            java.nio.file.Path def = plugin.getDataFolder().toPath().resolve("scripts").resolve(screen.getId() + ".jmp");
+            if (java.nio.file.Files.isRegularFile(def)) screen.setScript(screen.getId() + ".jmp");
         }
 
         List<?> widgetsData = list(data, "widgets");

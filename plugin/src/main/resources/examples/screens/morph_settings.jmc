@@ -7,6 +7,8 @@ dyn morph = { enabled: true, duration: 4, steps: 4 };
 
 dyn background = { color: [255, 255, 255], alpha: 200, scale: [12, 5, 1] };
 
+String script = "morph_settings.jmp";
+
 dyn widgets = [
   {
     id: "title",

@@ -28,6 +28,16 @@ dependencies {
     // Без зависимостей, вшивается в JAR плагина. Версия - тег релиза
     // https://github.com/jumper-lang/jumper/releases (JitPack собирает :lang по jitpack.yml).
     implementation("com.github.jumper-lang:jumper:v0.11.2")
+
+    testImplementation("io.papermc.paper:paper-api:1.21.11-R0.1-SNAPSHOT")
+    testImplementation(platform("org.junit:junit-bom:5.11.3"))
+    testImplementation("org.junit.jupiter:junit-jupiter")
+    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+}
+
+tasks.test {
+    useJUnitPlatform()
+    testLogging { events("failed"); exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL }
 }
 
 tasks {

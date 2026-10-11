@@ -84,3 +84,7 @@ src/fs.ts             скачивание файлов
 src/store.ts          состояние, undo/redo, сохранение
 src/components/       интерфейс
 ```
+
+## Тесты
+
+`npm test` - vitest: round-trip парсер → модель → писатель на всех примерах плагина, поля виджетов, morphText/planMorph, scanScript. Запускаются в CI перед сборкой сайта.
