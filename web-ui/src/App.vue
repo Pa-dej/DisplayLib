@@ -74,8 +74,8 @@ onMounted(async () => {
       <div class="spacer"></div>
       <span class="status" :class="{ error: !!state.error }">{{ state.error || state.message }}</span>
       <input ref="jarInput" type="file" accept=".jar,.zip" style="display:none" @change="onJarPicked" />
-      <button v-if="clientAssets.loaded" class="badge brand" style="cursor:pointer;border:0" :title="'Шрифт и спрайты из client.jar ' + clientAssets.version + ' (' + clientAssets.files + ' файлов). Нажмите, чтобы забыть'" @click="onForgetJar"><Icon name="check" :size="11" /> {{ clientAssets.version || 'client.jar' }}</button>
-      <button v-else class="btn" :class="font.loaded ? '' : 'warn'" :disabled="clientAssets.busy" title="Выбрать jar клиента Minecraft (.minecraft/versions/1.21.11/1.21.11.jar): редактор достанет из него шрифт и текстуры для предпросмотра. Файл остаётся на вашем компьютере" @click="jarInput?.click()"><Icon name="cube" /> {{ clientAssets.busy ? 'Распаковка…' : font.loaded ? 'Ресурсы: локальные' : 'Загрузить client.jar' }}</button>
+      <button v-if="clientAssets.loaded" class="btn icon" style="color:var(--vp-c-brand-1)" :title="'Ресурсы клиента ' + clientAssets.version + ' (' + clientAssets.files + ' файлов) загружены. Нажмите, чтобы забыть'" @click="onForgetJar"><Icon name="cube" /></button>
+      <button v-else class="btn icon" :class="{ pulse: !font.loaded && !clientAssets.busy }" :disabled="clientAssets.busy" title="Загрузить client.jar: редактор достанет из jar клиента шрифт и текстуры для предпросмотра (.minecraft/versions/1.21.11/1.21.11.jar). Файл остаётся на вашем компьютере" @click="jarInput?.click()"><Icon name="cube" /></button>
       <button class="btn icon" @click="toggleTheme" :title="dark ? 'Светлая тема' : 'Тёмная тема'"><Icon :name="dark ? 'sun' : 'moon'" /></button>
     </header>
     <Sidebar />
