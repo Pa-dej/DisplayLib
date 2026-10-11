@@ -119,7 +119,7 @@ public final class ScreenSupport {
         // с кадрами анимации - первый кадр
         Component textComponent;
         if (def.getType() == WidgetDefinition.WidgetType.SPRITE_BUTTON) {
-            textComponent = spriteComponent(def.getAtlas(), def.getSprite());
+            textComponent = spriteComponent(def.getAtlas(), def.getSprite(), def.getSpriteColor() != null ? parseColor(def.getSpriteColor()) : null);
         } else if (def.getFrames() != null) {
             textComponent = parseFormattedText(def.getFrames().get(0));
         } else if (def.getFormattedText() != null) {
@@ -130,8 +130,10 @@ public final class ScreenSupport {
 
         Component hoveredTextComponent;
         if (def.getType() == WidgetDefinition.WidgetType.SPRITE_BUTTON) {
-            hoveredTextComponent = def.getHoveredSprite() != null
-                    ? spriteComponent(def.getAtlas(), def.getHoveredSprite()) : textComponent;
+            TextColor hc = def.getHoveredSpriteColor() != null ? parseColor(def.getHoveredSpriteColor())
+                    : def.getSpriteColor() != null ? parseColor(def.getSpriteColor()) : null;
+            hoveredTextComponent = def.getHoveredSprite() != null || def.getHoveredSpriteColor() != null
+                    ? spriteComponent(def.getAtlas(), def.getHoveredSprite() != null ? def.getHoveredSprite() : def.getSprite(), hc) : textComponent;
         } else if (withHoverAnimation && def.getHoveredFrames() != null) {
             hoveredTextComponent = parseFormattedText(def.getHoveredFrames().get(0));
         } else if (def.getFormattedHoveredText() != null) {
@@ -343,7 +345,9 @@ public final class ScreenSupport {
                 if (sprite != null) {
                     // Сегмент-спрайт: {sprite: "item/iron_ingot"} или {atlas: "minecraft:items", sprite: "..."}
                     Object atlas = partMap.get("atlas");
-                    builder.append(spriteComponent(atlas != null ? atlas.toString() : null, sprite.toString()));
+                    Object spriteColor = partMap.get("color");
+                    builder.append(spriteComponent(atlas != null ? atlas.toString() : null, sprite.toString(),
+                            spriteColor != null ? parseColor(spriteColor.toString()) : null));
                     continue;
                 }
                 // Объект с форматированием - поддерживаем только text и color
@@ -379,11 +383,19 @@ public final class ScreenSupport {
      * <p>Цвет у спрайта задаётся явно белым, чтобы он не наследовал цвет соседнего сегмента.</p>
      */
     public static Component spriteComponent(String atlas, String sprite) {
+        return spriteComponent(atlas, sprite, null);
+    }
+
+    /**
+     * Спрайт с тинтом: клиент умножает текстуру на цвет стиля, как у букв. {@code color == null} - белый
+     * (без тинта; явный белый нужен, чтобы цвет соседнего сегмента не протекал).
+     */
+    public static Component spriteComponent(String atlas, String sprite, TextColor color) {
         if (sprite == null || sprite.isBlank()) return Component.empty();
         String[] resolved = resolveSprite(atlas, sprite);
         try {
             return Component.object(ObjectContents.sprite(Key.key(resolved[0]), Key.key(resolved[1])))
-                    .color(NamedTextColor.WHITE);
+                    .color(color != null ? color : NamedTextColor.WHITE);
         } catch (InvalidKeyException e) {
             return Component.text("[" + sprite + "]");
         }
@@ -422,6 +434,11 @@ public final class ScreenSupport {
     }
 
     /** Цвет по hex-строке ("#FFD700") или имени ("green"); null, если не распознан. */
+    /** Цвет текста по имени ({@code "gold"}) или hex ({@code "#FFD700"}); null - не распознан. */
+    public static TextColor parseColorPublic(String color) {
+        return color == null ? null : parseColor(color);
+    }
+
     private static TextColor parseColor(String color) {
         if (color.startsWith("#")) {
             return TextColor.fromHexString(color);

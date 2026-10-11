@@ -9,6 +9,7 @@ import ColorInput from './fields/ColorInput.vue';
 import RichTextInput from './fields/RichTextInput.vue';
 import MaterialInput from './fields/MaterialInput.vue';
 import SpriteInput from './fields/SpriteInput.vue';
+import TintInput from './fields/TintInput.vue';
 import { ATLASES } from '../render/sprites';
 import AnimationEditor from './AnimationEditor.vue';
 import { state, currentScreen, currentScriptInfo, screenIds, snapshot, touch, removeWidget, duplicateWidget, ensureHandler, showScript } from '../store';
@@ -40,6 +41,7 @@ const interactive = computed(() => {
   if (clickable || x.tooltip != null || (x.hoverAnimation && currentScreen.value?.screenType !== 'PUBLIC')) return true;
   if (x.type === 'ITEM_BUTTON') return x.glowOnHover;
   if (x.type === 'SPRITE_BUTTON' && x.hoveredSprite && x.hoveredSprite !== x.sprite) return true;
+  if (x.type === 'SPRITE_BUTTON' && x.hoveredSpriteColor && x.hoveredSpriteColor !== x.spriteColor) return true;
   if (x.hoveredText != null && x.hoveredText !== '') return true;
   if (x.backgroundAlpha !== x.hoveredBackgroundAlpha) return true;
   return x.backgroundAlpha > 0 && x.backgroundColor.join() !== x.hoveredBackgroundColor.join();
@@ -90,6 +92,9 @@ function fmt(n: number) { return (Math.round(n * 1000) / 1000).toString(); }
       <div class="field"><label>atlas</label><div><input type="text" list="atlas-list" :value="w.atlas ?? ''" @focus="snapshot()" @input="w.atlas = text($event).trim() || null; touch()" placeholder="Авто: item/… → items, иначе blocks" /><datalist id="atlas-list"><option v-for="a in ATLASES" :key="a.id" :value="a.id">{{ a.hint }} · напр. {{ a.example }}</option></datalist></div></div>
       <div class="field"><label>sprite</label><SpriteInput v-model="w.sprite" :atlas="w.atlas" @update:atlas="w.atlas = $event" /></div>
       <div class="field"><label>hoveredSprite</label><div class="row"><SpriteInput v-if="w.hoveredSprite != null" v-model="w.hoveredSprite" :atlas="w.atlas" @update:atlas="w.atlas = $event" class="grow" /><span v-else class="hint grow">Как sprite</span><button class="btn sm" @click="toggleHoveredSprite">{{ w.hoveredSprite != null ? 'Убрать' : 'Задать' }}</button></div></div>
+      <div class="field"><label>spriteColor</label><TintInput v-model="w.spriteColor" none="без тинта" /></div>
+      <div class="field"><label>hoveredSpriteColor</label><TintInput v-model="w.hoveredSpriteColor" none="как spriteColor" /></div>
+      <div class="hint">Тинт - цвет текста, на который клиент умножает текстуру: белые/серые иконки (HUD, эффекты, узоры) красятся чисто, цветные предметы лишь затемняются.</div>
       <div class="field"><label>Фон</label><ColorInput v-model="w.backgroundColor" :alpha="w.backgroundAlpha" @update:alpha="w.backgroundAlpha = $event" /></div>
       <div class="field"><label>Фон hover</label><ColorInput v-model="w.hoveredBackgroundColor" :alpha="w.hoveredBackgroundAlpha" @update:alpha="w.hoveredBackgroundAlpha = $event" /></div>
       <div class="hint">Спрайт - квадрат 8×8 текстовых пикселей (0.2 блока при scale 1), рисуется клиентом 1.21.9+ как объект в тексте. Имя спрайта = путь к png внутри папки атласа без расширения: items/blocks - <code>item/apple</code>, <code>block/stone</code> (из <code>textures/</code>); gui - <code>hud/heart/full</code> (из <code>textures/gui/sprites/</code>); иконки эффектов - тоже gui: <code>mob_effect/speed</code>; particles - <code>heart</code>; paintings, banner_patterns, shield_patterns, armor_trims аналогично. Голое имя без атласа (<code>mace</code>, <code>bricks</code>, <code>speed</code>) плагин дополняет сам: предмет → <code>item/mace</code>, блок → <code>block/bricks</code>, эффект → <code>mob_effect/speed</code> (gui). Подсказки берутся из скопированных текстур (<code>npm run sprites</code>).</div>

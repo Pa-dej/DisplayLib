@@ -18,7 +18,7 @@ function same(a: readonly number[], b: readonly number[]): boolean { return a.le
 function richText(t: RichText): string {
   if (typeof t === 'string') return jstr(t);
   return '[ ' + t.map((s) => s.sprite !== undefined
-    ? '{ ' + (atlasFor(s.atlas, s.sprite) ? 'atlas: ' + jstr(atlasFor(s.atlas, s.sprite)!) + ', ' : '') + 'sprite: ' + jstr(spriteFor(s.atlas, s.sprite)) + ' }'
+    ? '{ ' + (atlasFor(s.atlas, s.sprite) ? 'atlas: ' + jstr(atlasFor(s.atlas, s.sprite)!) + ', ' : '') + 'sprite: ' + jstr(spriteFor(s.atlas, s.sprite)) + (s.color ? ', color: ' + jstr(s.color) : '') + ' }'
     : '{ text: ' + jstr(s.text) + (s.color ? ', color: ' + jstr(s.color) : '') + ' }').join(', ') + ' ]';
 }
 
@@ -96,6 +96,8 @@ function widgetToJmc(w: Widget, opts: WriteOptions): string {
     const at = atlasFor(w.atlas, w.sprite); if (at) f.push(`atlas: ${jstr(at)}`);
     f.push(`sprite: ${jstr(spriteFor(w.atlas, w.sprite))}`);
     if (w.hoveredSprite) f.push(`hoveredSprite: ${jstr(w.hoveredSprite)}`);
+    if (w.spriteColor) f.push(`spriteColor: ${jstr(w.spriteColor)}`);
+    if (w.hoveredSpriteColor) f.push(`hoveredSpriteColor: ${jstr(w.hoveredSpriteColor)}`);
   } else {
     f.push(`material: ${jstr(w.material)}`);
   }

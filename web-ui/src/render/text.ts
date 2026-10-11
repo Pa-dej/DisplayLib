@@ -26,7 +26,7 @@ export function toRuns(t: RichText): Run[][] {
   const segs: Segment[] = typeof t === 'string' ? [{ text: t }] : t;
   const lines: Run[][] = [[]];
   for (const s of segs) {
-    if (s.sprite !== undefined) { if (s.sprite) lines[lines.length - 1].push({ text: '', color: '#FFFFFF', bold: false, sprite: s.sprite, atlas: s.atlas }); continue; }
+    if (s.sprite !== undefined) { if (s.sprite) lines[lines.length - 1].push({ text: '', color: cssColor(s.color), bold: false, sprite: s.sprite, atlas: s.atlas }); continue; }
     let color = cssColor(s.color);
     let bold = false;
     const base = color;
@@ -131,7 +131,7 @@ export function buildTextTexture(t: RichText, align: 'LEFT' | 'CENTERED' | 'RIGH
     const y0 = calibration.bgTop + i * lh;
     let x = x0;
     for (const r of line) {
-      if (r.sprite) { drawSprite(ctx, r.sprite, r.atlas, x, y0, S); x += runWidth(r); continue; }
+      if (r.sprite) { drawSprite(ctx, r.sprite, r.atlas, x, y0, S, r.color); x += runWidth(r); continue; }
       font.draw(ctx, r.text, x, y0, S, r.color, calibration.shadow);
       if (r.bold) font.draw(ctx, r.text, x + 1, y0, S, r.color, false);
       x += runWidth(r);

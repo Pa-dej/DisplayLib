@@ -135,12 +135,35 @@ async function fallback(key: string, e: Entry): Promise<void> {
   spriteState.revision++;
 }
 
+const tintCache = new Map<string, HTMLCanvasElement>();
+/** Тинт как у клиента: цвет текста умножается на текстуру (белый - без изменений). */
+function tinted(src: HTMLCanvasElement, color: string | undefined): HTMLCanvasElement {
+  if (!color || /^#f{6}$/i.test(color) || color.toLowerCase() === 'white') return src;
+  const id = (src as any).__id ?? ((src as any).__id = Math.random().toString(36).slice(2));
+  const key = id + '|' + color;
+  let t = tintCache.get(key);
+  if (!t) {
+    t = document.createElement('canvas');
+    t.width = src.width; t.height = src.height;
+    const c = t.getContext('2d')!;
+    c.drawImage(src, 0, 0);
+    c.globalCompositeOperation = 'multiply';
+    c.fillStyle = color;
+    c.fillRect(0, 0, t.width, t.height);
+    c.globalCompositeOperation = 'destination-in';
+    c.drawImage(src, 0, 0);
+    if (tintCache.size > 2000) tintCache.clear();
+    tintCache.set(key, t);
+  }
+  return t;
+}
+
 /** Нарисовать спрайт в текстовых координатах (x, y - левый верхний угол, S - px canvas на текстовый px). */
-export function drawSprite(ctx: CanvasRenderingContext2D, sprite: string, atlas: string | undefined, x: number, y: number, S: number): void {
+export function drawSprite(ctx: CanvasRenderingContext2D, sprite: string, atlas: string | undefined, x: number, y: number, S: number, color?: string): void {
   const e = spriteImage(sprite, atlas);
   const size = 8 * S;
   ctx.imageSmoothingEnabled = false;
-  if (e.canvas) { ctx.drawImage(e.canvas, x * S, y * S, size, size); return; }
+  if (e.canvas) { ctx.drawImage(tinted(e.canvas, color), x * S, y * S, size, size); return; }
   // нет текстуры: «missing texture» - фиолетово-чёрная шахматка
   const h = size / 2;
   ctx.fillStyle = '#f800f8'; ctx.fillRect(x * S, y * S, h, h); ctx.fillRect(x * S + h, y * S + h, h, h);

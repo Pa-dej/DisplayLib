@@ -711,7 +711,8 @@ export function frameIndexAt(w: Widget, hovered: boolean, tick: number): number 
 export function widgetText(w: Widget, hovered = false, tick = editorTick()): RichText {
   if (w.type === 'SPRITE_BUTTON') {
     const sp = hovered && w.hoveredSprite ? w.hoveredSprite : w.sprite;
-    return [{ text: '', sprite: sp || 'item/barrier', atlas: w.atlas ?? undefined }];
+    const col = (hovered && w.hoveredSpriteColor) || w.spriteColor || undefined;
+    return [{ text: '', sprite: sp || 'item/barrier', atlas: w.atlas ?? undefined, color: col }];
   }
   const fi = frameIndexAt(w, hovered, tick);
   if (fi >= 0) return (hovered && w.hoveredFrames.length ? w.hoveredFrames : w.frames)[fi];

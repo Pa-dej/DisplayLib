@@ -33,7 +33,7 @@ function rich(v: JmcValue): RichText | null {
       if (typeof p === 'string') segs.push({ text: p });
       else if (p && typeof p === 'object') {
         const pt = p as JmcTable;
-        if (pt.sprite != null) segs.push({ text: '', sprite: String(pt.sprite), atlas: pt.atlas == null ? undefined : String(pt.atlas) });
+        if (pt.sprite != null) segs.push({ text: '', sprite: String(pt.sprite), atlas: pt.atlas == null ? undefined : String(pt.atlas), color: pt.color == null ? undefined : String(pt.color) });
         else segs.push({ text: pt.text == null ? '' : String(pt.text), color: pt.color == null ? undefined : String(pt.color) });
       }
     }
@@ -125,6 +125,8 @@ function tableToWidget(d: JmcTable, index: number, warnings: string[]): Widget |
   const sp = str(d, 'sprite'); if (sp != null) w.sprite = sp.trim();
   const at = str(d, 'atlas'); if (at != null) w.atlas = at.trim();
   const hs = str(d, 'hoveredSprite', 'hovered_sprite'); if (hs != null) w.hoveredSprite = hs.trim();
+  const spc = str(d, 'spriteColor', 'sprite_color', 'color'); if (spc != null && spc.trim()) w.spriteColor = spc.trim();
+  const hsc = str(d, 'hoveredSpriteColor', 'hovered_sprite_color', 'hoveredColor', 'hovered_color'); if (hsc != null && hsc.trim()) w.hoveredSpriteColor = hsc.trim();
   if (type === 'SPRITE_BUTTON' && !w.sprite) warnings.push(`виджет ${w.id || '#' + index}: SPRITE_BUTTON без sprite`);
   const g = bool(d, 'glowOnHover', 'glow_on_hover'); if (g != null) w.glowOnHover = g;
   const gc = nums(d, 3, 'glowColor', 'glow_color'); if (gc) w.glowColor = gc as RGB;

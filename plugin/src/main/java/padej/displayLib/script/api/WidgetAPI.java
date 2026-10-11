@@ -119,6 +119,21 @@ public final class WidgetAPI {
         }
     }
 
+    /** Спрайт с тинтом: {@code sprite("minecraft:gui", "hud/heart/full", "#ff5555")}; цвет - имя или hex. */
+    public void sprite(String atlas, String sprite, String color) {
+        if (widget instanceof TextDisplayButtonWidget t && t.isValid()) {
+            t.setText(padej.displayLib.ui.ScreenSupport.spriteComponent(atlas, sprite, padej.displayLib.ui.ScreenSupport.parseColorPublic(color)));
+        }
+    }
+
+    /** Перекрасить текущий спрайт/текст (тинт): {@code spriteColor("gold")}; null - без тинта. */
+    public void spriteColor(String color) {
+        if (widget instanceof TextDisplayButtonWidget t && t.isValid()) {
+            net.kyori.adventure.text.format.TextColor c = padej.displayLib.ui.ScreenSupport.parseColorPublic(color);
+            t.setText(t.targetText().color(c != null ? c : net.kyori.adventure.text.format.NamedTextColor.WHITE));
+        }
+    }
+
     /** Спрайт при наведении (SPRITE_BUTTON). */
     public void hoveredSprite(String atlas, String sprite) {
         if (widget instanceof TextDisplayButtonWidget t && t.isValid()) {

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-// Текст: простая строка или сегменты { text, color } / { sprite, atlas }. §-коды в строке клиент тоже понимает.
+// Текст: простая строка или сегменты { text, color } / { sprite, atlas, color? }. §-коды в строке клиент тоже понимает.
 // Сегмент считается спрайтовым, пока у него есть поле sprite (даже пустое) - стирание имени его не превращает в текст.
 import { computed, nextTick } from 'vue';
 import type { RichText, Segment } from '../../model/screen';
@@ -7,6 +7,7 @@ import { NAMED_COLORS, cssColor } from '../../render/text';
 import { snapshot, touch } from '../../store';
 import SpriteInput from './SpriteInput.vue';
 import LineInput from './LineInput.vue';
+import TintInput from './TintInput.vue';
 import Icon from '../Icon.vue';
 import { useReorder, moveItem } from '../../reorder';
 import { ATLASES } from '../../render/sprites';
@@ -42,7 +43,7 @@ function add() { snapshot(); emit('update:modelValue', [...baseSegments(), { tex
 function addSprite() { snapshot(); emit('update:modelValue', [...baseSegments(), { text: '', sprite: 'item/iron_ingot' }]); touch(); }
 function upd(i: number, patch: Partial<Segment>) { edit((a) => { Object.assign(a[i], patch); if (!a[i].color) delete a[i].color; }); }
 function setAtlas(i: number, v: string) { edit((a) => { if (v.trim()) a[i].atlas = v.trim(); else delete a[i].atlas; }); }
-function setSprite(i: number, v: string) { edit((a) => { a[i].sprite = v; a[i].text = ''; delete a[i].color; }); }
+function setSprite(i: number, v: string) { edit((a) => { a[i].sprite = v; a[i].text = ''; }); }
 const dnd = useReorder((from, to) => { snapshot(); const a = segs.value.map((x) => ({ ...x })); moveItem(a, from, to); emit('update:modelValue', a); touch(); });
 function del(i: number) {
   snapshot();
@@ -74,6 +75,7 @@ function setColor(i: number, ev: Event) {
           <template v-if="isSprite(s)">
             <SpriteInput :model-value="s.sprite!" :atlas="s.atlas" @update:model-value="setSprite(i, $event)" @update:atlas="setAtlas(i, $event ?? '')" />
             <input type="text" list="atlas-list-seg" :value="s.atlas ?? ''" @focus="snapshot()" @input="setAtlas(i, ($event.target as HTMLInputElement).value)" placeholder="Атлас: авто" title="Атлас (пусто - по имени: item/… → items, иначе blocks)" style="width:86px" />
+            <TintInput :model-value="s.color" none="без тинта" title="Тинт спрайта: текстура умножается на цвет (как у текста)" @update:model-value="upd(i, { color: $event ?? undefined })" />
           </template>
           <template v-else>
             <LineInput :model-value="s.text" placeholder="Текст" @focus="snapshot()" @update:model-value="upd(i, { text: $event })" />

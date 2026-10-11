@@ -96,6 +96,10 @@ export interface Widget {
   /** null - по умолчанию клиента/плагина: items для item/..., иначе blocks */
   atlas: string | null;
   hoveredSprite: string | null;
+  /** Тинт спрайта (имя цвета или #hex); null - без тинта (белый). */
+  spriteColor: string | null;
+  /** Тинт при наведении; null - как spriteColor. */
+  hoveredSpriteColor: string | null;
 }
 
 export interface Background {
@@ -206,6 +210,8 @@ export function defaultWidget(type: WidgetType = 'TEXT_BUTTON'): Widget {
     sprite: 'item/diamond_sword',
     atlas: null,
     hoveredSprite: null,
+    spriteColor: null,
+    hoveredSpriteColor: null,
   };
 }
 

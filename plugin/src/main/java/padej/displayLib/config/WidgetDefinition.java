@@ -174,6 +174,10 @@ public class WidgetDefinition {
 
     /** Спрайт при наведении (для SPRITE_BUTTON); если не задан - тот же, что {@link #sprite}. */
     private String hoveredSprite;
+    /** Тинт спрайта (имя или hex, как color у текста); null - без тинта. */
+    private String spriteColor;
+    /** Тинт при наведении; null - как spriteColor. */
+    private String hoveredSpriteColor;
 
     // ===== Поля для ITEM_BUTTON =====
     
@@ -288,6 +292,10 @@ public class WidgetDefinition {
     public void setAtlas(String atlas) { this.atlas = atlas; }
     public String getHoveredSprite() { return hoveredSprite; }
     public void setHoveredSprite(String hoveredSprite) { this.hoveredSprite = hoveredSprite; }
+    public String getSpriteColor() { return spriteColor; }
+    public void setSpriteColor(String c) { this.spriteColor = c; }
+    public String getHoveredSpriteColor() { return hoveredSpriteColor; }
+    public void setHoveredSpriteColor(String c) { this.hoveredSpriteColor = c; }
     public void setMaterial(String material) { this.material = material; }
     
     public boolean isGlowOnHover() { return glowOnHover; }

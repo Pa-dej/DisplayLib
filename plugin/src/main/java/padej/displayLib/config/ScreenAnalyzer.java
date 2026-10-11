@@ -146,6 +146,8 @@ public final class ScreenAnalyzer {
         }
         if (def.getType() == WidgetDefinition.WidgetType.SPRITE_BUTTON && def.getHoveredSprite() != null
                 && !def.getHoveredSprite().equals(def.getSprite())) return true;
+        if (def.getType() == WidgetDefinition.WidgetType.SPRITE_BUTTON && def.getHoveredSpriteColor() != null
+                && !def.getHoveredSpriteColor().equalsIgnoreCase(def.getSpriteColor())) return true;
         if (def.getHoveredText() != null && !def.getHoveredText().isEmpty()
                 && !def.getHoveredText().equals(def.getText())) return true;
         if (def.getFormattedHoveredText() != null && !def.getFormattedHoveredText().equals(def.getFormattedText())) return true;

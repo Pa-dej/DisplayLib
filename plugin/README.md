@@ -122,6 +122,9 @@ dyn widgets = [
 Атласы клиента: `minecraft:items`, `minecraft:blocks`, `minecraft:gui` для иконок эффектов (`mob_effect/speed`), `minecraft:gui`
 (`hud/heart/full`), `minecraft:particles` (`heart`), `minecraft:paintings`, `minecraft:banner_patterns`,
 `minecraft:shield_patterns`, `minecraft:armor_trims`. Имя спрайта - путь к png внутри папки атласа без расширения.
+Тинт спрайта - как цвет текста: `{ sprite: "hud/heart/full", atlas: "minecraft:gui", color: "#ff5555" }`
+(клиент умножает текстуру на цвет; без `color` - белый, без тинта); у `SPRITE_BUTTON` поля `spriteColor`/`color`
+и `hoveredSpriteColor`, из скрипта `widget.sprite(atlas, sprite, color)` и `widget.spriteColor("gold")`.
 Голое имя без атласа плагин дополняет сам: `mace` → `item/mace` (items), `bricks` → `block/bricks` (blocks),
 `speed` → `mob_effect/speed` в gui. Сегменты без `color` всегда белые - цвет соседнего сегмента не протекает.
 Имена из прежних YAML-файлов в snake_case (`tick_rate`, `screen_type`) тоже принимаются.

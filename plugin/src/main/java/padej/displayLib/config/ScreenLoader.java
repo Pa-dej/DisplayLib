@@ -336,6 +336,11 @@ public class ScreenLoader {
         if (atlas != null) widget.setAtlas(atlas.trim());
         String hoveredSprite = str(data, "hoveredSprite", "hovered_sprite");
         if (hoveredSprite != null) widget.setHoveredSprite(hoveredSprite.trim());
+        // тинт спрайта: color / spriteColor, hoveredColor / hoveredSpriteColor (имя или hex, как у текста)
+        String spriteColor = str(data, "spriteColor", "sprite_color", "color");
+        if (spriteColor != null) widget.setSpriteColor(spriteColor.trim());
+        String hoveredSpriteColor = str(data, "hoveredSpriteColor", "hovered_sprite_color", "hoveredColor", "hovered_color");
+        if (hoveredSpriteColor != null) widget.setHoveredSpriteColor(hoveredSpriteColor.trim());
         if (type == WidgetDefinition.WidgetType.SPRITE_BUTTON && widget.getSprite() == null) {
             plugin.getLogger().warning(where + ": SPRITE_BUTTON without 'sprite'");
         }
