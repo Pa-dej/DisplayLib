@@ -101,6 +101,10 @@ export function widgetToJmc(w: Widget, opts: WriteOptions): string {
   } else {
     f.push(`material: ${jstr(w.material)}`);
   }
+  for (const [k, sv] of [['clickSound', w.clickSound], ['hoverSound', w.hoverSound]] as const) {
+    if (sv === 'none') f.push(`${k}: false`);
+    else if (sv) f.push(`${k}: { sound: ${jstr(sv.sound)}, volume: ${jnum(sv.volume)}, pitch: ${jnum(sv.pitch)} }`);
+  }
   f.push(`position: ${arr(w.position)}`);
   f.push(`scale: ${arr(w.scale)}`);
   if (v || !same(w.tolerance, WIDGET_DEFAULTS.tolerance)) f.push(`tolerance: ${arr(w.tolerance)}`);

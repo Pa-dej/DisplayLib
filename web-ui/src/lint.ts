@@ -63,6 +63,7 @@ export function clickWorks(w: Widget, s: Screen, script: ScriptInfo | null, scre
 export function hasHoverVisual(w: Widget, s: Screen): boolean {
   const pub = s.screenType === 'PUBLIC';
   if (w.tooltip != null) return true;
+  if (w.hoverSound && w.hoverSound !== 'none') return true;
   if (w.hoverAnimation && !pub) return true;
   if (w.type === 'ITEM_BUTTON') return w.glowOnHover;
   if (w.type === 'SPRITE_BUTTON' && ((w.hoveredSprite && w.hoveredSprite !== w.sprite) || (w.hoveredSpriteColor && w.hoveredSpriteColor !== w.spriteColor))) return true;

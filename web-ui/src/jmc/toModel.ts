@@ -42,6 +42,18 @@ function rich(v: JmcValue): RichText | null {
   return String(v);
 }
 
+function soundOf(v: JmcValue): import('../model/screen').SoundSpec | 'none' | null {
+  if (v == null) return null;
+  if (v === false) return 'none';
+  if (v === true) return null;
+  if (typeof v === 'string') return v.trim() === '' || v.trim().toLowerCase() === 'none' ? 'none' : { sound: v.trim(), volume: 0.5, pitch: 1 };
+  if (typeof v === 'object' && !Array.isArray(v)) {
+    const t = v as JmcTable; const name = str(t, 'sound', 'name');
+    return { sound: name ?? 'ui.button.click', volume: num(t, 'volume') ?? 0.5, pitch: num(t, 'pitch') ?? 1 };
+  }
+  return null;
+}
+
 export interface ToModelResult { screen: Screen; warnings: string[] }
 
 export function tableToScreen(data: JmcTable, fileName: string): ToModelResult {
@@ -144,6 +156,8 @@ export function tableToWidget(d: JmcTable, index: number, warnings: string[]): W
   const tt = rich(get(d, 'tooltip')); if (tt != null) w.tooltip = tt;
   const tc = nums(d, 3, 'tooltipColor', 'tooltip_color'); if (tc) w.tooltipColor = tc as RGB;
   const td = num(d, 'tooltipDelay', 'tooltip_delay'); if (td != null) w.tooltipDelay = Math.trunc(td);
+  w.clickSound = soundOf(get(d, 'clickSound', 'click_sound', 'sound'));
+  w.hoverSound = soundOf(get(d, 'hoverSound', 'hover_sound'));
   const oc = get(d, 'onClick', 'on_click', 'click');
   if (oc != null) w.onClick = parseClick(oc, `виджет ${w.id || '#' + index}`, warnings, w.id);
   const ha = table(d, 'hoverAnimation', 'hover_animation');

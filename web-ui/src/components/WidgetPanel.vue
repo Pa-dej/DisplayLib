@@ -10,6 +10,7 @@ import RichTextInput from './fields/RichTextInput.vue';
 import MaterialInput from './fields/MaterialInput.vue';
 import SpriteInput from './fields/SpriteInput.vue';
 import TintInput from './fields/TintInput.vue';
+import SoundInput from './fields/SoundInput.vue';
 import { ATLASES } from '../render/sprites';
 import AnimationEditor from './AnimationEditor.vue';
 import { state, currentScreen, currentScriptInfo, screenIds, snapshot, touch, removeWidget, duplicateWidget, ensureHandler, showScript } from '../store';
@@ -149,6 +150,13 @@ function fmt(n: number) { return (Math.round(n * 1000) / 1000).toString(); }
         <div class="field"><label>tooltipDelay</label><div class="row"><input type="number" min="0" step="1" :value="w.tooltipDelay" @focus="snapshot()" @input="w.tooltipDelay = Math.max(0, Math.round(Number(text($event)))); touch()" /><span class="hint">Тиков</span></div></div>
         <div class="field"><label>tooltipColor</label><div class="row"><ColorInput v-if="w.tooltipColor" v-model="w.tooltipColor" /><button class="btn sm" @click="toggleTooltipColor">{{ w.tooltipColor ? 'Убрать' : 'Задать' }}</button></div></div>
       </template>
+    </div>
+
+    <div class="section">
+      <h3>Звук</h3>
+      <div class="field"><label>clickSound</label><SoundInput v-model="w.clickSound" default-hint="по умолчанию" /></div>
+      <div class="field"><label>hoverSound</label><SoundInput v-model="w.hoverSound" default-hint="нет" /></div>
+      <div class="hint">Ключи звуков клиента (<code>ui.button.click</code>, <code>block.note_block.pling</code>…). По умолчанию клик: у текста/спрайта - <code>block.dispenser.fail</code> (pitch 2), у предмета - <code>ui.button.click</code>; звук наведения считается hover-реакцией.</div>
     </div>
 
     <div class="section">

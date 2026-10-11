@@ -55,6 +55,8 @@ export interface HoverAnimation {
   effects: HoverAnimation[];
 }
 
+export interface SoundSpec { sound: string; volume: number; pitch: number }
+
 export interface Widget {
   /** Внутренний ключ редактора (не попадает в файл). */
   uid: string;
@@ -73,6 +75,10 @@ export interface Widget {
   tooltip: RichText | null;
   tooltipColor: RGB | null;
   tooltipDelay: number;
+  /** Звук клика: null - дефолт плагина, 'none' - выключен. */
+  clickSound: SoundSpec | 'none' | null;
+  /** Звук при наведении: null - нет. */
+  hoverSound: SoundSpec | 'none' | null;
   onClick: ClickAction | null;
   hoverAnimation: HoverAnimation | null;
   // TEXT_BUTTON
@@ -194,6 +200,8 @@ export function defaultWidget(type: WidgetType = 'TEXT_BUTTON'): Widget {
     tooltip: null,
     tooltipColor: null,
     tooltipDelay: 0,
+    clickSound: null,
+    hoverSound: null,
     onClick: null,
     hoverAnimation: null,
     text: type === 'TEXT_BUTTON' ? 'Кнопка' : '',
