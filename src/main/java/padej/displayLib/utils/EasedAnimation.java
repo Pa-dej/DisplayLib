@@ -177,6 +177,20 @@ public class EasedAnimation {
         RUNNING.computeIfAbsent(entityId, k -> new BukkitTask[Channel.values().length])[channel.ordinal()] = task;
     }
 
+    /**
+     * Остановить все покадровые анимации сущности (масштаб, смещение, пульсация). Нужно, когда сущность
+     * переходит к другому виджету (morph-переход между экранами): иначе задача анимации наведения
+     * старого экрана продолжала бы писать трансформацию поверх анимации перехода и состояния нового виджета.
+     */
+    public static void cancelAll(Display entity) {
+        if (entity == null) return;
+        BukkitTask[] tasks = RUNNING.remove(entity.getUniqueId());
+        if (tasks != null) {
+            for (BukkitTask t : tasks) if (t != null) t.cancel();
+        }
+        if (entity.isValid()) stopContinuousAnimation(entity);
+    }
+
     /** Отменить текущую анимацию канала у сущности, если она есть. */
     private static void cancel(Display entity, Channel channel) {
         UUID entityId = entity.getUniqueId();

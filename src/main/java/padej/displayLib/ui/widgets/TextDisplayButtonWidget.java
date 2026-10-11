@@ -155,6 +155,8 @@ public class TextDisplayButtonWidget implements Widget {
         display = null;
         isHovered = false;
         hideTooltip();
+        // задачи анимации наведения привязаны к сущности, а не к виджету - иначе они доиграют уже на новом экране
+        if (d != null) padej.displayLib.utils.EasedAnimation.cancelAll(d);
         return d;
     }
 

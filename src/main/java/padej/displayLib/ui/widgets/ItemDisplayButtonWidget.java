@@ -146,6 +146,7 @@ public class ItemDisplayButtonWidget implements Widget {
         display = null;
         isHovered = false;
         hideTooltip();
+        if (d != null) padej.displayLib.utils.EasedAnimation.cancelAll(d);
         return d;
     }
 
