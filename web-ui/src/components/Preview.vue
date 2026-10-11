@@ -39,6 +39,7 @@ onMounted(() => {
     onHover: (uid) => { state.hovered = uid; },
   });
   scene.smartGuides = smartGuides.value;
+  (window as any).__dl = { state, scene }; // для отладки/автотестов
   scene.setScreen(currentScreen.value);
   window.addEventListener('blur', onWindowBlur);
   document.addEventListener('visibilitychange', onWindowBlur);
@@ -85,7 +86,7 @@ function r(v: number) { return Math.round(v * 1000) / 1000; }
       <label class="btn sm"><input type="checkbox" v-model="showHit" /> <Icon name="vector-square" /> Зоны наведения</label>
       <label class="btn sm"><input type="checkbox" v-model="showGrid" /> <Icon name="th" /> Сетка</label>
       <label class="btn sm" title="Прилипание к краям, центрам и равным зазорам других виджетов (Ctrl при перетаскивании - отключить)"><input type="checkbox" v-model="smartGuides" /> <Icon name="magic" /> Направляющие</label>
-      <label class="btn sm" title="Виджет под курсором показывается как при наведении в игре"><input type="checkbox" v-model="hoverPreview" /> <Icon name="hand-pointer" /> Hover</label>
+      <label class="btn sm" title="Виджет под курсором показывается как при наведении в игре: hover-текст/фон и hover-анимация (масштаб, смещение, поворот) с длительностью и easing плагина"><input type="checkbox" v-model="hoverPreview" /> <Icon name="hand-pointer" /> Hover</label>
     </div>
     <div class="preview-legend">ЛКМ: виджет - выбрать/тащить (Shift: шаг 0.5, Alt: 0.01, Ctrl: без направляющих), пусто - вращать · СКМ/ПКМ - сдвиг · колесо - зум · стрелки: x/y, PgUp/PgDn: ближе/дальше · гизмо в углу - оси</div>
   </div>

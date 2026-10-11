@@ -13,6 +13,7 @@ import { calibration } from './metrics';
 import { buildTextTexture, layout } from './text';
 import { itemTexture } from './items';
 import { computeSnap, type Guide, type Rect } from './snap';
+import { IDENTITY, isIdentity, targetOf, durationMs, easingOf, tweenAt, type HoverDelta, type HoverTween } from './hoverAnim';
 
 export interface SceneCallbacks {
   onSelect(uid: string | null): void;
@@ -23,7 +24,11 @@ export interface SceneCallbacks {
 interface Node {
   uid: string;
   group: THREE.Group;
+  /** Якорь сущности (translation): hover-анимации масштабируют/вращают вокруг него, как в игре. */
+  pivot: THREE.Group;
   mesh: THREE.Mesh;
+  /** Базовая трансформация pivot (без hover-дельт). */
+  base: { tr: [number, number, number]; scale: [number, number, number]; rotDeg: number; center: [number, number]; item: boolean };
   hit: THREE.LineSegments | null;
   /** Заблокирован в редакторе: не выбирается кликом и не перетаскивается. */
   locked?: boolean;
@@ -56,6 +61,10 @@ export class ScreenScene {
   private selected: string | null = null;
   private hovered: string | null = null;
   private frame = 0;
+  /** Идущие hover-анимации по uid (переживают перестройку узла). */
+  private tweens = new Map<string, HoverTween>();
+  /** Последняя применённая дельта по uid - чтобы новая анимация стартовала с текущего состояния. */
+  private deltas = new Map<string, HoverDelta>();
   showHitAreas = true;
   showGrid = true;
   hoverPreview = true;
@@ -251,6 +260,7 @@ export class ScreenScene {
   // ---------------------------------------------------------------- экран
 
   setScreen(s: Screen | null): void {
+    if (this.screen !== s) { this.tweens.clear(); this.deltas.clear(); }
     this.screen = s;
     this.rebuildAll();
   }
@@ -265,8 +275,52 @@ export class ScreenScene {
     if (this.hovered === uid) return;
     const prev = this.hovered;
     this.hovered = uid;
-    if (prev) this.rebuildWidget(prev);
-    if (uid) this.rebuildWidget(uid);
+    if (prev) { this.startTween(prev, false); this.rebuildWidget(prev); }
+    if (uid) { this.startTween(uid, true); this.rebuildWidget(uid); }
+  }
+
+  /** Запустить hover-анимацию виджета (или откат): цель - из его hoverAnimation, старт - с текущей дельты. */
+  private startTween(uid: string, hovering: boolean): void {
+    const w = this.screen?.widgets.find((x) => x.uid === uid);
+    const a = w?.hoverAnimation ?? null;
+    if (!w || !this.hoverPreview || !a) { this.tweens.delete(uid); this.deltas.delete(uid); return; }
+    const from = this.currentDelta(uid);
+    if (!hovering && !a.reverseOnExit) { this.tweens.delete(uid); return; } // плагин так и оставляет
+    const to = hovering ? targetOf(a) : IDENTITY;
+    this.tweens.set(uid, { t0: performance.now(), ms: durationMs(a), from, to, ease: easingOf(a) });
+  }
+
+  private currentDelta(uid: string): HoverDelta {
+    const tw = this.tweens.get(uid);
+    return tw ? tweenAt(tw, performance.now()).d : (this.deltas.get(uid) ?? IDENTITY);
+  }
+
+  /** Наложить hover-дельту на pivot узла поверх базовой трансформации (translation · leftRotation · scale, вокруг якоря). */
+  private applyDelta(n: Node, d: HoverDelta): void {
+    const b = n.base;
+    const sx = b.scale[0] * d.mul[0], sy = b.scale[1] * d.mul[1];
+    const xs = calibration.translationXSign;
+    // текст: якорь - низ по центру; базовый поворот плагин делает вокруг центра, сдвигая якорь на c − R·c
+    const hc = b.center[1] * b.scale[1];
+    const a = THREE.MathUtils.degToRad(b.rotDeg);
+    const comp: [number, number] = b.item || b.rotDeg === 0 ? [0, 0] : [hc * Math.sin(a), hc - hc * Math.cos(a)];
+    n.pivot.position.set((b.tr[0] + d.offset[0]) * xs + comp[0] * xs, b.tr[1] + d.offset[1] + comp[1], b.tr[2] + d.offset[2]);
+    n.pivot.scale.set(sx, sy, 1);
+    const q = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), a);
+    if (d.angle) q.multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(d.axis[0] * xs, d.axis[1], d.axis[2]).normalize(), THREE.MathUtils.degToRad(d.angle)));
+    n.pivot.quaternion.copy(q);
+  }
+
+  /** Продвинуть hover-анимации (раз в кадр). */
+  private tickTweens(): void {
+    if (!this.tweens.size) return;
+    const now = performance.now();
+    for (const [uid, tw] of this.tweens) {
+      const { d, done } = tweenAt(tw, now);
+      this.deltas.set(uid, d);
+      const n = this.nodes.get(uid); if (n) this.applyDelta(n, d);
+      if (done) { this.tweens.delete(uid); if (isIdentity(d)) this.deltas.delete(uid); }
+    }
   }
 
   private attachGizmo(): void {
@@ -309,6 +363,7 @@ export class ScreenScene {
     if (!w || w.hidden) { if (this.selected === uid) { this.updateSelectionBox(); this.attachGizmo(); } return; }
     const n = w.type === 'ITEM_BUTTON' ? this.buildItem(w) : this.buildText(w);
     n.locked = !!w.locked;
+    const d = this.deltas.get(uid); if (d) this.applyDelta(n, d);
     this.nodes.set(uid, n);
     this.scene.add(n.group);
     if (this.selected === uid) { this.updateSelectionBox(); this.attachGizmo(); }
@@ -363,18 +418,21 @@ export class ScreenScene {
     // (translate(1 - k/2) клиента), центр = 1 + (bgRight - bgLeft)/2 = +0.5 px; по y фон от 0 до bgH.
     const centerX = (1 + (calibration.bgRight - calibration.bgLeft) / 2) * px;
     const centerY = (bgH / 2) * px;
-    mesh.position.set(centerX * scale[0] + tr[0] * calibration.translationXSign, centerY * scale[1] + tr[1], tr[2]);
-    mesh.scale.set(scale[0], scale[1], 1);
-    // поворот вокруг центра текста (плагин сдвигает якорь так, чтобы центр оставался на месте); зона наведения не вращается
-    mesh.rotation.z = THREE.MathUtils.degToRad(rotationDeg);
+    mesh.position.set(centerX, centerY, 0);
     mesh.userData.uid = selectable ? uid : null;
+    // pivot = якорь сущности: translation · поворот · масштаб, как Transformation у Display; hover-дельты ложатся сюда же
+    const pivot = new THREE.Group();
+    pivot.add(mesh);
     const group = new THREE.Group();
-    group.add(mesh);
+    group.add(pivot);
     group.position.copy(this.worldPos(pos, depth));
     // зона наведения: плагин поднимает центр на половину высоты фона (TextDisplayButtonWidget.hitCenterOffsetY)
     const hit = tol ? this.hitRect(tol, tr, (bgH / 2) * px * scale[1]) : null;
     if (hit) group.add(hit);
-    return { uid, group, mesh, hit, dispose: () => { geo.dispose(); mat.dispose(); texture.dispose(); hit?.geometry.dispose(); } };
+    const n: Node = { uid, group, pivot, mesh, hit, base: { tr: [tr[0], tr[1], tr[2]], scale: [scale[0], scale[1], scale[2]], rotDeg: rotationDeg, center: [centerX, centerY], item: false },
+      dispose: () => { geo.dispose(); mat.dispose(); texture.dispose(); hit?.geometry.dispose(); } };
+    this.applyDelta(n, IDENTITY);
+    return n;
   }
 
   private buildItem(w: Widget): Node {
@@ -386,22 +444,23 @@ export class ScreenScene {
       : new THREE.MeshBasicMaterial({ color: 0xff00ff, transparent: true, opacity: 0.6 });
     const mesh = new THREE.Mesh(geo, mat);
     const hovered = this.hoverPreview && this.hovered === w.uid && w.glowOnHover;
-    mesh.position.set(w.translation[0] * calibration.translationXSign, w.translation[1], w.translation[2]);
-    mesh.scale.set(w.scale[0], w.scale[1], 1);
-    mesh.rotation.z = THREE.MathUtils.degToRad(w.rotation);
     mesh.userData.uid = w.uid;
+    const pivot = new THREE.Group();
+    pivot.add(mesh);
     const group = new THREE.Group();
-    group.add(mesh);
+    group.add(pivot);
     if (hovered) {
       const gc = w.glowColor ? new THREE.Color(w.glowColor[0] / 255, w.glowColor[1] / 255, w.glowColor[2] / 255) : new THREE.Color(0xffffff);
       const edge = new THREE.LineSegments(new THREE.EdgesGeometry(geo), new THREE.LineBasicMaterial({ color: gc }));
-      edge.position.copy(mesh.position); edge.scale.copy(mesh.scale); edge.rotation.copy(mesh.rotation);
-      group.add(edge);
+      pivot.add(edge);
     }
     group.position.copy(this.worldPos(w.position, calibration.itemDepthOffset));
     const hit = this.hitRect(w.tolerance, w.translation);
     group.add(hit);
-    return { uid: w.uid, group, mesh, hit, dispose: () => { geo.dispose(); mat.dispose(); hit.geometry.dispose(); } };
+    const n: Node = { uid: w.uid, group, pivot, mesh, hit, base: { tr: [w.translation[0], w.translation[1], w.translation[2]], scale: [w.scale[0], w.scale[1], w.scale[2]], rotDeg: w.rotation, center: [0, 0], item: true },
+      dispose: () => { geo.dispose(); mat.dispose(); hit.geometry.dispose(); } };
+    this.applyDelta(n, IDENTITY);
+    return n;
   }
 
   /** Зона наведения: прямоугольник tolerance с центром в позиции + translation (+ половина высоты текста у TextDisplay). */
@@ -508,6 +567,7 @@ export class ScreenScene {
     this.canvas.setPointerCapture(e.pointerId);
     // Тащим виджет в обычном (не hover) виде: привязки считаются по его размеру в покое
     if (this.hovered === uid) this.cb.onHover(null);
+    this.tweens.delete(uid); this.deltas.delete(uid); this.applyDelta(n, IDENTITY);
   };
 
   private onMoveEv = (e: PointerEvent): void => {
@@ -680,6 +740,7 @@ export class ScreenScene {
   private loop = (): void => {
     this.frame = requestAnimationFrame(this.loop);
     this.tickFrames();
+    this.tickTweens();
     const w = this.canvas.clientWidth, h = this.canvas.clientHeight;
     const pr = this.renderer.getPixelRatio();
     if (w && h && (this.canvas.width !== Math.floor(w * pr) || this.canvas.height !== Math.floor(h * pr))) {
