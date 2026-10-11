@@ -5,7 +5,7 @@ name: pages
 #   https://pa-dej.github.io/DisplayLib/editor/   редактор экранов
 on:
   push:
-    branches: [master, jumper]
+    branches: [master]
     paths: ['docs/**', 'web-ui/**', '.github/workflows/pages.yml']
   workflow_dispatch:
 

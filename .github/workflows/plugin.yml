@@ -2,7 +2,7 @@ name: plugin
 
 on:
   push:
-    branches: [master, jumper]
+    branches: [master]
     paths: ['plugin/**', '.github/workflows/plugin.yml']
     tags: ['v*']
   pull_request:
