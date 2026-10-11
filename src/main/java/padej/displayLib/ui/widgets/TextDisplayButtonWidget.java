@@ -282,7 +282,15 @@ public class TextDisplayButtonWidget implements Widget {
      * раздувает ширину в разы, из-за чего центр зоны наведения уезжал вверх.
      */
     static int estimateLines(Component c) {
-        if (c == null) return 1;
+        return estimateSize(c)[1];
+    }
+
+    /**
+     * Оценка размера текста в px шрифта: {@code [ширина самой длинной строки, число строк]}
+     * по той же таблице ширин и переносу, что и {@link #estimateLines}.
+     */
+    public static int[] estimateSize(Component c) {
+        if (c == null) return new int[]{0, 1};
         // собираем «токены»: ширина слова и признак переноса строки
         java.util.List<int[]> words = new java.util.ArrayList<>(); // [width, isNewline]
         StringBuilder word = new StringBuilder();
@@ -299,13 +307,14 @@ public class TextDisplayButtonWidget implements Widget {
             });
         }
         flush.run();
-        int lines = 1, lineW = 0;
+        int lines = 1, lineW = 0, maxW = 0;
         for (int[] w : words) {
             if (w[1] == 1) { lines++; lineW = 0; continue; }
             if (lineW > 0 && lineW + w[0] > LINE_WIDTH) { lines++; lineW = w[0]; }
             else lineW += w[0];
+            maxW = Math.max(maxW, lineW);
         }
-        return Math.max(1, lines);
+        return new int[]{maxW, Math.max(1, lines)};
     }
 
     /** advance спрайта-объекта в тексте (квадрат 8 px + промежуток) */

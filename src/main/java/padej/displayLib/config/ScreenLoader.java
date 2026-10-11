@@ -238,6 +238,17 @@ public class ScreenLoader {
         float[] translation = floats(data, 3, "translation");
         if (translation != null) bg.setTranslation(translation);
 
+        // anchor: "CENTER" | [0.5, 0.5] - какая точка фона стоит в начале координат экрана
+        Object anchorRaw = get(data, "anchor", "pivot", "origin");
+        if (anchorRaw instanceof String name) {
+            float[] preset = ScreenDefinition.BackgroundDefinition.anchorPreset(name);
+            if (preset != null) bg.setAnchor(preset);
+            else plugin.getLogger().warning("Unknown background anchor '" + name + "', using BOTTOM");
+        } else if (anchorRaw != null) {
+            float[] anchor = floats(data, 2, "anchor", "pivot", "origin");
+            if (anchor != null) bg.setAnchor(anchor);
+        }
+
         return bg;
     }
 

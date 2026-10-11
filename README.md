@@ -69,7 +69,9 @@ int tickRate = 4;                   // период обновления, тик
 double interactionRadius = 5;       // дальше - нет наведения и кликов (-1 = без ограничения)
 double closeDistance = 10;          // дистанция автозакрытия (-1 = не закрывать)
 
-dyn background = { color: [20, 20, 30], alpha: 200, scale: [12, 6, 1] };
+dyn background = { color: [20, 20, 30], alpha: 200, scale: [12, 6, 1], anchor: "CENTER" };
+// anchor - какая точка фона стоит в начале координат экрана (position [0,0,0] виджетов):
+// "BOTTOM" (низ по центру, по умолчанию), "CENTER", "TOP_LEFT", … или доли [x, y] - [0.5, 0.5] = центр
 String script = "shop.jmp";         // scripts/shop.jmp
 dyn morph = { duration: 12, steps: 6 };   // анимация смены/закрытия экрана (см. ниже); по умолчанию выключена
 

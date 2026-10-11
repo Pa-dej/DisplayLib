@@ -250,6 +250,14 @@ public class ScreenDefinition {
         
         /** Точная настройка позиции [x, y, z] для устранения артефактов */
         private float[] translation = {0.0f, 0.0f, 0.0f};
+
+        /**
+         * Точка фона, которая стоит в начале координат экрана (там, где position [0,0,0] виджетов):
+         * доли ширины и высоты фона, x слева направо, y снизу вверх. {@code [0.5, 0]} - низ по центру
+         * (якорь TextDisplay, прежнее поведение), {@code [0.5, 0.5]} - центр, {@code [0, 1]} - левый верх.
+         * В конфиге - массив или пресет: TOP_LEFT, TOP, TOP_RIGHT, LEFT, CENTER, RIGHT, BOTTOM_LEFT, BOTTOM, BOTTOM_RIGHT.
+         */
+        private float[] anchor = {0.5f, 0.0f};
         
         public BackgroundDefinition() {}
         
@@ -271,5 +279,25 @@ public class ScreenDefinition {
         
         public float[] getTranslation() { return translation; }
         public void setTranslation(float[] translation) { this.translation = translation; }
+
+        public float[] getAnchor() { return anchor; }
+        public void setAnchor(float[] anchor) { this.anchor = anchor != null && anchor.length >= 2 ? anchor : new float[]{0.5f, 0.0f}; }
+
+        /** Пресет якоря по имени (регистр не важен) или null. */
+        public static float[] anchorPreset(String name) {
+            if (name == null) return null;
+            return switch (name.trim().toUpperCase(java.util.Locale.ROOT).replace('-', '_')) {
+                case "TOP_LEFT" -> new float[]{0f, 1f};
+                case "TOP", "TOP_CENTER" -> new float[]{0.5f, 1f};
+                case "TOP_RIGHT" -> new float[]{1f, 1f};
+                case "LEFT", "CENTER_LEFT" -> new float[]{0f, 0.5f};
+                case "CENTER", "MIDDLE" -> new float[]{0.5f, 0.5f};
+                case "RIGHT", "CENTER_RIGHT" -> new float[]{1f, 0.5f};
+                case "BOTTOM_LEFT" -> new float[]{0f, 0f};
+                case "BOTTOM", "BOTTOM_CENTER" -> new float[]{0.5f, 0f};
+                case "BOTTOM_RIGHT" -> new float[]{1f, 0f};
+                default -> null;
+            };
+        }
     }
 }

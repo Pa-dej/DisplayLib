@@ -84,6 +84,15 @@ public final class ScreenSupport {
         Component text = Component.text(bg.getText());
         Color color = Color.fromRGB(c[0], c[1], c[2]);
 
+        // Якорь: сдвигаем фон так, чтобы точка (ax, ay) его прямоугольника оказалась в начале координат.
+        // Размер фона в блоках: ширина (k + 1) px, высота lines·10 px, пиксель = 1/40, затем scale.
+        float[] a = bg.getAnchor();
+        int[] size = padej.displayLib.ui.widgets.TextDisplayButtonWidget.estimateSize(text);
+        float widthBlocks = (size[0] + 1) / 40.0f * s[0];
+        float heightBlocks = size[1] * 10 / 40.0f * s[1];
+        float ax = -(a[0] - 0.5f) * widthBlocks, ay = -a[1] * heightBlocks;
+        float[] trAnchored = {tr[0] + ax, tr[1] + ay, tr[2]};
+
         return new TextDisplayButtonConfig(text, text, null) // фон не кликабелен
                 .setScale(s[0], s[1], s[2])
                 .setBackgroundColor(color)
@@ -92,7 +101,7 @@ public final class ScreenSupport {
                 .setHoveredBackgroundAlpha(bg.getAlpha())
                 .setTolerance(0.0, 0.0)                     // нулевая зона наведения
                 .setPosition(new WidgetPosition(0, 0, 0))
-                .setTranslation(TransformationUtil.createAlignedTranslation(s[0], tr));
+                .setTranslation(TransformationUtil.createAlignedTranslation(s[0], trAnchored));
     }
 
     /**
