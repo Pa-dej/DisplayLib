@@ -5,6 +5,7 @@ import Sidebar from './components/Sidebar.vue';
 import Preview from './components/Preview.vue';
 import Inspector from './components/Inspector.vue';
 import ImportDialog from './components/ImportDialog.vue';
+import AssetBrowser from './components/AssetBrowser.vue';
 import Splitter from './components/Splitter.vue';
 import ExportDialog from './components/ExportDialog.vue';
 import { state, saveCurrent, saveAll, undo, redo, newScreen, currentDoc, restoreSession, notify, fail } from './store';
@@ -13,6 +14,7 @@ import { loadSheet } from './render/items';
 import { loadSpriteIndex } from './render/sprites';
 
 const importOpen = ref(false);
+const assetsOpen = ref(false);
 const exportOpen = ref(false);
 const ready = ref(false);
 const dark = ref(document.documentElement.classList.contains('dark'));
@@ -47,6 +49,7 @@ onMounted(async () => {
         <button class="btn" @click="newScreen()"><Icon name="plus" /> Экран</button>
         <button class="btn" @click="importOpen = true"><Icon name="file-import" /> Импорт .jmc</button>
         <button class="btn" @click="exportOpen = true" :disabled="!currentDoc"><Icon name="file-export" /> Экспорт</button>
+        <button class="btn" @click="assetsOpen = true" :disabled="!currentDoc" title="Все спрайты клиента по категориям; клик добавляет спрайт на экран"><Icon name="icons" /> Ассеты</button>
         <button class="btn primary" @click="saveCurrent" :disabled="!currentDoc" title="Скачать screens/<id>.jmc (и scripts/<id>.jmp, если нужен)"><Icon name="download" /> Скачать <kbd style="opacity:.7">Ctrl+S</kbd></button>
       </div>
       <div class="spacer"></div>
@@ -59,6 +62,7 @@ onMounted(async () => {
     <Splitter css-var="--inspector-w" dir="v" :sign="-1" :min="260" :max="700" />
     <Inspector />
     <ImportDialog v-if="importOpen" @close="importOpen = false" />
+    <AssetBrowser v-if="assetsOpen" @close="assetsOpen = false" />
     <ExportDialog v-if="exportOpen" @close="exportOpen = false" />
   </div>
 </template>
