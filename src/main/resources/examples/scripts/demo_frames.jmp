@@ -1,4 +1,4 @@
-// frames_demo.jmp: кадры можно задавать и из скрипта - widget.frames(список, интервал), widget.hoveredFrames(...)
+// demo_frames.jmp: кадры можно задавать и из скрипта
 
 int plays = 0;
 
@@ -11,7 +11,7 @@ void play(dyn widget, dyn player) {
 }
 
 void shimmer(dyn widget, dyn player) {
-    // снять анимацию покоя: обычный текст
-    widget.frames(null, 1);
+    widget.frames(null, 1);                              // снять анимацию покоя
     widget.text([ { text: "Куплено", color: "green" } ]);
+    player.sound("entity.experience_orb.pickup", 0.7, 1.0);
 }

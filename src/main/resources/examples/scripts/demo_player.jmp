@@ -1,0 +1,38 @@
+// demo_player.jmp: PlayerAPI. На приватном экране player - глобал, в обработчиках он же приходит аргументом.
+
+void refresh() {
+    screen.widget("info").text([
+        { text: player.name(), color: "white" }, { text: player.op() ? " (op)" : "", color: "gold" },
+        { text: "  HP " + player.health(), color: "red" },
+        { text: "  " + player.gamemode(), color: "gray" },
+    ]);
+    screen.widget("gamemode").text("Режим: " + player.gamemode());
+}
+
+void onOpen() { refresh(); }
+
+void heal(dyn widget, dyn player) {
+    player.health(20);
+    player.sound("entity.player.levelup", 0.6, 1.5);
+    refresh();
+}
+
+void hurt(dyn widget, dyn player) {
+    double hp = player.health();
+    player.health(hp > 2 ? hp - 2 : 1);
+    player.sound("entity.player.hurt", 0.8, 1.0);
+    refresh();
+}
+
+void gamemode(dyn widget, dyn player) {
+    // по кругу: survival → creative → adventure → spectator
+    String gm = player.gamemode();                       // в нижнем регистре: "survival", "creative", …
+    player.gamemode(gm == "survival" ? "creative" : gm == "creative" ? "adventure" : gm == "adventure" ? "spectator" : "survival");
+    refresh();
+}
+
+void whisper(dyn widget, dyn player) {
+    player.message("Привет, " + player.name() + "!", "#6bb647");
+    player.message([ { text: "Сообщение сегментами: ", color: "gray" }, { text: "работает", color: "green" } ]);
+    player.command("me машет рукой");            // команда от имени игрока
+}

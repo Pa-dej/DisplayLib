@@ -38,19 +38,18 @@ plugins/DisplayLib/
   config.jmc          # настройки плагина
   scripts.jma         # политика доступа скриптов
   screens/            # экраны (.jmc)
-    main_menu.jmc
-    script_demo.jmc
-    ...
-  scripts/            # скрипты (.jmp)
-    main_menu.jmp
-    script_demo.jmp
-    ...
+    demo_menu.jmc     # меню демонстраций: виджеты, наведение, кадры, скрипт, игрок, таймеры
+    demo_widgets.jmc  demo_hover.jmc  demo_frames.jmc  demo_script.jmc  demo_player.jmc  demo_timers.jmc
+    demo_public.jmc   # публичный экран (openpublic)
+    morph_menu.jmc  morph_shop.jmc  morph_settings.jmc   # morph-переходы
+  scripts/            # скрипты (.jmp) - по одному на экран, плюс lib/util.jmp (import)
 ```
 
 ### 3. Тестирование
 
 ```
-/displaylib open main_menu    # Открыть главное меню
+/displaylib open demo_menu    # Меню демонстраций (все демо связаны кнопками «Назад»)
+/displaylib openpublic demo_public <x> <y> <z>   # Публичный экран в мире
 /displaylib list              # Список экранов
 /displaylib close             # Закрыть экран
 /displaylib reload            # Перечитать экраны, политику и скрипты (админ)
@@ -109,7 +108,7 @@ dyn widgets = [
         text: [ { text: "Принести: ", color: "gray" }, { sprite: "item/iron_ingot" }, { text: " x3", color: "white" } ],
         position: [0, -1, 0],
     },
-    { id: "back",  type: "TEXT_BUTTON", text: "Назад",   position: [-3, -2, 0], onClick: { switchTo: "main_menu" } },
+    { id: "back",  type: "TEXT_BUTTON", text: "Назад",   position: [-3, -2, 0], onClick: { switchTo: "demo_menu" } },
     { id: "close", type: "TEXT_BUTTON", text: "Закрыть", position: [3, -2, 0],  onClick: "close" },
 ];
 ```
@@ -133,7 +132,7 @@ dyn widgets = [
 |---|---|
 | `onClick: true` | вызвать функцию скрипта, названную как `id` виджета: `void <id>(widget, player)` |
 | `onClick: "buySword"` | вызвать функцию `buySword(widget, player)` скрипта |
-| `onClick: { switchTo: "main_menu" }` | открыть другой экран на том же месте |
+| `onClick: { switchTo: "demo_menu" }` | открыть другой экран на том же месте |
 | `onClick: "close"` | закрыть экран |
 | `onClick: { action: "RUN_SCRIPT", function: "f" }` | полная форма (`NONE`, `SWITCH_SCREEN` + `target`, `CLOSE_SCREEN`, `RUN_SCRIPT` + `function`) |
 
@@ -149,7 +148,7 @@ dyn widgets = [
 на публичных экранах не показываются). `text` при этом - первый кадр. Из скрипта: `widget.frames(list, ticks)`,
 `widget.hoveredFrames(list, ticks)`; `widget.text(...)` отменяет анимацию. Кадры тикаются каждый серверный тик
 независимо от `tickRate` (одна общая задача; у экрана без кадров это проверка пустого списка).
-Пример: `frames_demo`.
+Пример: `demo_frames`.
 
 ### Статические виджеты (не тикаются)
 
@@ -189,7 +188,7 @@ dyn morph = { enabled: true, duration: 12, steps: 6 };   // или boolean morph
 При переключении действует `morph` открываемого экрана, при закрытии - закрываемого.
 Пока переход идёт, наведение и клики не обрабатываются. `steps` по умолчанию - `duration / 2`.
 Прозрачность текста не анимируется: клиент интерполирует `text_opacity` как знаковый байт.
-Пример: `morph_menu` → `morph_shop` → `morph_settings` (`/displaylib open morph_menu`).
+Пример: `morph_menu` → `morph_shop` → `morph_settings` (`/displaylib open morph_menu`); все `demo_*` экраны тоже переходят друг в друга через morph.
 
 ## Скрипт (`scripts/*.jmp`)
 

@@ -1,0 +1,52 @@
+// demo_hover: реакции на наведение.
+//  hoverAnimation: PRESET (SCALE, LIFT, BOUNCE, PULSE, WOBBLE, GLOW), SCALE, TRANSLATE, ROTATE, COMBINED;
+//  duration в тиках, easing (LINEAR, EASE_IN, EASE_OUT, EASE_IN_OUT, BOUNCE, ELASTIC), reverseOnExit.
+//  Кнопка без клика и без hover-реакции не тикается; ниже hover есть у всех, кроме заголовка.
+
+String id = "demo_hover";
+String screenType = "PRIVATE";
+int tickRate = 2;
+dyn morph = { enabled: true, duration: 6, steps: 3 };
+
+dyn background = { color: [40, 40, 48], alpha: 200, scale: [12, 5, 1] };
+
+dyn widgets = [
+    { id: "title", text: [ { text: "Наведение", color: "#6bb647" } ], position: [0, 1.125, -0.01], scale: [0.5, 0.5, 0.5], tolerance: [0, 0] },
+
+    { id: "scale", text: "SCALE", position: [-0.4, 0.85, -0.01], scale: [0.4, 0.4, 0.4], tolerance: [0.16, 0.05],
+      backgroundColor: [30, 32, 44], backgroundAlpha: 200, hoveredBackgroundColor: [60, 64, 88], hoveredBackgroundAlpha: 230,
+      hoverAnimation: { type: "PRESET", preset: "SCALE", intensity: 1.25, duration: 6, easing: "EASE_OUT" } },
+    { id: "lift", text: "LIFT", position: [0, 0.85, -0.01], scale: [0.4, 0.4, 0.4], tolerance: [0.13, 0.05],
+      backgroundColor: [30, 32, 44], backgroundAlpha: 200, hoveredBackgroundColor: [60, 64, 88], hoveredBackgroundAlpha: 230,
+      hoverAnimation: { type: "PRESET", preset: "LIFT", duration: 6, easing: "EASE_OUT" } },
+    { id: "bounce", text: "BOUNCE", position: [0.4, 0.85, -0.01], scale: [0.4, 0.4, 0.4], tolerance: [0.2, 0.05],
+      backgroundColor: [30, 32, 44], backgroundAlpha: 200, hoveredBackgroundColor: [60, 64, 88], hoveredBackgroundAlpha: 230,
+      hoverAnimation: { type: "PRESET", preset: "BOUNCE", duration: 10, easing: "BOUNCE" } },
+
+    { id: "translate", text: "TRANSLATE", position: [-0.4, 0.6, -0.01], scale: [0.4, 0.4, 0.4], tolerance: [0.27, 0.05],
+      backgroundColor: [20, 90, 40], backgroundAlpha: 200, hoveredBackgroundColor: [40, 140, 70], hoveredBackgroundAlpha: 230,
+      hoverAnimation: { type: "TRANSLATE", offset: [0.05, 0, 0], duration: 4, easing: "LINEAR" } },
+    { id: "rotate", text: "ROTATE", position: [0.4, 0.6, -0.01], scale: [0.4, 0.4, 0.4], tolerance: [0.2, 0.05],
+      backgroundColor: [90, 70, 20], backgroundAlpha: 200, hoveredBackgroundColor: [140, 110, 40], hoveredBackgroundAlpha: 230,
+      hoverAnimation: { type: "ROTATE", rotation: [0, 0, 8], axis: [0, 0, 1], duration: 6, easing: "EASE_IN_OUT" } },
+
+    // COMBINED: несколько эффектов разом
+    { id: "combined", text: "COMBINED", position: [0, 0.35, -0.01], scale: [0.4, 0.4, 0.4], tolerance: [0.26, 0.05],
+      backgroundColor: [84, 19, 91], backgroundAlpha: 200, hoveredBackgroundColor: [138, 37, 143], hoveredBackgroundAlpha: 230,
+      hoverAnimation: { type: "COMBINED", duration: 8, easing: "EASE_OUT", effects: [
+          { type: "SCALE", scale: [1.15, 1.15, 1] },
+          { type: "TRANSLATE", offset: [0, 0.03, 0] },
+      ] } },
+
+    // только смена текста и фона - без трансформации
+    { id: "plain", text: "Только фон", hoveredText: [ { text: "Только фон", color: "yellow" } ],
+      position: [0, 0.12, -0.01], scale: [0.35, 0.35, 0.35], tolerance: [0.2, 0.045],
+      backgroundColor: [30, 32, 44], backgroundAlpha: 200, hoveredBackgroundColor: [60, 64, 88], hoveredBackgroundAlpha: 230 },
+
+    { id: "back", text: "Назад", position: [-0.5, 0.12, -0.01], scale: [0.35, 0.35, 0.35], tolerance: [0.13, 0.045],
+      backgroundColor: [60, 60, 70], backgroundAlpha: 200, hoveredBackgroundColor: [90, 90, 110], hoveredBackgroundAlpha: 230,
+      onClick: { switchTo: "demo_menu" } },
+    { id: "close", text: "Закрыть", position: [0.5, 0.12, -0.01], scale: [0.35, 0.35, 0.35], tolerance: [0.18, 0.045],
+      backgroundColor: [90, 30, 30], backgroundAlpha: 180, hoveredBackgroundColor: [150, 50, 50], hoveredBackgroundAlpha: 220,
+      onClick: { close: true } },
+];

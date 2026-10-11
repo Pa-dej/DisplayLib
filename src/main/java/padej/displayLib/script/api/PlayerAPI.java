@@ -81,9 +81,13 @@ public final class PlayerAPI {
         player.setHealth(Math.max(0, Math.min(20, value)));
     }
 
-    /** Сообщение в чат. */
+    /** Сообщение в чат: строка (с §-кодами) или сегменты {@code [ {text, color}, {sprite} ]}, как в файле экрана. */
     public void message(Object text) {
-        player.sendMessage(String.valueOf(text));
+        if (text instanceof java.util.List<?> || text instanceof java.util.Map<?, ?>) {
+            player.sendMessage(padej.displayLib.ui.ScreenSupport.parseFormattedText(text));
+        } else {
+            player.sendMessage(String.valueOf(text));
+        }
     }
 
     /** Сообщение в чат с hex-цветом вида {@code "#RRGGBB"}. */

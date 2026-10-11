@@ -1,0 +1,46 @@
+// demo_widgets: три типа виджетов и форматированный текст.
+//  TEXT_BUTTON  - TextDisplay: строка или сегменты { text, color } и спрайты { sprite, atlas }; фон, hover-фон, выравнивание
+//  SPRITE_BUTTON - TextDisplay с одним спрайтом атласа (8×8 текстовых px = 0.2 блока при scale 1)
+//  ITEM_BUTTON  - ItemDisplay с предметом; glowOnHover - свечение при наведении
+// Тип можно не писать: есть material → ITEM_BUTTON, есть sprite → SPRITE_BUTTON, иначе TEXT_BUTTON.
+
+String id = "demo_widgets";
+String screenType = "PRIVATE";
+int tickRate = 4;
+dyn morph = { enabled: true, duration: 6, steps: 3 };
+
+dyn background = { color: [40, 40, 48], alpha: 200, scale: [12, 5, 1] };
+
+dyn widgets = [
+    { id: "title", text: [ { text: "Виджеты", color: "#6bb647" } ], position: [0, 1.125, -0.01], scale: [0.5, 0.5, 0.5], tolerance: [0, 0] },
+
+    // надпись: сегменты с цветами и спрайтами внутри текста; без клика и hover не тикается вовсе
+    { id: "label", text: [ { text: "Принести ", color: "gray" }, { sprite: "iron_ingot" }, { text: " x3  ", color: "white" },
+                           { sprite: "diamond" }, { text: " x1", color: "white" } ],
+      position: [0, 0.9, -0.01], scale: [0.4, 0.4, 0.4], tolerance: [0, 0], backgroundColor: [0, 0, 0], backgroundAlpha: 90 },
+
+    // текстовая кнопка: другой текст и фон при наведении, подсказка (title над хотбаром)
+    { id: "text_btn", text: "Текст", hoveredText: [ { text: "Текст!", color: "yellow" } ],
+      position: [-0.4, 0.6, -0.01], scale: [0.4, 0.4, 0.4], tolerance: [0.16, 0.05],
+      backgroundColor: [30, 32, 44], backgroundAlpha: 200, hoveredBackgroundColor: [60, 64, 88], hoveredBackgroundAlpha: 230,
+      tooltip: [ { text: "TEXT_BUTTON", color: "aqua" } ], tooltipDelay: 5, onClick: true },
+
+    // спрайт-кнопка: спрайт атласа, при наведении другой; голое имя плагин сам ищет среди items/blocks/effects
+    { id: "sprite_btn", sprite: "block/bricks", hoveredSprite: "block/cracked_stone_bricks",
+      position: [0, 0.6, -0.01], scale: [1.2, 1.2, 1], tolerance: [0.12, 0.12],
+      backgroundAlpha: 0, tooltip: "SPRITE_BUTTON", onClick: true },
+
+    // предмет: GUI-рендер модели, свечение при наведении
+    { id: "item_btn", material: "DIAMOND_SWORD", glowOnHover: true, glowColor: [100, 220, 255],
+      position: [0.4, 0.6, -0.01], scale: [0.2, 0.2, 0.2], tolerance: [0.12, 0.12],
+      tooltip: "ITEM_BUTTON", onClick: true },
+
+    { id: "status", text: "Нажми на виджет", position: [0, 0.3, -0.01], scale: [0.35, 0.35, 0.35], tolerance: [0, 0], backgroundAlpha: 0 },
+
+    { id: "back", text: "Назад", position: [-0.45, 0.12, -0.01], scale: [0.35, 0.35, 0.35], tolerance: [0.13, 0.045],
+      backgroundColor: [60, 60, 70], backgroundAlpha: 200, hoveredBackgroundColor: [90, 90, 110], hoveredBackgroundAlpha: 230,
+      onClick: { switchTo: "demo_menu" } },
+    { id: "close", text: "Закрыть", position: [0.45, 0.12, -0.01], scale: [0.35, 0.35, 0.35], tolerance: [0.18, 0.045],
+      backgroundColor: [90, 30, 30], backgroundAlpha: 180, hoveredBackgroundColor: [150, 50, 50], hoveredBackgroundAlpha: 220,
+      onClick: { close: true } },
+];

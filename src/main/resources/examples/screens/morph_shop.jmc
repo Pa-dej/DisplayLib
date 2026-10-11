@@ -1,33 +1,90 @@
-// morph_shop: второй экран демонстрации morph (см. morph_menu).
-// Фон шире и другого цвета, title уехал влево и стал зелёным "Магазин", hint сменил текст,
-// shop превратился в "Назад", item - в алмаз на другом месте, появились товары, settings исчез.
+// morph_shop: экран DisplayLib (конфиг Jumper, .jmc)
 
 String id = "morph_shop";
 String screenType = "PRIVATE";
-int tickRate = 2;
+int tickRate = 4;
+dyn morph = { enabled: true, duration: 8, steps: 4 };
 
-dyn morph = { enabled: true, duration: 12, steps: 6 };
-
-dyn background = { color: [18, 40, 70], alpha: 220, scale: [12, 6, 1] };
+dyn background = { color: [40, 40, 48], alpha: 200, scale: [12, 5, 1] };
 
 dyn widgets = [
-    { id: "title", text: [ { text: "Магазин", color: "#55FF55" } ], position: [-3.5, 2, -0.01], scale: [1, 1, 1], backgroundAlpha: 0 },
-    { id: "hint", text: "Товары дня - нажми, чтобы купить", position: [0.5, 2, -0.01], scale: [0.4, 0.4, 0.4],
-      backgroundColor: [0, 0, 0], backgroundAlpha: 120 },
-
-    { id: "buy_sword", type: "ITEM_BUTTON", material: "DIAMOND_SWORD", position: [-2.5, 0.3, -0.01], scale: [0.7, 0.7, 0.7], tolerance: [0.35, 0.35], tooltip: "Алмазный меч - 50" },
-    { id: "buy_bow", type: "ITEM_BUTTON", material: "BOW", position: [-0.8, 0.3, -0.01], scale: [0.7, 0.7, 0.7], tolerance: [0.35, 0.35], tooltip: "Лук - 30" },
-    { id: "buy_potion", type: "ITEM_BUTTON", material: "POTION", position: [0.9, 0.3, -0.01], scale: [0.7, 0.7, 0.7], tolerance: [0.35, 0.35], tooltip: "Зелье - 15" },
-    { id: "price", text: [ { text: "50", color: "gold" }, { text: "   30", color: "gold" }, { text: "   15", color: "gold" } ],
-      position: [-0.8, -0.5, -0.01], scale: [0.5, 0.5, 0.5], backgroundAlpha: 0 },
-
-    { id: "item", type: "ITEM_BUTTON", material: "DIAMOND", position: [3.5, 0.3, -0.01], scale: [1, 1, 1], tolerance: [0.5, 0.5],
-      tooltip: "Валюта", glowOnHover: false },
-
-    { id: "shop", text: "Назад", position: [-4, -2.2, -0.01], scale: [0.6, 0.6, 0.6],
-      backgroundColor: [60, 60, 70], backgroundAlpha: 200, hoveredBackgroundColor: [90, 90, 110], hoveredBackgroundAlpha: 230,
-      tolerance: [0.4, 0.2], hoverAnimation: { type: "PRESET", preset: "SCALE" }, onClick: { switchTo: "morph_menu" } },
-    { id: "close", text: "Закрыть", position: [4.5, -2.4, -0.01], scale: [0.4, 0.4, 0.4],
-      backgroundColor: [90, 30, 30], backgroundAlpha: 180, hoveredBackgroundColor: [150, 50, 50], hoveredBackgroundAlpha: 220,
-      tolerance: [0.35, 0.15], onClick: "close" },
+  {
+    id: "title",
+    type: "TEXT_BUTTON",
+    text: [ { text: "Morph Shop", color: "#aaaaaa" } ],
+    position: [0, 1.125, -0.01],
+    scale: [0.5, 0.5, 0.8],
+    tolerance: [0, 0],
+  },
+  {
+    id: "hint",
+    type: "TEXT_BUTTON",
+    text: [ { text: "test ", color: "#c0c0c0" }, { atlas: "minecraft:items", sprite: "item/gold_ingot" } ],
+    position: [-0.005, 0, -0.01],
+    scale: [0.4, 0.4, 0.4],
+    tolerance: [0, 0],
+  },
+  {
+    id: "shop",
+    type: "TEXT_BUTTON",
+    text: "Menu",
+    position: [0.62, 0.7, -0.01],
+    scale: [0.4, 0.4, 0.6],
+    tolerance: [0.12, 0.05],
+    backgroundColor: [128, 128, 192],
+    backgroundAlpha: 200,
+    hoveredBackgroundColor: [128, 128, 255],
+    hoveredBackgroundAlpha: 230,
+    hoverAnimation: { type: "TRANSLATE", offset: [-0.07, 0, 0], duration: 4, easing: "LINEAR" },
+    onClick: { switchTo: "morph_menu" },
+  },
+  {
+    id: "settings",
+    type: "TEXT_BUTTON",
+    text: "Настройки",
+    position: [0.475, 0.5, -0.01],
+    scale: [0.4, 0.4, 0.6],
+    tolerance: [0.27, 0.05],
+    backgroundColor: [90, 70, 20],
+    backgroundAlpha: 200,
+    hoveredBackgroundColor: [140, 110, 40],
+    hoveredBackgroundAlpha: 230,
+    hoverAnimation: { type: "TRANSLATE", offset: [-0.07, 0, 0], duration: 4, easing: "LINEAR" },
+    onClick: { switchTo: "morph_settings" },
+  },
+  {
+    id: "item",
+    type: "TEXT_BUTTON",
+    text: [ { atlas: "minecraft:particles", sprite: "small_gust_0" } ],
+    frames: [ [ { atlas: "minecraft:particles", sprite: "small_gust_0" } ], [ { atlas: "minecraft:particles", sprite: "small_gust_1" } ], [ { atlas: "minecraft:particles", sprite: "small_gust_2" } ], [ { atlas: "minecraft:particles", sprite: "small_gust_3" } ], [ { atlas: "minecraft:particles", sprite: "small_gust_4" } ], [ { atlas: "minecraft:particles", sprite: "small_gust_5" } ], [ { atlas: "minecraft:particles", sprite: "small_gust_6" } ] ],
+    frameInterval: 4,
+    hoveredFrames: [ [ { atlas: "minecraft:particles", sprite: "soul_0" } ], [ { atlas: "minecraft:particles", sprite: "soul_1" } ], [ { atlas: "minecraft:particles", sprite: "soul_2" } ], [ { atlas: "minecraft:particles", sprite: "soul_3" } ], [ { atlas: "minecraft:particles", sprite: "soul_4" } ], [ { atlas: "minecraft:particles", sprite: "soul_5" } ], [ { atlas: "minecraft:particles", sprite: "soul_6" } ], [ { atlas: "minecraft:particles", sprite: "soul_7" } ], [ { atlas: "minecraft:particles", sprite: "soul_8" } ], [ { atlas: "minecraft:particles", sprite: "soul_9" } ], [ { atlas: "minecraft:particles", sprite: "soul_10" } ] ],
+    position: [-0.65, 0.425, -0.01],
+    scale: [1, 1, 1],
+    tolerance: [0.1, 0.1],
+    tooltip: "Яблоко",
+  },
+  {
+    id: "item_2",
+    type: "TEXT_BUTTON",
+    text: [ { atlas: "minecraft:gui", sprite: "icon/trial_available" }, { text: "", color: "gray" } ],
+    position: [-0.65, 0.625, -0.01],
+    scale: [1, 1, 1],
+    tolerance: [0, 0],
+    tooltip: "Яблоко",
+  },
+  {
+    id: "close",
+    type: "TEXT_BUTTON",
+    text: "Закрыть",
+    position: [0.53, 0.3, -0.01],
+    scale: [0.4, 0.4, 0.4],
+    tolerance: [0.21, 0.05],
+    backgroundColor: [90, 30, 30],
+    backgroundAlpha: 180,
+    hoveredBackgroundColor: [150, 50, 50],
+    hoveredBackgroundAlpha: 220,
+    hoverAnimation: { type: "TRANSLATE", offset: [-0.06, 0, 0], duration: 4, easing: "LINEAR" },
+    onClick: { close: true },
+  },
 ];

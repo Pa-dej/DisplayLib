@@ -1,0 +1,40 @@
+// demo_script: API скрипта - screen, widget, storage, log и хуки onOpen/onClose. Скрипт: scripts/demo_script.jmp.
+//  screen.widget(id)         - обёртка виджета: text, hoveredText, bgColor, bgAlpha, visible, enabled, tooltip, sprite, frames
+//  screen.data(key[, value]) - данные экрана, живут пока он открыт
+//  storage                   - хранилище игрока: переживает закрытие экрана (до выхода игрока)
+//  onClick: true             - вызвать функцию с именем виджета; { function: "f" } - другую
+
+String id = "demo_script";
+String screenType = "PRIVATE";
+int tickRate = 4;
+String script = "demo_script.jmp";
+dyn morph = { enabled: true, duration: 6, steps: 3 };
+
+dyn background = { color: [40, 40, 48], alpha: 200, scale: [12, 5, 1] };
+
+dyn widgets = [
+    { id: "title", text: [ { text: "Скрипт", color: "#6bb647" } ], position: [0, 1.125, -0.01], scale: [0.5, 0.5, 0.5], tolerance: [0, 0] },
+
+    { id: "counter", text: "Счётчик: 0", position: [-0.35, 0.9, -0.01], scale: [0.4, 0.4, 0.4], tolerance: [0.3, 0.05],
+      backgroundColor: [30, 32, 44], backgroundAlpha: 200, hoveredBackgroundColor: [60, 64, 88], hoveredBackgroundAlpha: 230, onClick: true },
+    { id: "reset", text: "Сброс", position: [0.4, 0.9, -0.01], scale: [0.4, 0.4, 0.4], tolerance: [0.16, 0.05],
+      backgroundColor: [90, 30, 30], backgroundAlpha: 180, hoveredBackgroundColor: [150, 50, 50], hoveredBackgroundAlpha: 220, onClick: true },
+
+    { id: "toggle", text: "Скрыть метку", position: [-0.35, 0.7, -0.01], scale: [0.4, 0.4, 0.4], tolerance: [0.33, 0.05],
+      backgroundColor: [30, 32, 44], backgroundAlpha: 200, hoveredBackgroundColor: [60, 64, 88], hoveredBackgroundAlpha: 230, onClick: true },
+    { id: "lock", text: "Заблокировать", position: [0.4, 0.7, -0.01], scale: [0.4, 0.4, 0.4], tolerance: [0.37, 0.05],
+      backgroundColor: [30, 32, 44], backgroundAlpha: 200, hoveredBackgroundColor: [60, 64, 88], hoveredBackgroundAlpha: 230, onClick: true },
+
+    // метка, которой управляют кнопки выше; без клика и hover - статическая
+    { id: "label", text: [ { text: "Метка ", color: "gray" }, { sprite: "emerald" } ], position: [0, 0.5, -0.01], scale: [0.4, 0.4, 0.4], tolerance: [0, 0],
+      backgroundColor: [0, 0, 0], backgroundAlpha: 90 },
+
+    { id: "status", text: "onOpen ещё не вызван", position: [0, 0.3, -0.01], scale: [0.3, 0.3, 0.3], tolerance: [0, 0], backgroundAlpha: 0 },
+
+    { id: "back", text: "Назад", position: [-0.45, 0.12, -0.01], scale: [0.35, 0.35, 0.35], tolerance: [0.13, 0.045],
+      backgroundColor: [60, 60, 70], backgroundAlpha: 200, hoveredBackgroundColor: [90, 90, 110], hoveredBackgroundAlpha: 230,
+      onClick: { switchTo: "demo_menu" } },
+    { id: "close", text: "Закрыть", position: [0.45, 0.12, -0.01], scale: [0.35, 0.35, 0.35], tolerance: [0.18, 0.045],
+      backgroundColor: [90, 30, 30], backgroundAlpha: 180, hoveredBackgroundColor: [150, 50, 50], hoveredBackgroundAlpha: 220,
+      onClick: { close: true } },
+];
