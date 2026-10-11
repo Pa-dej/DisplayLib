@@ -14,6 +14,7 @@ import { ATLASES } from '../render/sprites';
 import AnimationEditor from './AnimationEditor.vue';
 import { state, currentScreen, currentScriptInfo, screenIds, snapshot, touch, removeWidget, duplicateWidget, ensureHandler, showScript } from '../store';
 import { textSizeBlocks } from '../render/scene';
+import { clickWorks, hasHoverVisual } from '../lint';
 import { calibration } from '../render/metrics';
 
 const props = defineProps<{ widget: Widget }>();
@@ -33,18 +34,10 @@ const idDup = computed(() => !!w.value.id && (currentScreen.value?.widgets.filte
 const fnMissing = computed(() => action.value === 'RUN_SCRIPT' && !!w.value.onClick?.function && !!currentScriptInfo.value && !funcs.value.includes(w.value.onClick.function));
 /** Как плагин: будет ли виджет обсчитываться на тиках (рабочий клик или видимая реакция на наведение). */
 const interactive = computed(() => {
-  const x = w.value; void state.revision;
-  const clickable = action.value === 'SWITCH_SCREEN' ? !!x.onClick?.target && currentScreen.value?.screenType !== 'PUBLIC'
-    : action.value === 'CLOSE_SCREEN' ? currentScreen.value?.screenType !== 'PUBLIC'
-    : action.value === 'RUN_SCRIPT' ? !!x.onClick?.function && (!currentScriptInfo.value || funcs.value.includes(x.onClick.function))
-    : false;
-  if (clickable || x.tooltip != null || (x.hoverAnimation && currentScreen.value?.screenType !== 'PUBLIC')) return true;
-  if (x.type === 'ITEM_BUTTON') return x.glowOnHover;
-  if (x.type === 'SPRITE_BUTTON' && x.hoveredSprite && x.hoveredSprite !== x.sprite) return true;
-  if (x.type === 'SPRITE_BUTTON' && x.hoveredSpriteColor && x.hoveredSpriteColor !== x.spriteColor) return true;
-  if (x.hoveredText != null && x.hoveredText !== '') return true;
-  if (x.backgroundAlpha !== x.hoveredBackgroundAlpha) return true;
-  return x.backgroundAlpha > 0 && x.backgroundColor.join() !== x.hoveredBackgroundColor.join();
+  const x = w.value; const s = currentScreen.value; void state.revision;
+  if (!s) return false;
+  if (x.tolerance[0] <= 0 || x.tolerance[1] <= 0) return false;
+  return clickWorks(x, s, currentScriptInfo.value, screenIds.value).ok || hasHoverVisual(x, s);
 });
 
 function setType(t: string) {

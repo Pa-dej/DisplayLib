@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import Icon from './Icon.vue';
-import { state, currentScreen, addWidget, removeWidget, duplicateWidget, moveWidgetOrder, closeDoc, toggleHidden, toggleLocked, select as selectWidget, isSelected } from '../store';
+import { state, currentScreen, addWidget, removeWidget, duplicateWidget, moveWidgetOrder, closeDoc, toggleHidden, toggleLocked, select as selectWidget, isSelected, issuesByWidget, currentIssues } from '../store';
+import { worstLevel } from '../lint';
 import { richToPlain } from '../model/screen';
 
 function select(path: string) { state.current = path; }
@@ -34,6 +35,7 @@ function label(w: { id: string; type: string; text: any; material: string; sprit
       <div v-for="(w, i) in currentScreen.widgets" :key="w.uid" class="nav-item" :class="{ active: w.uid === state.selected, extra: w.uid !== state.selected && isSelected(w.uid), hidden: w.hidden }" @click="selectWidget(w.uid, $event.shiftKey || $event.ctrlKey || $event.metaKey)" title="Shift/Ctrl+клик - добавить к выделению" @mouseenter="state.hovered = w.uid" @mouseleave="state.hovered = null">
         <span class="kind">{{ w.type === 'TEXT_BUTTON' ? 'T' : w.type === 'SPRITE_BUTTON' ? 'S' : 'I' }}</span>
         <span class="name">{{ label(w) }}</span>
+        <span v-if="issuesByWidget.get(w.uid)?.length" class="issue" :class="worstLevel(issuesByWidget.get(w.uid)!)" :title="issuesByWidget.get(w.uid)!.map((i) => i.text).join('\n')">{{ worstLevel(issuesByWidget.get(w.uid)!) === 'info' ? '○' : '!' }}</span>
         <span class="muted" v-if="w.onClick && w.onClick.action !== 'NONE'"><Icon :name="w.onClick.action === 'RUN_SCRIPT' ? 'code' : w.onClick.action === 'SWITCH_SCREEN' ? 'exchange-alt' : 'times'" :size="11" /></span>
         <button class="btn sm icon flag" :class="{ on: w.hidden }" :title="w.hidden ? 'Показать' : 'Скрыть (не рисуется, не участвует в привязках)'" @click.stop="toggleHidden(w.uid)"><Icon :name="w.hidden ? 'eye-slash' : 'eye'" :size="11" /></button>
         <button class="btn sm icon flag" :class="{ on: w.locked }" :title="w.locked ? 'Разблокировать' : 'Заблокировать (не выбирается и не двигается в сцене)'" @click.stop="toggleLocked(w.uid)"><Icon :name="w.locked ? 'lock' : 'lock-open'" :size="11" /></button>

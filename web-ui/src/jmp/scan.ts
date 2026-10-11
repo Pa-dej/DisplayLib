@@ -9,13 +9,16 @@ export interface ScriptInfo {
   functions: string[];
   hooks: string[];
   imports: string[];
+  /** Функции с пустым телом ({}, только ; или комментарии) - плагин считает такой клик «ничего». */
+  emptyFunctions: string[];
 }
 
 export function scanScript(source: string): ScriptInfo {
   const functions: string[] = [];
   const hooks: string[] = [];
   const imports: string[] = [];
-  const re = /^[ \t]*(?:void|dyn|int|long|double|boolean|String|[A-Z][A-Za-z0-9_]*)\s+([A-Za-z_][A-Za-z0-9_]*)\s*\(/gm;
+  const emptyFunctions: string[] = [];
+  const re = /^[ \t]*(?:void|dyn|int|long|double|boolean|String|[A-Z][A-Za-z0-9_]*)\s+([A-Za-z_][A-Za-z0-9_]*)\s*\(([^)]*)\)\s*\{/gm;
   let m: RegExpExecArray | null;
   const seen = new Set<string>();
   while ((m = re.exec(source))) {
@@ -24,10 +27,15 @@ export function scanScript(source: string): ScriptInfo {
     if (seen.has(name)) continue;
     seen.add(name);
     if (HOOKS.has(name)) hooks.push(name); else functions.push(name);
+    // тело до парной скобки: пустое, если там только пробелы, ; и комментарии
+    let depth = 1, i = re.lastIndex;
+    for (; i < source.length && depth > 0; i++) { const ch = source[i]; if (ch === '{') depth++; else if (ch === '}') depth--; }
+    const body = source.slice(re.lastIndex, i - 1).replace(/\/\/[^\n]*|\/\*[\s\S]*?\*\//g, '');
+    if (!/[^\s;{}]/.test(body)) emptyFunctions.push(name);
   }
   const ir = /^\s*import\s+"([^"]+)"\s*;/gm;
   while ((m = ir.exec(source))) imports.push(m[1]);
-  return { functions, hooks, imports };
+  return { functions, hooks, imports, emptyFunctions };
 }
 
 /** Заготовка скрипта для нового экрана с обработчиками из его виджетов. */

@@ -5,7 +5,7 @@ import type { Screen } from '../model/screen';
 import { defaultBackground, ANCHOR_PRESETS, anchorPresetName, type Vec2 } from '../model/screen';
 import VecInput from './fields/VecInput.vue';
 import ColorInput from './fields/ColorInput.vue';
-import { state, currentDoc, snapshot, touch, deleteCurrent, showScript, scriptNameOf, scriptStatus, scaleScreen } from '../store';
+import { state, currentDoc, snapshot, touch, deleteCurrent, showScript, scriptNameOf, scriptStatus, scaleScreen, currentIssues } from '../store';
 import { calibration } from '../render/metrics';
 import { layout } from '../render/text';
 
@@ -56,6 +56,13 @@ const idBad = computed(() => !/^[A-Za-z0-9_\-]+$/.test(s.value.id));
       <div class="hint" v-else>Приватный: <code>/dlib open {{ s.id }}</code> - экран появляется в 2 блоках перед игроком.</div>
     </div>
 
+    <div class="section" v-if="currentIssues.length">
+      <h3>Проверка<span class="hint">{{ currentIssues.length }}</span></h3>
+      <div v-for="(i, k) in currentIssues" :key="k" class="issue-row" :class="i.level" @click="i.uid && (state.selected = i.uid)" :title="i.uid ? 'Выбрать виджет' : ''">
+        <span class="mark">{{ i.level === 'error' ? '✖' : i.level === 'warn' ? '!' : '○' }}</span><span>{{ i.text }}</span>
+      </div>
+      <div class="hint">Правила те же, что у плагина при загрузке экрана (ScreenAnalyzer): статичные виджеты не обсчитываются, это нормально для надписей.</div>
+    </div>
     <div class="section">
       <h3>Размер экрана</h3>
       <div class="field"><label>Масштаб ×</label><div class="row">

@@ -6,6 +6,7 @@ import { parseJmc } from './jmc/parser';
 import { tableToScreen } from './jmc/toModel';
 import { screenToJmc } from './jmc/writer';
 import { scanScript, scaffoldScript } from './jmp/scan';
+import { lintScreen, type Issue } from './lint';
 import * as fs from './fs';
 
 export interface ScreenDoc {
@@ -73,6 +74,9 @@ export const selectedWidget = computed(() => currentScreen.value?.widgets.find((
 /** Функции/хуки скрипта текущего экрана - по его тексту (файл или живой шаблон). */
 export const currentScriptInfo = computed(() => { void state.revision; const d = currentDoc.value; return d ? scanScript(scriptTextOf(d)) : null; });
 export const screenIds = computed(() => state.docs.map((d) => d.screen.id));
+/** Предупреждения по текущему экрану (как их увидит плагин). */
+export const currentIssues = computed<Issue[]>(() => { void state.revision; const s = currentScreen.value; return s ? lintScreen(s, currentScriptInfo.value, screenIds.value) : []; });
+export const issuesByWidget = computed(() => { const m = new Map<string, Issue[]>(); for (const i of currentIssues.value) if (i.uid) { const a = m.get(i.uid) ?? []; a.push(i); m.set(i.uid, a); } return m; });
 
 export function notify(msg: string): void { state.message = msg; state.error = ''; setTimeout(() => { if (state.message === msg) state.message = ''; }, 4000); }
 export function fail(msg: string): void { state.error = msg; console.error(msg); }
