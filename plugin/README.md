@@ -303,6 +303,8 @@ int scriptTimeoutMs = 1000;    // сторожевой таймер: вызов 
 
 ## Сборка
 
+Плагин живёт в `plugin/` монорепозитория; редактор - в `web-ui/`, документация - в `docs/` (https://pa-dej.github.io/DisplayLib/).
+
 Jumper подключается через JitPack: `com.github.jumper-lang:jumper:<тег релиза>` (см. `build.gradle.kts`, сейчас `v0.11.2`).
 Gradle 8.8 запускайте на JDK 21.
 

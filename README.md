@@ -1,0 +1,27 @@
+# DisplayLib
+
+Экранные интерфейсы из display-сущностей для Paper 1.21.11: экраны описываются конфигами Jumper (`.jmc`),
+поведение — скриптами (`.jmp`), а собираются в визуальном редакторе прямо в браузере.
+
+**Документация и редактор:** https://pa-dej.github.io/DisplayLib/ · редактор: https://pa-dej.github.io/DisplayLib/editor/
+
+```
+plugin/    плагин (Gradle, JDK 21)      - см. plugin/README.md
+web-ui/    редактор экранов (Vite + Vue 3 + Three.js)
+docs/      сайт документации (VitePress)
+```
+
+## Сборка
+
+```bash
+cd plugin && ./gradlew build          # jar в plugin/build/libs/
+cd web-ui && npm install && npm run dev
+cd docs   && npm install && npm run dev
+```
+
+Релиз плагина — тег `v*`: workflow `plugin` собирает jar и прикладывает к GitHub Release.
+Сайт собирается workflow `pages` при изменениях в `docs/` или `web-ui/` (документация в корень, редактор в `/editor/`).
+
+## Лицензия
+
+MIT
