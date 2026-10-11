@@ -8,7 +8,7 @@ import ImportDialog from './components/ImportDialog.vue';
 import AssetBrowser from './components/AssetBrowser.vue';
 import Splitter from './components/Splitter.vue';
 import ExportDialog from './components/ExportDialog.vue';
-import { state, saveCurrent, saveAll, undo, redo, newScreen, currentDoc, restoreSession, notify, fail } from './store';
+import { state, saveCurrent, saveAll, undo, redo, canUndo, canRedo, newScreen, currentDoc, restoreSession, notify, fail } from './store';
 import { font } from './render/font';
 import { loadSheet } from './render/items';
 import { loadSpriteIndex } from './render/sprites';
@@ -32,11 +32,13 @@ onMounted(async () => {
   restoreSession();
   if (!state.docs.length) newScreen('new_screen');
   window.addEventListener('keydown', (e) => {
+    // e.code не зависит от раскладки (KeyZ и на русской); в textarea (скрипт, импорт) - родной undo браузера
     const tag = (e.target as HTMLElement)?.tagName;
-    const typing = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
-    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') { e.preventDefault(); e.shiftKey ? saveAll() : saveCurrent(); }
-    else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z' && !typing) { e.preventDefault(); e.shiftKey ? redo() : undo(); }
-    else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y' && !typing) { e.preventDefault(); redo(); }
+    const inTextarea = tag === 'TEXTAREA';
+    const mod = e.ctrlKey || e.metaKey;
+    if (mod && e.code === 'KeyS') { e.preventDefault(); e.shiftKey ? saveAll() : saveCurrent(); }
+    else if (mod && e.code === 'KeyZ' && !inTextarea) { e.preventDefault(); e.shiftKey ? redo() : undo(); }
+    else if (mod && e.code === 'KeyY' && !inTextarea) { e.preventDefault(); redo(); }
   });
 });
 </script>
@@ -51,6 +53,10 @@ onMounted(async () => {
         <button class="btn" @click="exportOpen = true" :disabled="!currentDoc"><Icon name="file-export" /> Экспорт</button>
         <button class="btn" @click="assetsOpen = true" :disabled="!currentDoc" title="Все спрайты клиента по категориям; клик добавляет спрайт на экран"><Icon name="icons" /> Ассеты</button>
         <button class="btn primary" @click="saveCurrent" :disabled="!currentDoc" title="Скачать screens/<id>.jmc (и scripts/<id>.jmp, если нужен)"><Icon name="download" /> Скачать <kbd style="opacity:.7">Ctrl+S</kbd></button>
+      </div>
+      <div class="btn-group" style="margin-left:6px">
+        <button class="btn icon" @click="undo()" :disabled="!canUndo" title="Отменить (Ctrl+Z)"><Icon name="undo" /></button>
+        <button class="btn icon" @click="redo()" :disabled="!canRedo" title="Вернуть (Ctrl+Y / Ctrl+Shift+Z)"><Icon name="redo" /></button>
       </div>
       <div class="spacer"></div>
       <span class="status" :class="{ error: !!state.error }">{{ state.error || state.message }}</span>

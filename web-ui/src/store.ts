@@ -24,6 +24,8 @@ export interface ScreenDoc {
   scriptDirty: boolean;
 }
 
+interface HistoryEntry { path: string; before: Screen; json: string }
+
 interface State {
   docs: ScreenDoc[];
   current: string | null;      // path текущего экрана
@@ -33,8 +35,8 @@ interface State {
   openScript: number;
   message: string;
   error: string;
-  undo: { path: string; before: Screen }[];
-  redo: { path: string; before: Screen }[];
+  undo: HistoryEntry[];
+  redo: HistoryEntry[];
   revision: number;            // растёт при любой правке модели: сцена перестраивается
   posRevision: number;         // только позиция виджета (перетаскивание): сцена двигает узел
   busy: boolean;
@@ -57,28 +59,64 @@ export function fail(msg: string): void { state.error = msg; console.error(msg);
 
 // ---------------------------------------------------------------- правки с историей
 
+// История: snapshot() зовут перед правкой (в т.ч. по focus поля - «на всякий случай»), поэтому
+// снимок, совпадающий с вершиной стека, не дублируется, а undo пропускает шаги без изменений.
+// Стек redo очищается только когда после снимка действительно что-то поменялось (в touch()).
+let lastSnapJson = '';
+let coalesceKey: string | null = null;
+let coalesceUntil = 0;
+
+function screenJson(s: Screen): string { return JSON.stringify(s); }
+
 /** Запомнить состояние перед правкой (один шаг undo). */
 export function snapshot(): void {
   const d = currentDoc.value; if (!d) return;
-  state.undo.push({ path: d.path, before: cloneDeep(d.screen) });
-  if (state.undo.length > 100) state.undo.shift();
-  state.redo = [];
+  const json = screenJson(d.screen);
+  lastSnapJson = json;
+  coalesceKey = null;
+  const top = state.undo[state.undo.length - 1];
+  if (top && top.path === d.path && top.json === json) return; // с прошлого снимка ничего не менялось
+  state.undo.push({ path: d.path, before: cloneDeep(d.screen), json });
+  if (state.undo.length > 200) state.undo.shift();
 }
-export function touch(): void { state.revision++; const d = currentDoc.value; if (d) d.dirty = true; }
+/**
+ * Снимок для серии мелких одинаковых правок (стрелки, колесо): повторные вызовы с тем же ключом
+ * в течение `ms` мс не создают новых шагов - вся серия отменяется одним Ctrl+Z.
+ */
+export function snapshotCoalesced(key: string, ms = 600): void {
+  const now = Date.now();
+  if (coalesceKey === key && now < coalesceUntil) { coalesceUntil = now + ms; return; }
+  snapshot();
+  coalesceKey = key; coalesceUntil = now + ms;
+}
+export function touch(): void {
+  state.revision++;
+  const d = currentDoc.value; if (!d) return;
+  d.dirty = true;
+  if (state.redo.length && screenJson(d.screen) !== lastSnapJson) state.redo = [];
+}
 export function touchPosition(): void { state.posRevision++; const d = currentDoc.value; if (d) d.dirty = true; }
 
-export function undo(): void {
-  const e = state.undo.pop(); if (!e) return;
-  const d = state.docs.find((x) => x.path === e.path); if (!d) return;
-  state.redo.push({ path: d.path, before: cloneDeep(d.screen) });
-  d.screen = e.before; state.current = d.path; touch();
+function restore(from: HistoryEntry[], to: HistoryEntry[]): boolean {
+  for (;;) {
+    const e = from.pop(); if (!e) return false;
+    const d = state.docs.find((x) => x.path === e.path); if (!d) continue;
+    const cur = screenJson(d.screen);
+    if (cur === e.json) continue; // пустой шаг (снимок по фокусу без правки)
+    to.push({ path: d.path, before: cloneDeep(d.screen), json: cur });
+    d.screen = e.before; d.dirty = true;
+    state.current = d.path;
+    if (state.selected && !d.screen.widgets.some((w) => w.uid === state.selected)) state.selected = null;
+    lastSnapJson = e.json; coalesceKey = null;
+    (document.activeElement as HTMLElement | null)?.blur?.();
+    state.revision++;
+    return true;
+  }
 }
-export function redo(): void {
-  const e = state.redo.pop(); if (!e) return;
-  const d = state.docs.find((x) => x.path === e.path); if (!d) return;
-  state.undo.push({ path: d.path, before: cloneDeep(d.screen) });
-  d.screen = e.before; state.current = d.path; touch();
-}
+export function undo(): boolean { return restore(state.undo, state.redo); }
+export function redo(): boolean { return restore(state.redo, state.undo); }
+export const canUndo = computed(() => state.undo.length > 0);
+export const canRedo = computed(() => state.redo.length > 0);
 
 // ---------------------------------------------------------------- экраны
 

@@ -3,7 +3,7 @@ import Icon from './Icon.vue';
 import { onMounted, onBeforeUnmount, ref, watch, computed } from 'vue';
 import { ScreenScene } from '../render/scene';
 import Splitter from './Splitter.vue';
-import { state, currentDoc, currentScreen, currentText, snapshot, touch, touchPosition, selectedWidget, scriptTextOf, scriptNameOf, scriptStatus, setScriptText, resetScriptToTemplate } from '../store';
+import { state, currentDoc, currentScreen, currentText, snapshot, snapshotCoalesced, touch, touchPosition, selectedWidget, scriptTextOf, scriptNameOf, scriptStatus, setScriptText, resetScriptToTemplate } from '../store';
 import { calibration } from '../render/metrics';
 import { spriteState } from '../render/sprites';
 
@@ -61,13 +61,13 @@ watch(hoverPreview, (v) => { if (scene) { scene.hoverPreview = v; scene.rebuildA
 function onWindowBlur() { scene?.cancelInteraction(); }
 
 function nudge(e: KeyboardEvent) {
-  if (e.key === 'f' || e.key === 'F') { scene?.focusSelected(); return; }
-  if (e.key === '1' || e.key === '3' || e.key === '7') { scene?.alignTo(e.key === '1' ? 'z' : e.key === '3' ? 'x' : 'y', e.ctrlKey); e.preventDefault(); return; }
+  if (e.code === 'KeyF' && !e.ctrlKey && !e.metaKey) { scene?.focusSelected(); return; }
+  if ((e.code === 'Digit1' || e.code === 'Digit3' || e.code === 'Digit7') && !e.altKey) { scene?.alignTo(e.code === 'Digit1' ? 'z' : e.code === 'Digit3' ? 'x' : 'y', e.ctrlKey); e.preventDefault(); return; }
   const w = selectedWidget.value; if (!w || w.locked) return;
   const step = e.shiftKey ? 0.5 : e.altKey ? 0.01 : 0.1;
   const d: Record<string, [number, number, number]> = { ArrowLeft: [-step, 0, 0], ArrowRight: [step, 0, 0], ArrowUp: [0, step, 0], ArrowDown: [0, -step, 0], PageUp: [0, 0, -step], PageDown: [0, 0, step] };
   const v = d[e.key]; if (!v) return;
-  e.preventDefault(); snapshot();
+  e.preventDefault(); snapshotCoalesced('nudge:' + w.uid + ':' + e.key);
   w.position = [r(w.position[0] + v[0]), r(w.position[1] + v[1]), r(w.position[2] + v[2])]; touch();
 }
 function r(v: number) { return Math.round(v * 1000) / 1000; }
