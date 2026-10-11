@@ -305,6 +305,8 @@ int scriptTimeoutMs = 1000;    // сторожевой таймер: вызов 
 
 Плагин живёт в `plugin/` монорепозитория; редактор - в `web-ui/`, документация - в `docs/` (https://pa-dej.github.io/DisplayLib/).
 
+Локальный деплой на свой сервер: `./gradlew deployLocal -PserverPlugins=<путь к plugins/>` (или переменная `DISPLAYLIB_SERVER`; можно положить `serverPlugins=` в `gradle.properties`) - копирует jar и примеры; `copyExamples` - только примеры. В `build` это не входит.
+
 Jumper подключается через JitPack: `com.github.jumper-lang:jumper:<тег релиза>` (см. `build.gradle.kts`, сейчас `v0.11.2`).
 Gradle 8.8 запускайте на JDK 21.
 

@@ -15,11 +15,14 @@ jobs:
     permissions:
       contents: write
     defaults:
-      run: { working-directory: plugin }
+      run:
+        working-directory: plugin
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
-        with: { distribution: temurin, java-version: '21' }
+        with:
+          distribution: temurin
+          java-version: '21'
       - uses: gradle/actions/setup-gradle@v4
       - run: chmod +x gradlew && ./gradlew build --no-daemon
       - uses: actions/upload-artifact@v4

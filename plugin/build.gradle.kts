@@ -37,75 +37,40 @@ tasks {
         duplicatesStrategy = DuplicatesStrategy.EXCLUDE
     }
 
-    named("build") {
+    // Локальный деплой на свой сервер: путь к папке plugins/ сервера берётся из
+    //   -PserverPlugins=<путь>  или  gradle.properties (не коммитить)  или  переменной DISPLAYLIB_SERVER.
+    // В обычный build не входит - CI собирает чистый jar.
+    val serverPlugins: String? = (findProperty("serverPlugins") as String?) ?: System.getenv("DISPLAYLIB_SERVER")
+
+    register("deployLocal") {
+        group = "development"
+        description = "Собрать и скопировать jar + примеры на локальный сервер (-PserverPlugins=<plugins dir>)"
+        dependsOn("build")
         doLast {
-            println("FINISH!")
-            
-            // Copy JAR to server (with overwrite)
+            val target = serverPlugins ?: error("Укажите -PserverPlugins=<путь к plugins/ сервера> или DISPLAYLIB_SERVER")
             copy {
                 from(layout.buildDirectory.dir("libs"))
-                into("C:\\Users\\User\\Desktop\\servers\\paper-1.21.11\\plugins")
+                into(target)
                 include("*-${version}.jar")
                 exclude("*-sources.jar")
                 duplicatesStrategy = DuplicatesStrategy.INCLUDE
             }
-            
-            // Copy example files to server plugin directory
-            val serverPluginDir = "C:\\Users\\User\\Desktop\\servers\\paper-1.21.11\\plugins\\DisplayLib"
-            
-            // Create directories
-            file("${serverPluginDir}\\screens").mkdirs()
-            file("${serverPluginDir}\\scripts").mkdirs()
-            
-            // Copy example screens (with overwrite)
-            copy {
-                from("src/main/resources/examples/screens")
-                into("${serverPluginDir}\\screens")
-                include("**/*.jmc")
-                duplicatesStrategy = DuplicatesStrategy.INCLUDE
-            }
-            
-            // Copy example scripts (with overwrite)
-            copy {
-                from("src/main/resources/examples/scripts")
-                into("${serverPluginDir}\\scripts")
-                include("**/*.jmp")
-                duplicatesStrategy = DuplicatesStrategy.INCLUDE
-            }
-            
-            println("Example files copied to server!")
+            println("Jar скопирован в $target")
         }
+        finalizedBy("copyExamples")
     }
 
-    // Task to copy only examples without rebuilding
     register("copyExamples") {
         group = "development"
-        description = "Copy example files to server without rebuilding"
-        
+        description = "Скопировать примеры экранов и скриптов на локальный сервер (-PserverPlugins=<plugins dir>)"
         doLast {
-            val serverPluginDir = "C:\\Users\\User\\Desktop\\servers\\paper-1.21.11\\plugins\\DisplayLib"
-            
-            // Create directories
-            file("${serverPluginDir}\\screens").mkdirs()
-            file("${serverPluginDir}\\scripts").mkdirs()
-            
-            // Copy example screens (with overwrite)
-            copy {
-                from("src/main/resources/examples/screens")
-                into("${serverPluginDir}\\screens")
-                include("**/*.jmc")
-                duplicatesStrategy = DuplicatesStrategy.INCLUDE
-            }
-            
-            // Copy example scripts (with overwrite)
-            copy {
-                from("src/main/resources/examples/scripts")
-                into("${serverPluginDir}\\scripts")
-                include("**/*.jmp")
-                duplicatesStrategy = DuplicatesStrategy.INCLUDE
-            }
-            
-            println("Example files copied to server!")
+            val target = serverPlugins ?: error("Укажите -PserverPlugins=<путь к plugins/ сервера> или DISPLAYLIB_SERVER")
+            val dir = file(target).resolve("DisplayLib")
+            dir.resolve("screens").mkdirs()
+            dir.resolve("scripts").mkdirs()
+            copy { from("src/main/resources/examples/screens"); into(dir.resolve("screens")); include("**/*.jmc"); duplicatesStrategy = DuplicatesStrategy.INCLUDE }
+            copy { from("src/main/resources/examples/scripts"); into(dir.resolve("scripts")); include("**/*.jmp"); duplicatesStrategy = DuplicatesStrategy.INCLUDE }
+            println("Примеры скопированы в $dir")
         }
     }
 
