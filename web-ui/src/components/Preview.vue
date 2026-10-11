@@ -50,6 +50,7 @@ onMounted(() => {
   scene.smartGuides = smartGuides.value;
   (window as any).__dl = { state, scene }; // для отладки/автотестов
   scene.setScreen(currentScreen.value);
+  camScreen = state.current; const c0 = camScreen ? cameras.get(camScreen) : undefined; if (c0) scene.setCamera(c0);
   window.addEventListener('blur', onWindowBlur);
   document.addEventListener('visibilitychange', onWindowBlur);
 });
@@ -59,7 +60,7 @@ onBeforeUnmount(() => { scene?.dispose(); window.removeEventListener('blur', onW
 watch(() => [state.current, state.revision], () => scene?.setScreen(currentScreen.value));
 watch(() => state.current, (cur, prev) => {
   if (!scene) return;
-  if (prev) cameras.set(prev, scene.getCamera());
+  if (prev) { cameras.set(prev, scene.getCamera()); persistCameras(); }
   camScreen = cur;
   const saved = cur ? cameras.get(cur) : undefined;
   if (saved) scene.setCamera(saved);
@@ -104,9 +105,13 @@ const hasBg = computed(() => { void state.revision; return !!currentScreen.value
 function alignBg(kind: AlignKind) { const ref = scene?.backgroundRect(); if (scene && ref) applyShifts(alignToRect(scene.widgetRects(selectedUids.value), ref, kind)); }
 
 // камера запоминается на экран (в рамках сессии), чтобы переключение экранов не сбивало вид
-const cameras = new Map<string, ReturnType<ScreenScene['getCamera']>>();
+// камера на экран: в памяти сессии и в localStorage (переживает перезагрузку вкладки)
+type Cam = ReturnType<ScreenScene['getCamera']>;
+const CAM_KEY = 'displaylib.cameras';
+const cameras = new Map<string, Cam>((() => { try { return Object.entries(JSON.parse(localStorage.getItem(CAM_KEY) || '{}')) as [string, Cam][]; } catch { return []; } })());
 let camScreen: string | null = null;
-function rememberCamera() { if (scene && camScreen) cameras.set(camScreen, scene.getCamera()); }
+function persistCameras() { try { localStorage.setItem(CAM_KEY, JSON.stringify(Object.fromEntries([...cameras].slice(-50)))); } catch { /* ignore */ } }
+function rememberCamera() { if (scene && camScreen) { cameras.set(camScreen, scene.getCamera()); persistCameras(); } }
 function applyShifts(sh: Map<string, { dx: number; dy: number }>) {
   if (!sh.size) return;
   snapshot();
