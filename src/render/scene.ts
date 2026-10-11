@@ -344,8 +344,11 @@ export class ScreenScene {
 
   private buildBackground(b: Background): Node {
     const { texture, layout: L } = buildTextTexture(b.text, 'CENTERED', b.color, b.alpha);
-    // плагин: translation.x = -scaleX/80 + user.x (TransformationUtil.createAlignedTranslation)
-    const tr: [number, number, number] = [-b.scale[0] / 80 + b.translation[0], b.translation[1], b.translation[2]];
+    // плагин: translation.x = -scaleX/80 + user.x (TransformationUtil.createAlignedTranslation);
+    // якорь: точка (ax, ay) прямоугольника фона ставится в начало координат (ScreenSupport.backgroundConfig)
+    const wBlocks = L.bgW * calibration.px * b.scale[0], hBlocks = L.bgH * calibration.px * b.scale[1];
+    const ax = -(b.anchor[0] - 0.5) * wBlocks, ay = -b.anchor[1] * hBlocks;
+    const tr: [number, number, number] = [-b.scale[0] / 80 + b.translation[0] + ax, b.translation[1] + ay, b.translation[2]];
     return this.textNode('__background', texture, L.bgW, L.bgH, b.scale, tr, b.position, calibration.textDepthOffset, null, false);
   }
 

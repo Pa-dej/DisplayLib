@@ -2,7 +2,7 @@
 import type { JmcTable, JmcValue } from './parser';
 import {
   type Alignment, type ClickAction, type HoverAnimation, type RGB, type RichText, type Screen, type Segment,
-  type Vec2, type Vec3, type Widget, defaultBackground, defaultHoverAnimation, defaultWidget, defaultScreen,
+  type Vec2, type Vec3, type Widget, ANCHOR_PRESETS, defaultBackground, defaultHoverAnimation, defaultWidget, defaultScreen,
 } from '../model/screen';
 
 function get(t: JmcTable | null, ...keys: string[]): JmcValue {
@@ -64,6 +64,9 @@ export function tableToScreen(data: JmcTable, fileName: string): ToModelResult {
     const p = nums(bg, 3, 'position'); if (p) b.position = p as Vec3;
     const t = str(bg, 'text'); if (t != null) b.text = t;
     const trn = nums(bg, 3, 'translation'); if (trn) b.translation = trn as Vec3;
+    const an = get(bg, 'anchor', 'pivot', 'origin');
+    if (typeof an === 'string') { const p = ANCHOR_PRESETS.find((x) => x.name === an.trim().toUpperCase().replace(/-/g, '_')); if (p) b.anchor = [...p.value] as Vec2; else warnings.push(`anchor '${an}' неизвестен, BOTTOM`); }
+    else { const av = nums(bg, 2, 'anchor', 'pivot', 'origin'); if (av) b.anchor = av as Vec2; }
     s.background = b;
   } else s.background = null;
 

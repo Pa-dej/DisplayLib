@@ -2,7 +2,7 @@
 import Icon from './Icon.vue';
 import { computed, ref } from 'vue';
 import type { Screen } from '../model/screen';
-import { defaultBackground } from '../model/screen';
+import { defaultBackground, ANCHOR_PRESETS, anchorPresetName, type Vec2 } from '../model/screen';
 import VecInput from './fields/VecInput.vue';
 import ColorInput from './fields/ColorInput.vue';
 import { state, currentDoc, snapshot, touch, deleteCurrent, showScript, scriptNameOf, scriptStatus, scaleScreen } from '../store';
@@ -19,6 +19,7 @@ const bgSize = computed(() => {
   const L = layout(b.text);
   return { w: L.bgW * calibration.px * b.scale[0], h: L.bgH * calibration.px * b.scale[1] };
 });
+function setAnchor(v: Vec2) { if (!s.value.background) return; snapshot(); s.value.background.anchor = [...v] as Vec2; touch(); }
 function toggleBg() { snapshot(); s.value.background = s.value.background ? null : defaultBackground(); touch(); }
 function fmt(n: number) { return (Math.round(n * 100) / 100).toString(); }
 const scaleK = ref(1);
@@ -81,7 +82,16 @@ const idBad = computed(() => !/^[A-Za-z0-9_\-]+$/.test(s.value.id));
         <div class="field"><label>Цвет</label><ColorInput v-model="s.background.color" :alpha="s.background.alpha" @update:alpha="s.background!.alpha = $event" /></div>
         <div class="field"><label>scale</label><div><VecInput v-model="s.background.scale" :labels="['x', 'y', 'z']" :step="0.5" /><div class="hint" v-if="bgSize">≈ {{ fmt(bgSize.w) }} × {{ fmt(bgSize.h) }} блока ([8, 4, 1] ≈ 1×1 для текста " ")</div></div></div>
         <div class="field"><label>position</label><VecInput v-model="s.background.position" :labels="['x', 'y', 'z']" /></div>
-        <div class="field"><label>translation</label><div><VecInput v-model="s.background.translation" :labels="['x', 'y', 'z']" :step="0.01" /><div class="hint">По x плагин сам добавляет -scaleX/80; якорь фона - низ, [0, -h/2, 0] центрирует</div></div></div>
+        <div class="field"><label>Якорь</label><div class="row" style="align-items:flex-start">
+          <div class="anchor-grid">
+            <button v-for="p in ANCHOR_PRESETS" :key="p.name" class="btn sm icon" :class="{ primary: anchorPresetName(s.background.anchor) === p.name }" :title="p.name" @click="setAnchor(p.value)">{{ p.label }}</button>
+          </div>
+          <div class="grow">
+            <VecInput v-model="s.background.anchor" :labels="['x', 'y']" :step="0.05" />
+            <div class="hint">Какая точка фона стоит в начале координат (position [0,0,0] виджетов): доли ширины и высоты, x слева направо, y снизу вверх. [0.5, 0] - низ по центру (как раньше), [0.5, 0.5] - центр.</div>
+          </div>
+        </div></div>
+        <div class="field"><label>translation</label><div><VecInput v-model="s.background.translation" :labels="['x', 'y', 'z']" :step="0.01" /><div class="hint">Дополнительный сдвиг поверх якоря; по x плагин сам добавляет -scaleX/80</div></div></div>
         <div class="field"><label>text</label><input type="text" :value="s.background.text" @focus="snapshot()" @input="s.background!.text = text($event); touch()" /></div>
       </template>
     </div>

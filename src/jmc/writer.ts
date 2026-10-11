@@ -1,7 +1,7 @@
 // Screen -> текст .jmc в том виде, в каком пишут примеры плагина: переменные верхнего уровня,
 // camelCase, сокращённые формы onClick, поля со значениями по умолчанию опускаются.
 import {
-  type HoverAnimation, type RichText, type Screen, type Widget, type Vec3, WIDGET_DEFAULTS, defaultHoverAnimation,
+  type HoverAnimation, type RichText, type Screen, type Widget, type Vec3, WIDGET_DEFAULTS, anchorPresetName, defaultHoverAnimation,
 } from '../model/screen';
 
 function jstr(s: string): string {
@@ -66,6 +66,7 @@ export function screenToJmc(s: Screen, opts: WriteOptions = {}): string {
     const f: string[] = [`color: ${arr(b.color)}`, `alpha: ${b.alpha}`, `scale: ${arr(b.scale)}`];
     if (!same(b.position, [0, 0, 0]) || opts.verbose) f.push(`position: ${arr(b.position)}`);
     if (!same(b.translation, [0, 0, 0]) || opts.verbose) f.push(`translation: ${arr(b.translation)}`);
+    if (!same(b.anchor, [0.5, 0]) || opts.verbose) { const p = anchorPresetName(b.anchor); f.push(`anchor: ${p ? jstr(p) : arr(b.anchor)}`); }
     if (b.text !== ' ' || opts.verbose) f.push(`text: ${jstr(b.text)}`);
     L.push('');
     L.push(`dyn background = { ${f.join(', ')} };`);

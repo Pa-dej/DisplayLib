@@ -99,6 +99,19 @@ export interface Background {
   position: Vec3;
   translation: Vec3;
   text: string;
+  /** Точка фона в начале координат экрана: доли ширины/высоты, x слева направо, y снизу вверх. [0.5, 0] - низ по центру. */
+  anchor: Vec2;
+}
+
+/** Пресеты якоря фона (как в плагине: ScreenDefinition.BackgroundDefinition.anchorPreset). */
+export const ANCHOR_PRESETS: { name: string; value: Vec2; label: string }[] = [
+  { name: 'TOP_LEFT', value: [0, 1], label: '↖' }, { name: 'TOP', value: [0.5, 1], label: '↑' }, { name: 'TOP_RIGHT', value: [1, 1], label: '↗' },
+  { name: 'LEFT', value: [0, 0.5], label: '←' }, { name: 'CENTER', value: [0.5, 0.5], label: '•' }, { name: 'RIGHT', value: [1, 0.5], label: '→' },
+  { name: 'BOTTOM_LEFT', value: [0, 0], label: '↙' }, { name: 'BOTTOM', value: [0.5, 0], label: '↓' }, { name: 'BOTTOM_RIGHT', value: [1, 0], label: '↘' },
+];
+export function anchorPresetName(a: Vec2): string | null {
+  const p = ANCHOR_PRESETS.find((x) => Math.abs(x.value[0] - a[0]) < 1e-6 && Math.abs(x.value[1] - a[1]) < 1e-6);
+  return p ? p.name : null;
 }
 
 /** Анимация смены/закрытия экрана: steps = -1 означает duration / 2 (как в плагине). */
@@ -152,6 +165,7 @@ export function defaultBackground(): Background {
     position: [0, 0, 0],
     translation: [0, 0, 0],
     text: ' ',
+    anchor: [0.5, 0],
   };
 }
 
