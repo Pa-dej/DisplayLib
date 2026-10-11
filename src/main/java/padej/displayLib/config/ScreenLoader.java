@@ -303,6 +303,24 @@ public class ScreenLoader {
             widget.setFormattedHoveredText(toJava(hoveredText));
         }
 
+        // Кадры текстовой анимации: frames: ["a", "b", [ {text, color} ]], frameInterval: 10
+        List<?> frames = list(data, "frames");
+        if (frames != null) {
+            java.util.List<Object> out = new ArrayList<>(frames.size());
+            for (Object f : frames) out.add(toJava(f));
+            widget.setFrames(out);
+        }
+        Integer frameInterval = integer(data, "frameInterval", "frame_interval");
+        if (frameInterval != null) widget.setFrameInterval(frameInterval);
+        List<?> hoveredFrames = list(data, "hoveredFrames", "hovered_frames");
+        if (hoveredFrames != null) {
+            java.util.List<Object> out = new ArrayList<>(hoveredFrames.size());
+            for (Object f : hoveredFrames) out.add(toJava(f));
+            widget.setHoveredFrames(out);
+        }
+        Integer hoveredFrameInterval = integer(data, "hoveredFrameInterval", "hovered_frame_interval");
+        if (hoveredFrameInterval != null) widget.setHoveredFrameInterval(hoveredFrameInterval);
+
         Object formattedText = get(data, "formattedText", "formatted_text");
         if (formattedText != null) widget.setFormattedText(toJava(formattedText));
 

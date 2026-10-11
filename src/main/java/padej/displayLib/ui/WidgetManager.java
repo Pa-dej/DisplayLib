@@ -25,6 +25,8 @@ public abstract class WidgetManager {
      */
     private final List<Widget> ticked = new ArrayList<>();
     private boolean tickListDirty = true;
+    /** Виджеты с кадровой анимацией текста - тикаются каждый серверный тик (независимо от tickRate). */
+    private final List<TextDisplayButtonWidget> animated = new ArrayList<>();
     public Player viewer;
     protected Location location;
     
@@ -56,11 +58,28 @@ public abstract class WidgetManager {
     /** Пересобрать список тикаемых виджетов (состав детей или их интерактивность изменились). */
     private void refreshTickList() {
         ticked.clear();
+        animated.clear();
         for (int i = 0; i < children.size(); i++) {
             Widget w = children.get(i);
-            if (w != null && w.isInteractive()) ticked.add(w);
+            if (w == null) continue;
+            if (w.isInteractive()) ticked.add(w);
+            if (w instanceof TextDisplayButtonWidget t && t.hasFrames()) animated.add(t);
         }
         tickListDirty = false;
+    }
+
+    /**
+     * Тик кадровых анимаций текста. Вызывается каждый серверный тик (а не раз в tickRate):
+     * у экрана без анимированных виджетов это одна проверка пустого списка.
+     */
+    public void tickAnimations() {
+        if (tickListDirty) refreshTickList();
+        for (int i = 0; i < animated.size(); i++) animated.get(i).tickFrames();
+    }
+
+    /** Кадры виджета изменились из скрипта - пересобрать списки. */
+    public void invalidateTickList() {
+        tickListDirty = true;
     }
 
     /** Сколько виджетов экрана обсчитывается на тиках (для /displaylib info и отладки). */
@@ -150,6 +169,7 @@ public abstract class WidgetManager {
         }
         children.clear();
         ticked.clear();
+        animated.clear();
 
         markDirty();
     }

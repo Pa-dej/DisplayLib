@@ -115,10 +115,13 @@ public final class ScreenSupport {
         float[] t = def.getTolerance();
         float[] tr = def.getTranslation();
 
-        // Текст - обычная строка или форматированные сегменты; у SPRITE_BUTTON - спрайт из атласа
+        // Текст - обычная строка или форматированные сегменты; у SPRITE_BUTTON - спрайт из атласа;
+        // с кадрами анимации - первый кадр
         Component textComponent;
         if (def.getType() == WidgetDefinition.WidgetType.SPRITE_BUTTON) {
             textComponent = spriteComponent(def.getAtlas(), def.getSprite());
+        } else if (def.getFrames() != null) {
+            textComponent = parseFormattedText(def.getFrames().get(0));
         } else if (def.getFormattedText() != null) {
             textComponent = parseFormattedText(def.getFormattedText());
         } else {
@@ -129,6 +132,8 @@ public final class ScreenSupport {
         if (def.getType() == WidgetDefinition.WidgetType.SPRITE_BUTTON) {
             hoveredTextComponent = def.getHoveredSprite() != null
                     ? spriteComponent(def.getAtlas(), def.getHoveredSprite()) : textComponent;
+        } else if (withHoverAnimation && def.getHoveredFrames() != null) {
+            hoveredTextComponent = parseFormattedText(def.getHoveredFrames().get(0));
         } else if (def.getFormattedHoveredText() != null) {
             hoveredTextComponent = parseFormattedText(def.getFormattedHoveredText());
         } else if (def.getHoveredText() != null && !def.getHoveredText().isEmpty()) {
@@ -156,6 +161,14 @@ public final class ScreenSupport {
 
         if (withHoverAnimation && def.getHoverAnimation() != null) {
             cfg.setHoverAnimation(def.getHoverAnimation());
+        }
+
+        // Кадры текстовой анимации: text/hoveredText = первый кадр, дальше тикает TextDisplayButtonWidget.tickFrames
+        if (def.getFrames() != null && def.getType() != WidgetDefinition.WidgetType.SPRITE_BUTTON) {
+            cfg.setFrames(frameComponents(def.getFrames()), def.getFrameInterval());
+        }
+        if (withHoverAnimation && def.getHoveredFrames() != null && def.getType() != WidgetDefinition.WidgetType.SPRITE_BUTTON) {
+            cfg.setHoveredFrames(frameComponents(def.getHoveredFrames()), def.getHoveredFrameInterval());
         }
 
         return cfg;
@@ -194,6 +207,13 @@ public final class ScreenSupport {
         }
 
         return cfg;
+    }
+
+    /** Кадры анимации (строки или массивы сегментов) → компоненты. */
+    public static Component[] frameComponents(java.util.List<?> frames) {
+        Component[] out = new Component[frames.size()];
+        for (int i = 0; i < out.length; i++) out[i] = parseFormattedText(frames.get(i));
+        return out;
     }
 
     /** Есть ли у виджета действие по клику, отличное от NONE. */

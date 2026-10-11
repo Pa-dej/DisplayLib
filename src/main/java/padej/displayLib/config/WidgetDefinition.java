@@ -131,6 +131,16 @@ public class WidgetDefinition {
      * <p>Если указан formattedHoveredText, он используется вместо поля hoveredText.</p>
      */
     private Object formattedHoveredText;
+
+    /**
+     * Кадры текстовой анимации: строки или массивы сегментов, сменяют друг друга каждые
+     * {@link #frameInterval} тиков. Если заданы, {@code text} = первый кадр.
+     */
+    private java.util.List<Object> frames;
+    private int frameInterval = 10;
+    /** Кадры при наведении (приватные экраны); интервал -1 = как у {@link #frameInterval}. */
+    private java.util.List<Object> hoveredFrames;
+    private int hoveredFrameInterval = -1;
     
     /** Выравнивание текста (LEFT, CENTERED, RIGHT) */
     private TextAlignment alignment = TextAlignment.CENTERED;
@@ -246,6 +256,16 @@ public class WidgetDefinition {
     public Object getFormattedHoveredText() { return formattedHoveredText; }
     public void setFormattedHoveredText(Object formattedHoveredText) { this.formattedHoveredText = formattedHoveredText; }
     
+    public java.util.List<Object> getFrames() { return frames; }
+    public void setFrames(java.util.List<Object> frames) { this.frames = frames != null && !frames.isEmpty() ? frames : null; }
+    public int getFrameInterval() { return frameInterval; }
+    public void setFrameInterval(int ticks) { this.frameInterval = Math.max(1, ticks); }
+    public java.util.List<Object> getHoveredFrames() { return hoveredFrames; }
+    public void setHoveredFrames(java.util.List<Object> frames) { this.hoveredFrames = frames != null && !frames.isEmpty() ? frames : null; }
+    /** Интервал кадров при наведении; если не задан - как у обычных кадров. */
+    public int getHoveredFrameInterval() { return hoveredFrameInterval > 0 ? hoveredFrameInterval : frameInterval; }
+    public void setHoveredFrameInterval(int ticks) { this.hoveredFrameInterval = ticks; }
+
     public TextAlignment getAlignment() { return alignment; }
     public void setAlignment(TextAlignment alignment) { this.alignment = alignment; }
     

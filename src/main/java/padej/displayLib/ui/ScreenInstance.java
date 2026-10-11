@@ -160,6 +160,12 @@ public class ScreenInstance extends WidgetManager implements ScreenAPI.Host {
     }
 
     @Override
+    public void tickAnimations() {
+        if (morph != null) return; // текст сейчас ведёт morph
+        super.tickAnimations();
+    }
+
+    @Override
     public Widget getNearestHoveredWidget() {
         if (morph != null) return null;
         return super.getNearestHoveredWidget();
@@ -396,6 +402,11 @@ public class ScreenInstance extends WidgetManager implements ScreenAPI.Host {
     @Override
     public void closeFromScript() {
         UIManager.getInstance().closeScreen(viewer);
+    }
+
+    @Override
+    public void onFramesChanged() {
+        invalidateTickList();
     }
 
     @Override

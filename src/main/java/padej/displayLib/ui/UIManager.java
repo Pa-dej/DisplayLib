@@ -55,12 +55,15 @@ public class UIManager implements Listener {
     /** Обновление одного экрана со своим периодом (tick_rate). */
     private static final class ScreenTicker {
         final Runnable update;
+        /** Каждый тик: кадровые анимации текста (может быть null) */
+        final Runnable everyTick;
         final int period;
         int countdown = 1; // первое обновление - на ближайшем тике
         boolean cancelled = false;
 
-        ScreenTicker(Runnable update, int period) {
+        ScreenTicker(Runnable update, Runnable everyTick, int period) {
             this.update = update;
+            this.everyTick = everyTick;
             this.period = period;
         }
     }
@@ -402,7 +405,7 @@ public class UIManager implements Listener {
             if (privateScreens.get(playerId) == screenInstance) {
                 screenInstance.update();
             }
-        }));
+        }, screenInstance::tickAnimations));
     }
 
     private void stopUpdateTaskForScreen(UUID playerId) {
@@ -411,15 +414,15 @@ public class UIManager implements Listener {
 
     private void startUpdateTaskForPublicScreen(GlobalScreenInstance screenInstance) {
         publicUpdateTasks.put(screenInstance,
-                startTicker(screenInstance.getDefinition().getTickRate(), screenInstance::update));
+                startTicker(screenInstance.getDefinition().getTickRate(), screenInstance::update, screenInstance::tickAnimations));
     }
 
     private void stopUpdateTaskForPublicScreen(GlobalScreenInstance screenInstance) {
         stopTicker(publicUpdateTasks.remove(screenInstance));
     }
 
-    private ScreenTicker startTicker(int tickRate, Runnable update) {
-        ScreenTicker ticker = new ScreenTicker(update, Math.max(1, tickRate));
+    private ScreenTicker startTicker(int tickRate, Runnable update, Runnable everyTick) {
+        ScreenTicker ticker = new ScreenTicker(update, everyTick, Math.max(1, tickRate));
         tickers.add(ticker);
         
         // Общая задача работает, только пока есть хотя бы один экран
@@ -441,7 +444,15 @@ public class UIManager implements Listener {
         // Обход по индексу: во время обновления экраны могут открываться (добавляются в конец) и закрываться
         for (int i = 0; i < tickers.size(); i++) {
             ScreenTicker ticker = tickers.get(i);
-            if (ticker.cancelled || --ticker.countdown > 0) continue;
+            if (ticker.cancelled) continue;
+            if (ticker.everyTick != null) {
+                try {
+                    ticker.everyTick.run();
+                } catch (Exception e) {
+                    DisplayLib.getInstance().getLogger().log(java.util.logging.Level.WARNING, "Error ticking screen animations", e);
+                }
+            }
+            if (--ticker.countdown > 0) continue;
             
             ticker.countdown = ticker.period;
             try {

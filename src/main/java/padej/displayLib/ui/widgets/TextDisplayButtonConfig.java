@@ -16,6 +16,10 @@ public class TextDisplayButtonConfig {
     private Component tooltip;
     private TextColor tooltipColor;
     private int tooltipDelay;
+    private Component[] frames;
+    private int frameInterval = 10;
+    private Component[] hoveredFrames;
+    private int hoveredFrameInterval = 10;
     private WidgetPosition position;
     private Color backgroundColor = Color.fromRGB(40, 40, 40);
     private int backgroundAlpha = 150;
@@ -203,6 +207,24 @@ public class TextDisplayButtonConfig {
     public TextColor getTooltipColor() {
         return tooltipColor;
     }
+
+    /** Кадры текстовой анимации (сменяются каждые interval тиков); null - без анимации. */
+    public TextDisplayButtonConfig setFrames(Component[] frames, int interval) {
+        this.frames = frames != null && frames.length > 0 ? frames : null;
+        this.frameInterval = Math.max(1, interval);
+        return this;
+    }
+
+    public TextDisplayButtonConfig setHoveredFrames(Component[] frames, int interval) {
+        this.hoveredFrames = frames != null && frames.length > 0 ? frames : null;
+        this.hoveredFrameInterval = Math.max(1, interval);
+        return this;
+    }
+
+    public Component[] getFrames() { return frames; }
+    public int getFrameInterval() { return frameInterval; }
+    public Component[] getHoveredFrames() { return hoveredFrames; }
+    public int getHoveredFrameInterval() { return hoveredFrameInterval; }
 
     public int getTooltipDelay() {
         return tooltipDelay;

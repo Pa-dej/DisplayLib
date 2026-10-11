@@ -32,6 +32,13 @@ public class TextDisplayButtonWidget implements Widget {
     private Location location;
     private Component text;
     private Component hoveredText;
+    // Текстовая анимация: кадры и интервал (тики); hoveredFrames - при наведении
+    private Component[] frames;
+    private int frameInterval = 10;
+    private Component[] hoveredFrames;
+    private int hoveredFrameInterval = 10;
+    private int frameIndex = 0;
+    private int frameTicks = 0;
     private Color backgroundColor;
     private int backgroundAlpha;
     private Color hoveredBackgroundColor;
@@ -117,6 +124,10 @@ public class TextDisplayButtonWidget implements Widget {
         widget.originalOnClick = config.getOnClick(); // Сохраняем оригинальный onClick
         widget.text = config.getText();
         widget.hoveredText = config.getHoveredText();
+        widget.frames = config.getFrames();
+        widget.frameInterval = config.getFrameInterval();
+        widget.hoveredFrames = config.getHoveredFrames();
+        widget.hoveredFrameInterval = config.getHoveredFrameInterval();
         widget.position = config.getPosition();
         widget.backgroundColor = config.getBackgroundColor();
         widget.backgroundAlpha = config.getBackgroundAlpha();
@@ -408,8 +419,9 @@ public class TextDisplayButtonWidget implements Widget {
     }
 
     private void onHoverStateChanged() {
+        frameIndex = 0; frameTicks = 0;
         if (isHovered) {
-            display.text(hoveredText);
+            display.text(hoveredFrames != null ? hoveredFrames[0] : hoveredText);
             display.setBackgroundColor(hoveredBackgroundArgb());
             
             // Приоритет: новая система анимации, затем старая hoveredTransformation
@@ -425,7 +437,7 @@ public class TextDisplayButtonWidget implements Widget {
                 Animation.applyTransformationWithInterpolation(display, hoveredTransformation, hoveredTransformationDuration);
             }
         } else {
-            display.text(text);
+            display.text(frames != null ? frames[0] : text);
             display.setBackgroundColor(backgroundArgb());
             
             // Возвращаем к исходному состоянию
@@ -573,6 +585,46 @@ public class TextDisplayButtonWidget implements Widget {
         this.tooltipTitle = null;
     }
     
+    // ---- текстовая анимация (кадры)
+
+    /** Есть ли у виджета кадры (обычные или при наведении) - его нужно тикать каждый тик. */
+    public boolean hasFrames() {
+        return frames != null || hoveredFrames != null;
+    }
+
+    /**
+     * Один серверный тик анимации: по истечении интервала показать следующий кадр активного набора
+     * (при наведении - hoveredFrames, если они есть; иначе обычные frames). Вызывается менеджером
+     * экрана каждый тик независимо от tickRate; без кадров ничего не делает.
+     */
+    public void tickFrames() {
+        if (display == null) return;
+        Component[] set = isHovered && hoveredFrames != null ? hoveredFrames : (!isHovered || hoveredText == text) ? frames : null;
+        if (set == null || set.length < 2) return;
+        int interval = set == hoveredFrames ? hoveredFrameInterval : frameInterval;
+        if (++frameTicks < interval) return;
+        frameTicks = 0;
+        frameIndex = (frameIndex + 1) % set.length;
+        display.text(set[frameIndex]);
+    }
+
+    /** Задать кадры (null - убрать анимацию; текст остаётся текущим). */
+    public void setFrames(Component[] frames, int interval) {
+        this.frames = frames != null && frames.length > 0 ? frames : null;
+        this.frameInterval = Math.max(1, interval);
+        frameIndex = 0; frameTicks = 0;
+        if (this.frames != null) { this.text = this.frames[0]; positionCached = false; }
+        if (display != null && !isHovered) display.text(this.frames != null ? this.frames[0] : text);
+    }
+
+    public void setHoveredFrames(Component[] frames, int interval) {
+        this.hoveredFrames = frames != null && frames.length > 0 ? frames : null;
+        this.hoveredFrameInterval = Math.max(1, interval);
+        frameIndex = 0; frameTicks = 0;
+        if (this.hoveredFrames != null) this.hoveredText = this.hoveredFrames[0];
+        if (display != null && isHovered) display.text(this.hoveredFrames != null ? this.hoveredFrames[0] : hoveredText);
+    }
+
     /** Текст - компонент-объект (спрайт атласа), т.е. виджет создан как SPRITE_BUTTON. */
     public boolean isSprite() {
         return text instanceof net.kyori.adventure.text.ObjectComponent;
@@ -592,6 +644,7 @@ public class TextDisplayButtonWidget implements Widget {
     /** Установить произвольный компонент (форматированный текст, спрайт атласа). */
     public void setText(Component newText) {
         this.text = newText;
+        this.frames = null; // текст из скрипта отменяет кадровую анимацию
         positionCached = false; // высота текста влияет на центр зоны наведения
         if (display != null && !isHovered) {
             display.text(this.text);
@@ -601,6 +654,7 @@ public class TextDisplayButtonWidget implements Widget {
     /** Установить компонент, показываемый при наведении. */
     public void setHoveredText(Component newText) {
         this.hoveredText = newText;
+        this.hoveredFrames = null;
         if (display != null && isHovered) {
             display.text(this.hoveredText);
         }

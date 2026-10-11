@@ -35,6 +35,10 @@ public final class ScreenAPI {
         /** Закрыть экран; у публичного ничего не делает. */
         void closeFromScript();
 
+        /** Кадры текстовой анимации виджета изменились из скрипта - пересобрать список тикаемых. */
+        default void onFramesChanged() {
+        }
+
         /** Переключиться на другой экран; у публичного ничего не делает. */
         void switchFromScript(String screenId);
     }
@@ -98,7 +102,7 @@ public final class ScreenAPI {
 
     /** Внутреннее: обёртка виджета, одна на виджет на всё время жизни экрана. */
     public WidgetAPI widgetApi(String id, Widget widget) {
-        return widgetApis.computeIfAbsent(widget, w -> new WidgetAPI(id, w));
+        return widgetApis.computeIfAbsent(widget, w -> new WidgetAPI(id, w, host::onFramesChanged));
     }
 
     /** Внутреннее: очистка при закрытии. */

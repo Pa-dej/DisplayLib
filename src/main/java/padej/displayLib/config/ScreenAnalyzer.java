@@ -140,6 +140,7 @@ public final class ScreenAnalyzer {
     public static boolean hasHoverVisual(WidgetDefinition def, boolean withHoverAnimation) {
         if (def.getTooltip() != null) return true;
         if (withHoverAnimation && def.getHoverAnimation() != null) return true;
+        if (withHoverAnimation && def.getHoveredFrames() != null) return true;
         if (def.getType() == WidgetDefinition.WidgetType.ITEM_BUTTON) {
             return def.isGlowOnHover();
         }

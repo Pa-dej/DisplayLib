@@ -46,6 +46,8 @@ public class GlobalScreenInstance implements ScreenAPI.Host {
     private final List<Widget> children = new ArrayList<>();
     /** Тикаемые виджеты (isInteractive) - только их проверяем на наведение, см. ScreenAnalyzer */
     private final List<Widget> ticked = new ArrayList<>();
+    /** Виджеты с кадровой анимацией текста (каждый серверный тик) */
+    private final List<TextDisplayButtonWidget> animated = new ArrayList<>();
     
     /** Быстрый доступ к виджетам по id (порядок объявления сохраняется) */
     private final Map<String, Widget> widgetById = new LinkedHashMap<>();
@@ -125,6 +127,18 @@ public class GlobalScreenInstance implements ScreenAPI.Host {
         updateHoverDetection();
     }
 
+    /** Тик кадровых анимаций текста (каждый серверный тик). */
+    public void tickAnimations() {
+        if (removed) return;
+        for (int i = 0; i < animated.size(); i++) animated.get(i).tickFrames();
+    }
+
+    /** Кадры виджета изменились из скрипта - пересобрать список анимированных. */
+    public void invalidateTickList() {
+        animated.clear();
+        for (Widget w : children) if (w instanceof TextDisplayButtonWidget t && t.hasFrames()) animated.add(t);
+    }
+
     public void remove() {
         if (removed) return;
         removed = true;
@@ -143,6 +157,7 @@ public class GlobalScreenInstance implements ScreenAPI.Host {
         }
         children.clear();
         ticked.clear();
+        animated.clear();
         widgetById.clear();
         definitionByWidget.clear();
         
@@ -215,6 +230,11 @@ public class GlobalScreenInstance implements ScreenAPI.Host {
     /** Публичный экран не закрывается из скрипта: он общий для всех игроков. */
     @Override
     public void closeFromScript() {
+    }
+
+    @Override
+    public void onFramesChanged() {
+        invalidateTickList();
     }
 
     /** Публичный экран не переключается из скрипта. */
@@ -299,6 +319,7 @@ public class GlobalScreenInstance implements ScreenAPI.Host {
     private void addChild(Widget widget, WidgetDefinition def) {
         children.add(widget);
         if (widget.isInteractive()) ticked.add(widget);
+        if (widget instanceof TextDisplayButtonWidget t && t.hasFrames()) animated.add(t);
         if (def != null) {
             definitionByWidget.put(widget, def);
         }

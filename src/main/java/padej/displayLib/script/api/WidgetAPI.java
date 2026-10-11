@@ -24,10 +24,16 @@ import padej.displayLib.ui.widgets.Widget;
 public final class WidgetAPI {
     private final String id;
     private final Widget widget;
+    private final Runnable framesChanged;
 
     public WidgetAPI(String id, Widget widget) {
+        this(id, widget, null);
+    }
+
+    public WidgetAPI(String id, Widget widget, Runnable framesChanged) {
         this.id = id;
         this.widget = widget;
+        this.framesChanged = framesChanged;
     }
 
     /** Идентификатор виджета из файла экрана (может быть {@code null}). */
@@ -62,6 +68,36 @@ public final class WidgetAPI {
         if (widget instanceof TextDisplayButtonWidget t && t.isValid()) {
             t.setText(toComponent(text));
         }
+    }
+
+    /**
+     * Кадровая анимация текста: {@code frames(["Загрузка", "Загрузка.", "Загрузка.."], 5)} - кадры
+     * (строки или сегменты, как в {@link #text(Object)}) сменяются каждые {@code interval} тиков.
+     * Пустой список или null - убрать анимацию. Обычный {@code text(...)} тоже её отменяет.
+     */
+    public void frames(Object list, int interval) {
+        if (widget instanceof TextDisplayButtonWidget t && t.isValid()) {
+            t.setFrames(frameComponents(list), interval);
+            if (framesChanged != null) framesChanged.run();
+        }
+    }
+
+    /** Кадры при наведении (см. {@link #frames(Object, int)}); на публичных экранах не показываются. */
+    public void hoveredFrames(Object list, int interval) {
+        if (widget instanceof TextDisplayButtonWidget t && t.isValid()) {
+            t.setHoveredFrames(frameComponents(list), interval);
+            if (framesChanged != null) framesChanged.run();
+        }
+    }
+
+    private static net.kyori.adventure.text.Component[] frameComponents(Object list) {
+        if (list == null) return null;
+        java.util.List<?> items = list instanceof java.util.List<?> l ? l
+                : list instanceof Object[] a ? java.util.Arrays.asList(a) : null;
+        if (items == null || items.isEmpty()) return null;
+        net.kyori.adventure.text.Component[] out = new net.kyori.adventure.text.Component[items.size()];
+        for (int i = 0; i < out.length; i++) out[i] = toComponent(items.get(i));
+        return out;
     }
 
     /** Установить текст, показываемый при наведении (форматы как у {@link #text(Object)}). */

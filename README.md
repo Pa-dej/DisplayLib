@@ -137,6 +137,20 @@ dyn widgets = [
 | `onClick: "close"` | закрыть экран |
 | `onClick: { action: "RUN_SCRIPT", function: "f" }` | полная форма (`NONE`, `SWITCH_SCREEN` + `target`, `CLOSE_SCREEN`, `RUN_SCRIPT` + `function`) |
 
+### Кадровая анимация текста
+
+```java
+{ id: "loading", frames: ["Загрузка", "Загрузка.", "Загрузка.."], frameInterval: 6 },
+{ id: "play", text: "Играть", hoveredFrames: ["> Играть", " > Играть"], hoveredFrameInterval: 3, onClick: true },
+```
+
+`frames` - кадры (строки или массивы сегментов, как `text`), сменяются каждые `frameInterval` тиков;
+`hoveredFrames` - свой набор при наведении (`hoveredFrameInterval`, по умолчанию как `frameInterval`;
+на публичных экранах не показываются). `text` при этом - первый кадр. Из скрипта: `widget.frames(list, ticks)`,
+`widget.hoveredFrames(list, ticks)`; `widget.text(...)` отменяет анимацию. Кадры тикаются каждый серверный тик
+независимо от `tickRate` (одна общая задача; у экрана без кадров это проверка пустого списка).
+Пример: `frames_demo`.
+
 ### Статические виджеты (не тикаются)
 
 При каждой загрузке экранов (старт, `/displaylib reload`, hot reload) плагин разбирает их и составляет
