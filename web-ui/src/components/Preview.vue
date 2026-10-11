@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import Icon from './Icon.vue';
+import CodeView from './fields/CodeView.vue';
 import { onMounted, onBeforeUnmount, ref, watch, computed } from 'vue';
 import { ScreenScene } from '../render/scene';
 import Splitter from './Splitter.vue';
@@ -180,9 +181,9 @@ function distributeSel(kind: DistributeKind) { if (scene) applyShifts(distribute
         <button v-if="currentDoc?.scriptText != null" class="btn sm" style="margin:0 0 4px 8px" title="Отбросить правки и вернуть живой шаблон по кнопкам экрана" @click="resetScriptToTemplate">К шаблону</button>
       </template>
     </div>
-    <pre v-if="tab === 'jmc'" class="code">{{ jmc }}</pre>
+    <CodeView v-if="tab === 'jmc'" :model-value="jmc" readonly />
     <div v-else-if="tab === 'jmp'" class="body">
-      <textarea class="code" style="width:100%;border:0;border-radius:0;resize:none" :value="jmp" @input="setScriptText(($event.target as HTMLTextAreaElement).value)" spellcheck="false"></textarea>
+      <CodeView :model-value="jmp" @update:model-value="setScriptText($event)" />
     </div>
   </div>
 </template>
