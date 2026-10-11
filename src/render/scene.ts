@@ -463,19 +463,23 @@ export class ScreenScene {
     const pos = n.group.position, st = this.gizmoStart ?? pos.clone();
     const step = this.snap;
     const sn = (v: number) => (step > 0 ? Math.round(v / step) * step : v);
-    if (axis.includes('X')) pos.x = sn(pos.x); else pos.x = st.x;
-    if (axis.includes('Y')) pos.y = sn(pos.y); else pos.y = st.y;
+    if (!axis.includes('X')) pos.x = st.x;
+    if (!axis.includes('Y')) pos.y = st.y;
     if (axis.includes('Z')) pos.z = sn(pos.z); else pos.z = st.z;
     let guides: Guide[] = [];
+    let sx = false, sy = false;
     if (this.smartGuides && !axis.includes('Z') && axis.length) {
       const plane = new THREE.Plane(new THREE.Vector3(0, 0, 1), -pos.z);
       const m = this.rectAt(n, pos.x, pos.y);
       const r = computeSnap(m, this.snapPartners(uid, plane), this.worldPerPixel(plane) * 8, this.snapAxes());
-      if (axis.includes('X')) pos.x += r.dx;
-      if (axis.includes('Y')) pos.y += r.dy;
+      if (axis.includes('X') && r.sx) { pos.x += r.dx; sx = true; }
+      if (axis.includes('Y') && r.sy) { pos.y += r.dy; sy = true; }
       guides = r.guides.filter((g) => (g.dir === 'v' ? axis.includes('X') : axis.includes('Y')));
       this.showGuides(guides, plane);
     }
+    // сетка - только по осям без сработавшей направляющей
+    if (axis.includes('X') && !sx) pos.x = sn(pos.x);
+    if (axis.includes('Y') && !sy) pos.y = sn(pos.y);
     this.cb.onMove(uid, this.modelPos(pos, w));
     this.updateSelectionBox();
   }
@@ -499,6 +503,8 @@ export class ScreenScene {
     this.dragging = { uid, plane, offset: p.clone().sub(n.group.position), start: [...w.position] as [number, number, number], moved: false, pointerId: e.pointerId };
     this.controls.enabled = false;
     this.canvas.setPointerCapture(e.pointerId);
+    // Тащим виджет в обычном (не hover) виде: привязки считаются по его размеру в покое
+    if (this.hovered === uid) this.cb.onHover(null);
   };
 
   private onMoveEv = (e: PointerEvent): void => {
@@ -511,15 +517,21 @@ export class ScreenScene {
       if (!this.raycaster.ray.intersectPlane(d.plane, p)) return;
       let gx = p.x - d.offset.x, gy = p.y - d.offset.y; // мировые координаты группы
       const step = e.shiftKey ? 0.5 : e.altKey ? 0.01 : this.snap;
-      if (step > 0) { gx = Math.round(gx / step) * step; gy = Math.round(gy / step) * step; }
       let guides: Guide[] = [];
+      // Умные направляющие считаются от «сырой» позиции курсора, а сетка применяется только по тем осям,
+      // где направляющая не сработала: иначе округление к сетке (0.05) уводило точку выравнивания за порог
+      // прилипания (~8 px) и привязка срабатывала через раз.
+      let sx = false, sy = false;
       if (this.smartGuides && !e.ctrlKey) {
         const thr = this.worldPerPixel(d.plane) * 8;
         const n = this.nodes.get(d.uid)!;
         const m = this.rectAt(n, gx, gy);
         const r = computeSnap(m, this.snapPartners(d.uid, d.plane), thr, this.snapAxes());
-        gx += r.dx; gy += r.dy; guides = r.guides;
+        if (r.sx) { gx += r.dx; sx = true; }
+        if (r.sy) { gy += r.dy; sy = true; }
+        guides = r.guides;
       }
+      if (step > 0) { if (!sx) gx = Math.round(gx / step) * step; if (!sy) gy = Math.round(gy / step) * step; }
       this.showGuides(guides, d.plane);
       this.cb.onMove(d.uid, [round(gx * calibration.positionXSign), round(gy), d.start[2]]);
       return;
@@ -656,6 +668,7 @@ export class ScreenScene {
     const tick = editorTick();
     for (const w of this.screen.widgets) {
       if (w.type !== 'TEXT_BUTTON' || (!w.frames.length && !w.hoveredFrames.length)) continue;
+      if (this.dragging?.uid === w.uid) continue; // во время перетаскивания кадр не меняем - размер должен быть стабильным
       const fi = frameIndexAt(w, this.hoverPreview && this.hovered === w.uid, tick);
       if (this.frameShown.get(w.uid) !== fi) { this.frameShown.set(w.uid, fi); if (this.nodes.has(w.uid)) this.rebuildWidget(w.uid); }
     }

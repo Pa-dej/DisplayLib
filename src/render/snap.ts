@@ -14,7 +14,8 @@ export interface Guide {
   gaps?: [number, number][];
 }
 
-export interface SnapResult { dx: number; dy: number; guides: Guide[] }
+/** sx/sy - по этой оси сработала привязка (dx/dy может быть и 0, если уже выровнено). */
+export interface SnapResult { dx: number; dy: number; sx: boolean; sy: boolean; guides: Guide[] }
 
 interface Cand { delta: number; guide: Guide; score: number }
 
@@ -84,7 +85,7 @@ export function computeSnap(m: Rect, others: Rect[], thr: number, axes: { x: num
   // после сдвига собрать все направляющие, которые совпали с выбранной (несколько объектов на одной линии)
   if (bx) for (const c of vx) if (Math.abs(c.delta - bx.delta) < 1e-6 && c.guide.kind === bx.guide.kind) guides.push(shift(c.guide, dx, dy));
   if (by) for (const c of vy) if (Math.abs(c.delta - by.delta) < 1e-6 && c.guide.kind === by.guide.kind) guides.push(shift(c.guide, dx, dy));
-  return { dx, dy, guides: dedupe(guides) };
+  return { dx, dy, sx: !!bx, sy: !!by, guides: dedupe(guides) };
 }
 
 function gapCandidates(m: Rect, others: Rect[], thr: number, axis: 'x' | 'y', out: Cand[]): void {
