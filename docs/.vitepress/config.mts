@@ -8,7 +8,7 @@ export default defineConfig({
   head: [['link', { rel: 'icon', href: '/DisplayLib/favicon.svg' }]],
   cleanUrls: true,
   themeConfig: {
-    logo: '/favicon.svg',
+    logo: '/logo.svg',
     nav: [
       { text: 'Руководство', link: '/guide/getting-started' },
       { text: 'Справочник', link: '/reference/screen' },
