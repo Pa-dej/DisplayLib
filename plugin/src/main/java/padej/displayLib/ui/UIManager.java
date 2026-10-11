@@ -492,15 +492,40 @@ public class UIManager implements Listener {
         releasePlayer(player);
     }
 
+    private padej.displayLib.config.PluginConfig.CloseOn closeOn() {
+        padej.displayLib.config.PluginConfig c = DisplayLib.getInstance() instanceof DisplayLib d ? d.getPluginConfig() : null;
+        return c != null ? c.closeOn() : padej.displayLib.config.PluginConfig.CloseOn.DEFAULTS;
+    }
+
     @EventHandler(priority = EventPriority.HIGHEST)
     public void onPlayerDeath(PlayerDeathEvent event) {
-        releasePlayer(event.getEntity());
+        if (closeOn().death()) releasePlayer(event.getEntity());
     }
 
     @EventHandler(priority = EventPriority.MONITOR)
     public void onPlayerChangedWorld(PlayerChangedWorldEvent event) {
         // Экран остался в прежнем мире - игроку он больше недоступен
-        releasePlayer(event.getPlayer());
+        if (closeOn().worldChange()) releasePlayer(event.getPlayer());
+        else { ScreenInstance s = privateScreens.get(event.getPlayer().getUniqueId()); if (s != null) forceCloseScreen(event.getPlayer()); }
+    }
+
+    /** Телепорт дальше closeOn.teleport блоков: экран остался на старом месте, закрываем. */
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onPlayerTeleport(org.bukkit.event.player.PlayerTeleportEvent event) {
+        double limit = closeOn().teleport();
+        if (limit <= 0 || !privateScreens.containsKey(event.getPlayer().getUniqueId())) return;
+        org.bukkit.Location to = event.getTo();
+        if (to == null) return;
+        if (!to.getWorld().equals(event.getFrom().getWorld()) || to.distanceSquared(event.getFrom()) > limit * limit) {
+            forceCloseScreen(event.getPlayer());
+        }
+    }
+
+    /** Открытие инвентаря (сундук, верстак, GUI другого плагина) - если включено в closeOn. */
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onInventoryOpen(org.bukkit.event.inventory.InventoryOpenEvent event) {
+        if (!closeOn().inventory() || !(event.getPlayer() instanceof Player p)) return;
+        if (privateScreens.containsKey(p.getUniqueId())) forceCloseScreen(p);
     }
 
     /**

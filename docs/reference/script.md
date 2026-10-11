@@ -73,4 +73,6 @@ Policy.maxTableSize(100000);
 ```java
 boolean hotReload = true;      // следить за screens/
 int scriptTimeoutMs = 1000;    // сторожевой таймер: вызов скрипта дольше этого прерывается; 0 - выключен
+// автозакрытие приватного экрана (выход с сервера - всегда): смерть, смена мира, телепорт дальше N блоков (0 - нет), открытие инвентаря
+dyn closeOn = { death: true, worldChange: true, teleport: 8, inventory: false };
 ```
