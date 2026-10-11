@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import Icon from './Icon.vue';
+import { useReorder, moveItem } from '../reorder';
 import { computed } from 'vue';
 import type { Widget, ActionType, RichText } from '../model/screen';
 import { defaultHoverAnimation } from '../model/screen';
@@ -20,6 +21,9 @@ type FrameKey = 'frames' | 'hoveredFrames';
 function addFrame(k: FrameKey) { snapshot(); const last = w.value[k][w.value[k].length - 1]; w.value[k].push(last != null ? cloneRich(last) : (k === 'frames' ? cloneRich(w.value.text) : '')); if (k === 'frames') w.value.text = w.value.frames[0]; touch(); }
 function removeFrame(k: FrameKey, i: number) { snapshot(); w.value[k].splice(i, 1); if (k === 'frames' && w.value.frames.length) w.value.text = w.value.frames[0]; touch(); }
 function setFrame(k: FrameKey, i: number, v: RichText | null) { w.value[k][i] = v ?? ''; if (k === 'frames' && i === 0) w.value.text = w.value.frames[0]; touch(); }
+function moveFrame(k: FrameKey, from: number, to: number) { snapshot(); moveItem(w.value[k], from, to); if (k === 'frames') w.value.text = w.value.frames[0]; touch(); }
+const dndFrames = useReorder((f, t) => moveFrame('frames', f, t));
+const dndHoveredFrames = useReorder((f, t) => moveFrame('hoveredFrames', f, t));
 function cloneRich(r: RichText): RichText { return typeof r === 'string' ? r : r.map((s) => ({ ...s })); }
 const size = computed(() => { void state.revision; void calibration.px; return w.value.type !== 'ITEM_BUTTON' ? textSizeBlocks(w.value) : { w: calibration.itemSize * w.value.scale[0], h: calibration.itemSize * w.value.scale[1] }; });
 const action = computed<ActionType>(() => w.value.onClick?.action ?? 'NONE');
@@ -97,7 +101,8 @@ function fmt(n: number) { return (Math.round(n * 1000) / 1000).toString(); }
       <div class="field stack"><label>hoveredText <span class="hint">При наведении (по умолчанию тот же)</span></label><RichTextInput v-model="w.hoveredText" nullable placeholder="Как text" /></div>
       <div class="field stack"><label>frames <span class="hint">Кадры анимации: сменяются каждые N тиков; text = первый кадр</span></label>
         <div class="frames">
-          <div v-for="(fr, i) in w.frames" :key="i" class="frame-row">
+          <div v-for="(fr, i) in w.frames" :key="i" class="frame-row" :class="dndFrames.rowClass(i)" data-row @dragover="dndFrames.over(i, $event)" @dragleave="dndFrames.leave(i)" @drop="dndFrames.drop(i, $event)">
+            <span class="grip" title="Перетащить, чтобы изменить порядок" draggable="true" @dragstart="dndFrames.start(i, $event)" @dragend="dndFrames.end()"><Icon name="grip-vertical" :size="10" /></span>
             <span class="kind">{{ i + 1 }}</span>
             <RichTextInput class="grow" :model-value="fr" @update:model-value="setFrame('frames', i, $event)" placeholder="Кадр" />
             <button class="btn sm icon" title="Удалить кадр" @click="removeFrame('frames', i)"><Icon name="times" /></button>
@@ -110,7 +115,8 @@ function fmt(n: number) { return (Math.round(n * 1000) / 1000).toString(); }
       </div>
       <div class="field stack"><label>hoveredFrames <span class="hint">Кадры при наведении (вместо hoveredText)</span></label>
         <div class="frames">
-          <div v-for="(fr, i) in w.hoveredFrames" :key="i" class="frame-row">
+          <div v-for="(fr, i) in w.hoveredFrames" :key="i" class="frame-row" :class="dndHoveredFrames.rowClass(i)" data-row @dragover="dndHoveredFrames.over(i, $event)" @dragleave="dndHoveredFrames.leave(i)" @drop="dndHoveredFrames.drop(i, $event)">
+            <span class="grip" title="Перетащить, чтобы изменить порядок" draggable="true" @dragstart="dndHoveredFrames.start(i, $event)" @dragend="dndHoveredFrames.end()"><Icon name="grip-vertical" :size="10" /></span>
             <span class="kind">{{ i + 1 }}</span>
             <RichTextInput class="grow" :model-value="fr" @update:model-value="setFrame('hoveredFrames', i, $event)" placeholder="Кадр" />
             <button class="btn sm icon" title="Удалить кадр" @click="removeFrame('hoveredFrames', i)"><Icon name="times" /></button>

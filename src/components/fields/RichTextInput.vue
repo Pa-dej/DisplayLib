@@ -8,6 +8,7 @@ import { snapshot, touch } from '../../store';
 import SpriteInput from './SpriteInput.vue';
 import LineInput from './LineInput.vue';
 import Icon from '../Icon.vue';
+import { useReorder, moveItem } from '../../reorder';
 import { ATLASES } from '../../render/sprites';
 
 const props = defineProps<{ modelValue: RichText | null; nullable?: boolean; placeholder?: string }>();
@@ -42,6 +43,7 @@ function addSprite() { snapshot(); emit('update:modelValue', [...baseSegments(),
 function upd(i: number, patch: Partial<Segment>) { edit((a) => { Object.assign(a[i], patch); if (!a[i].color) delete a[i].color; }); }
 function setAtlas(i: number, v: string) { edit((a) => { if (v.trim()) a[i].atlas = v.trim(); else delete a[i].atlas; }); }
 function setSprite(i: number, v: string) { edit((a) => { a[i].sprite = v; a[i].text = ''; delete a[i].color; }); }
+const dnd = useReorder((from, to) => { snapshot(); const a = segs.value.map((x) => ({ ...x })); moveItem(a, from, to); emit('update:modelValue', a); touch(); });
 function del(i: number) {
   snapshot();
   const a = segs.value.filter((_, j) => j !== i);
@@ -67,7 +69,8 @@ function setColor(i: number, ev: Event) {
         <button v-if="nullable" class="btn sm icon" title="Убрать" @click="clear"><Icon name="times" /></button>
       </div>
       <div v-else class="segments">
-        <div v-for="(s, i) in segs" :key="i" class="segment" :class="{ sprite: isSprite(s) }">
+        <div v-for="(s, i) in segs" :key="i" class="segment" :class="[{ sprite: isSprite(s) }, dnd.rowClass(i)]" data-row @dragover="dnd.over(i, $event)" @dragleave="dnd.leave(i)" @drop="dnd.drop(i, $event)">
+          <span class="grip" title="Перетащить, чтобы изменить порядок" draggable="true" @dragstart="dnd.start(i, $event)" @dragend="dnd.end()"><Icon name="grip-vertical" :size="10" /></span>
           <template v-if="isSprite(s)">
             <SpriteInput :model-value="s.sprite!" :atlas="s.atlas" @update:model-value="setSprite(i, $event)" @update:atlas="setAtlas(i, $event ?? '')" />
             <input type="text" list="atlas-list-seg" :value="s.atlas ?? ''" @focus="snapshot()" @input="setAtlas(i, ($event.target as HTMLInputElement).value)" placeholder="Атлас: авто" title="Атлас (пусто - по имени: item/… → items, иначе blocks)" style="width:86px" />
