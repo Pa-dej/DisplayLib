@@ -57,6 +57,12 @@ onBeforeUnmount(() => { scene?.dispose(); window.removeEventListener('blur', onW
 
 // смена экрана или любая правка модели -> перестроить (дёшево: экраны маленькие)
 watch(() => [state.current, state.revision], () => scene?.setScreen(currentScreen.value));
+watch(() => state.morphTo, (path) => {
+  if (!path || !scene) return;
+  const target = state.docs.find((d) => d.path === path); state.morphTo = null;
+  if (!target || target.path === state.current) return;
+  scene.playMorph(target.screen, () => { state.current = target.path; });
+});
 watch(() => [state.selected, state.extra] as const, () => scene?.setSelection(state.selected, state.extra), { deep: true });
 watch(() => state.hovered, (uid) => scene?.setHovered(uid));
 watch(calibration, () => scene?.rebuildAll(), { deep: true });

@@ -32,6 +32,7 @@ interface State {
   current: string | null;      // path текущего экрана
   selected: string | null;     // uid виджета (главный в выделении: у него гизмо и панель свойств)
   extra: string[];             // остальные выделенные (Shift+клик, рамка)
+  morphTo: string | null;      // запрос превью morph: path экрана-цели (Preview проигрывает и переключает экран)
   hovered: string | null;
   /** счётчик запросов «открыть вкладку скрипта» (Preview следит) */
   openScript: number;
@@ -45,7 +46,7 @@ interface State {
 }
 
 export const state = reactive<State>({
-  docs: [], current: null, selected: null, extra: [], hovered: null,
+  docs: [], current: null, selected: null, extra: [], hovered: null, morphTo: null,
   openScript: 0, message: '', error: '', undo: [], redo: [], revision: 0, posRevision: 0, busy: false,
 });
 
@@ -70,6 +71,17 @@ export function select(uid: string | null, additive = false): void {
 export function selectMany(uids: string[]): void {
   state.selected = uids[0] ?? null; state.extra = uids.slice(1);
 }
+/** Экраны, на которых есть виджет с тем же id и классом сущности (для пометок «переедет при morph»). */
+export const morphPartners = computed(() => {
+  const s = currentScreen.value; const m = new Map<string, string[]>(); if (!s) return m;
+  const cls = (w: Widget) => (w.type === 'ITEM_BUTTON' ? 'item' : 'text');
+  for (const w of s.widgets) {
+    if (!w.id) continue;
+    const list = state.docs.filter((d) => d.screen !== s && d.screen.widgets.some((x) => x.id === w.id && cls(x) === cls(w))).map((d) => d.screen.id);
+    if (list.length) m.set(w.uid, list);
+  }
+  return m;
+});
 export const selectedWidget = computed(() => currentScreen.value?.widgets.find((w) => w.uid === state.selected) ?? null);
 /** Функции/хуки скрипта текущего экрана - по его тексту (файл или живой шаблон). */
 export const currentScriptInfo = computed(() => { void state.revision; const d = currentDoc.value; return d ? scanScript(scriptTextOf(d)) : null; });
@@ -155,10 +167,12 @@ export function newScreen(id = 'new_screen'): ScreenDoc {
   return doc;
 }
 
-export function loadScreenText(path: string, text: string): ScreenDoc {
+/** Разобрать текст экрана и положить в редактор; path null - имя файла по id экрана (<id>.jmc). */
+export function loadScreenText(path: string | null, text: string): ScreenDoc {
   const table = parseJmc(text);
   if (!table || typeof table !== 'object' || Array.isArray(table)) throw new Error('ожидались переменные верхнего уровня или return { ... }');
-  const { screen, warnings } = tableToScreen(table, path.split('/').pop()!);
+  const { screen, warnings } = tableToScreen(table, (path ?? 'imported.jmc').split('/').pop()!);
+  if (path == null) path = screen.id + '.jmc';
   applyEditorFlags(screen);
   const existing = state.docs.find((d) => d.path === path);
   const doc: ScreenDoc = { path, screen, savedText: text, warnings, dirty: false, scriptText: existing?.scriptText ?? null, scriptSaved: existing?.scriptSaved ?? null, scriptDirty: existing?.scriptDirty ?? false };

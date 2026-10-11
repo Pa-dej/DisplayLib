@@ -14,6 +14,7 @@ import { buildTextTexture, layout } from './text';
 import { itemTexture } from './items';
 import { computeSnap, type Guide, type Rect } from './snap';
 import { IDENTITY, isIdentity, targetOf, durationMs, easingOf, tweenAt, type HoverDelta, type HoverTween } from './hoverAnim';
+import { planMorph, matchedAt, backgroundAt, type MorphPlan } from './morph';
 
 export interface SceneCallbacks {
   /** additive - Shift/Ctrl зажат: добавить/убрать из выделения, а не заменить. */
@@ -71,6 +72,8 @@ export class ScreenScene {
   private frame = 0;
   /** Идущие hover-анимации по uid (переживают перестройку узла). */
   private tweens = new Map<string, HoverTween>();
+  /** Идущий превью-morph: экран-цель, план и момент старта. */
+  private morph: { to: Screen; plan: MorphPlan; t0: number; lastStep: number; onDone: () => void; extra: Node[]; bgExtra: Node | null } | null = null;
   /** Последняя применённая дельта по uid - чтобы новая анимация стартовала с текущего состояния. */
   private deltas = new Map<string, HoverDelta>();
   showHitAreas = true;
@@ -210,6 +213,79 @@ export class ScreenScene {
   }
 
   /** Центр камеры на выбранном виджете (или на всём содержимом). */
+  /** Проиграть переход на экран `to` как в игре; по окончании - onDone (вызывающий переключает экран). */
+  playMorph(to: Screen, onDone: () => void): void {
+    if (!this.screen || this.morph) return;
+    this.cancelInteraction();
+    this.tweens.clear(); this.deltas.clear();
+    const plan = planMorph(this.screen, to);
+    // fade-in: узлы нового экрана с нулевым масштабом
+    const extra: Node[] = [];
+    for (const w of plan.fadeIn) {
+      const n = w.type === 'ITEM_BUTTON' ? this.buildItem(w) : this.buildText(w);
+      n.base.scale = [0, 0, 1]; this.applyDelta(n, IDENTITY);
+      this.scene.add(n.group); extra.push(n);
+    }
+    let bgExtra: Node | null = null;
+    if (!plan.bg.from && plan.bg.to) { bgExtra = this.buildBackground(plan.bg.to); bgExtra.base.scale = [0, 0, 1]; this.applyDelta(bgExtra, IDENTITY); this.scene.add(bgExtra.group); }
+    this.morph = { to, plan, t0: performance.now(), lastStep: -1, onDone, extra, bgExtra };
+    this.gizmo.detach(); this.gizmoHelper.visible = false;
+  }
+
+  get morphing(): boolean { return !!this.morph; }
+
+  private tickMorph(): void {
+    const m = this.morph; if (!m) return;
+    const f = Math.min(1, (performance.now() - m.t0) / m.plan.ms);
+    const step = Math.floor(f * m.plan.steps);
+    const stepChanged = step !== m.lastStep; m.lastStep = step;
+    // matched: геометрия каждый кадр, текст/цвет - по шагам (перестройка узла)
+    for (const { from, to } of m.plan.matched) {
+      const n = this.nodes.get(from.uid); if (!n) continue;
+      const w = matchedAt(from, to, f, m.plan.steps);
+      if (stepChanged || f >= 1) {
+        // перестроить узел под текущий текст/цвет (размер текстуры может измениться)
+        const old = n; this.scene.remove(old.group); old.dispose();
+        const nn = w.type === 'ITEM_BUTTON' ? this.buildItem(w) : this.buildText(w);
+        nn.locked = true; this.nodes.set(from.uid, nn); this.scene.add(nn.group);
+        continue;
+      }
+      n.group.position.copy(this.worldPos(w.position, w.type === 'ITEM_BUTTON' ? calibration.itemDepthOffset : calibration.textDepthOffset));
+      n.base.tr = [w.translation[0], w.translation[1], w.translation[2]];
+      n.base.scale = [w.scale[0], w.scale[1], w.scale[2]];
+      n.base.rotDeg = w.rotation;
+      this.applyDelta(n, IDENTITY);
+    }
+    // fade-out: масштаб → 0
+    for (const w of m.plan.fadeOut) {
+      const n = this.nodes.get(w.uid); if (!n) continue;
+      n.base.scale = [w.scale[0] * (1 - f), w.scale[1] * (1 - f), 1]; this.applyDelta(n, IDENTITY);
+    }
+    // fade-in: с тика 1 (1/D пути) масштаб 0 → цель
+    const fi = Math.max(0, (f * m.plan.ms - 50) / Math.max(1, m.plan.ms - 50));
+    m.extra.forEach((n, i) => { const w = m.plan.fadeIn[i]; n.base.scale = [w.scale[0] * fi, w.scale[1] * fi, 1]; this.applyDelta(n, IDENTITY); });
+    // фон
+    if (m.plan.bg.from && m.plan.bg.to && this.bgNode && (stepChanged || f >= 1)) {
+      this.scene.remove(this.bgNode.group); this.bgNode.dispose();
+      this.bgNode = this.buildBackground(backgroundAt(m.plan.bg.from, m.plan.bg.to, Math.min(1, step / m.plan.steps)));
+      this.scene.add(this.bgNode.group);
+    } else if (m.plan.bg.from && m.plan.bg.to && this.bgNode) {
+      const b = backgroundAt(m.plan.bg.from, m.plan.bg.to, f);
+      this.bgNode.group.position.copy(this.worldPos(b.position, calibration.textDepthOffset));
+      this.bgNode.base.scale = [b.scale[0], b.scale[1], 1]; this.applyDelta(this.bgNode, IDENTITY);
+    } else if (m.plan.bg.from && !m.plan.bg.to && this.bgNode) {
+      this.bgNode.base.scale = [m.plan.bg.from.scale[0] * (1 - f), m.plan.bg.from.scale[1] * (1 - f), 1]; this.applyDelta(this.bgNode, IDENTITY);
+    } else if (m.bgExtra && m.plan.bg.to) {
+      m.bgExtra.base.scale = [m.plan.bg.to.scale[0] * fi, m.plan.bg.to.scale[1] * fi, 1]; this.applyDelta(m.bgExtra, IDENTITY);
+    }
+    if (f >= 1) {
+      for (const n of m.extra) { this.scene.remove(n.group); n.dispose(); }
+      if (m.bgExtra) { this.scene.remove(m.bgExtra.group); m.bgExtra.dispose(); }
+      this.morph = null;
+      m.onDone();
+    }
+  }
+
   /** Прямоугольники видимых виджетов в плоскости экрана (мировые x/y; x модели = x · positionXSign). */
   widgetRects(uids: string[]): Map<string, Rect> {
     const out = new Map<string, Rect>();
@@ -820,6 +896,7 @@ export class ScreenScene {
     this.frame = requestAnimationFrame(this.loop);
     this.tickFrames();
     this.tickTweens();
+    this.tickMorph();
     const w = this.canvas.clientWidth, h = this.canvas.clientHeight;
     const pr = this.renderer.getPixelRatio();
     if (w && h && (this.canvas.width !== Math.floor(w * pr) || this.canvas.height !== Math.floor(h * pr))) {
