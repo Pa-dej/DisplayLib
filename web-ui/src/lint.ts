@@ -25,9 +25,11 @@ export function visualRect(w: Widget): Rect {
   const px = calibration.px;
   const wb = L.bgW * px * w.scale[0], hb = L.bgH * px * w.scale[1];
   if (w.backgroundAlpha < 26) {
-    // фон не рисуется - считаем по глифам, как сцена
+    // фон не рисуется - считаем по глифам, как сцена: одиночный спрайт/голова 8 px, текст без нижней строки-отступа
+    const objectOnly = L.lines.length === 1 && L.lines[0].length > 0 && L.lines[0].every((r) => !!r.sprite);
+    const inkH = objectOnly ? 8 : Math.max(1, L.height - 1);
     const l = tx - wb / 2 + calibration.bgLeft * px * w.scale[0];
-    return { l, r: l + L.width * px * w.scale[0], b: ty + hb - (calibration.bgTop + L.height) * px * w.scale[1], t: ty + hb - calibration.bgTop * px * w.scale[1] };
+    return { l, r: l + L.width * px * w.scale[0], b: ty + hb - (calibration.bgTop + inkH) * px * w.scale[1], t: ty + hb - calibration.bgTop * px * w.scale[1] };
   }
   return { l: tx - wb / 2, r: tx + wb / 2, b: ty, t: ty + hb }; // якорь - низ по центру
 }

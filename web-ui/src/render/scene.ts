@@ -517,7 +517,9 @@ export class ScreenScene {
     const alpha = hovered ? w.hoveredBackgroundAlpha : w.backgroundAlpha;
     const { texture, layout: L } = buildTextTexture(text, w.alignment, bg, alpha, 4, w.lineWidth);
     const objectOnly = L.lines.length === 1 && L.lines[0].length > 0 && L.lines[0].every((r) => !!r.sprite);
-    return this.textNode(w.uid, texture, L.bgW, L.bgH, w.scale, w.translation, w.position, calibration.textDepthOffset, w.tolerance, true, w.rotation, alpha < 26 ? { width: L.width, height: L.height } : null, objectOnly);
+    // видимые габариты без фона: одиночный спрайт/голова - 8 px (верх строки), текст - без пустой нижней строки-отступа (l - 1)
+    const inkH = objectOnly ? 8 : Math.max(1, L.height - 1);
+    return this.textNode(w.uid, texture, L.bgW, L.bgH, w.scale, w.translation, w.position, calibration.textDepthOffset, w.tolerance, true, w.rotation, alpha < 26 ? { width: L.width, height: inkH } : null, objectOnly);
   }
 
   private buildBackground(b: Background): Node {
@@ -632,9 +634,9 @@ export class ScreenScene {
     let html = '';
     const poly = (n: Node, primary: boolean) => {
       const q = this.screenQuad(n); if (!q) return;
-      // контур чуть снаружи габаритов: сдвиг каждой вершины от центра на 3 px
+      // контур чуть снаружи габаритов: сдвиг каждой вершины от центра на 1.5 px
       const cx = q.reduce((a, p) => a + p[0], 0) / 4, cy = q.reduce((a, p) => a + p[1], 0) / 4;
-      const pts = q.map(([x, y]) => { const dx = x - cx, dy = y - cy, l = Math.hypot(dx, dy) || 1; return `${(x + (dx / l) * 3).toFixed(1)},${(y + (dy / l) * 3).toFixed(1)}`; }).join(' ');
+      const pts = q.map(([x, y]) => { const dx = x - cx, dy = y - cy, l = Math.hypot(dx, dy) || 1; return `${(x + (dx / l) * 1.5).toFixed(1)},${(y + (dy / l) * 1.5).toFixed(1)}`; }).join(' ');
       html += `<polygon points="${pts}" class="${primary ? 'sel' : 'sel extra'}"/>`;
     };
     for (const uid of this.extraSelected) { const n = this.nodes.get(uid); if (n) poly(n, false); }
