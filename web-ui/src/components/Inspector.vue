@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import Icon from './Icon.vue';
 import { ref } from 'vue';
-import { currentScreen, selectedWidget, currentDoc, state } from '../store';
+import { currentScreen, selectedWidget, currentDoc, state, selectedUids } from '../store';
+import GroupPanel from './GroupPanel.vue';
 import ScreenPanel from './ScreenPanel.vue';
 import WidgetPanel from './WidgetPanel.vue';
 import CalibrationPanel from './CalibrationPanel.vue';
@@ -20,12 +21,13 @@ const tab = ref<'props' | 'morph' | 'calib'>('props');
     <template v-else-if="!currentScreen"><div class="empty">Нет открытого экрана</div></template>
     <template v-else>
       <div v-if="currentDoc?.warnings.length" class="callout warn"><b>При чтении файла:</b><br />{{ currentDoc.warnings.join('; ') }}</div>
-      <WidgetPanel v-if="selectedWidget" :key="selectedWidget.uid" :widget="selectedWidget" />
+      <GroupPanel v-if="selectedUids.length >= 2" />
+      <WidgetPanel v-else-if="selectedWidget" :key="selectedWidget.uid" :widget="selectedWidget" />
       <template v-else>
         <ScreenPanel :key="currentDoc?.path" :screen="currentScreen" />
         <div class="hint">Выберите виджет в списке слева или кликом в предпросмотре, чтобы редактировать его. Виджетов: {{ currentScreen.widgets.length }}.</div>
       </template>
-      <div v-if="selectedWidget" style="margin-top:8px"><button class="btn sm" @click="state.selected = null">← к настройкам экрана</button></div>
+      <div v-if="selectedWidget" style="margin-top:8px"><button class="btn sm" @click="state.selected = null; state.extra = []">← к настройкам экрана</button></div>
     </template>
   </aside>
 </template>
