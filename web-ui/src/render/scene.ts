@@ -516,7 +516,8 @@ export class ScreenScene {
     const bg = hovered ? w.hoveredBackgroundColor : w.backgroundColor;
     const alpha = hovered ? w.hoveredBackgroundAlpha : w.backgroundAlpha;
     const { texture, layout: L } = buildTextTexture(text, w.alignment, bg, alpha, 4, w.lineWidth);
-    return this.textNode(w.uid, texture, L.bgW, L.bgH, w.scale, w.translation, w.position, calibration.textDepthOffset, w.tolerance, true, w.rotation, alpha < 26 ? { width: L.width, height: L.height } : null);
+    const objectOnly = L.lines.length === 1 && L.lines[0].length > 0 && L.lines[0].every((r) => !!r.sprite);
+    return this.textNode(w.uid, texture, L.bgW, L.bgH, w.scale, w.translation, w.position, calibration.textDepthOffset, w.tolerance, true, w.rotation, alpha < 26 ? { width: L.width, height: L.height } : null, objectOnly);
   }
 
   private buildBackground(b: Background): Node {
@@ -530,7 +531,7 @@ export class ScreenScene {
   }
 
   private textNode(uid: string, texture: THREE.Texture, bgW: number, bgH: number, scale: [number, number, number], tr: [number, number, number],
-    pos: [number, number, number], depth: number, tol: [number, number] | null, selectable: boolean, rotationDeg = 0, ink: { width: number; height: number } | null = null): Node {
+    pos: [number, number, number], depth: number, tol: [number, number] | null, selectable: boolean, rotationDeg = 0, ink: { width: number; height: number } | null = null, objectOnly = false): Node {
     const px = calibration.px;
     const wBlocks = bgW * px, hBlocks = bgH * px;
     const geo = new THREE.PlaneGeometry(wBlocks, hBlocks);
@@ -549,7 +550,9 @@ export class ScreenScene {
     group.add(pivot);
     group.position.copy(this.worldPos(pos, depth));
     // зона наведения: плагин поднимает центр на половину высоты фона (TextDisplayButtonWidget.hitCenterOffsetY)
-    const hit = tol ? this.hitRect(tol, tr, (bgH / 2) * px * scale[1]) : null;
+    // как плагин: центр зоны на 1 px правее якоря (клиент рисует текст от 1 - k/2) и на l/2 - 1 px выше
+    // (строки текста локально [-1, l-1]); одиночный спрайт/голова - верхние 8 px строки, центр ровно на l/2
+    const hit = tol ? this.hitRect(tol, tr, (bgH / 2 - (objectOnly ? 0 : 1)) * px * scale[1], 1 * px * scale[0]) : null;
     if (hit) group.add(hit);
     // видимые габариты: при невидимом фоне (альфа < 26 клиент фон не рисует) - прямоугольник глифов, иначе фон
     const planeL = centerX - wBlocks / 2;
@@ -591,13 +594,13 @@ export class ScreenScene {
   }
 
   /** Зона наведения: прямоугольник tolerance с центром в позиции + translation (+ половина высоты текста у TextDisplay). */
-  private hitRect(tol: [number, number], tr: [number, number, number], offsetY = 0): THREE.LineSegments {
+  private hitRect(tol: [number, number], tr: [number, number, number], offsetY = 0, offsetX = 0): THREE.LineSegments {
     const g = new THREE.BufferGeometry();
     const hw = tol[0], hh = tol[1];
     const v = new Float32Array([-hw, -hh, 0, hw, -hh, 0, hw, -hh, 0, hw, hh, 0, hw, hh, 0, -hw, hh, 0, -hw, hh, 0, -hw, -hh, 0]);
     g.setAttribute('position', new THREE.BufferAttribute(v, 3));
     const l = new THREE.LineSegments(g, new THREE.LineBasicMaterial({ color: 0x00e5ff, transparent: true, opacity: 0.7, depthTest: false }));
-    l.position.set(tr[0] * calibration.translationXSign, tr[1] + offsetY, tr[2] + 0.002);
+    l.position.set(tr[0] * calibration.translationXSign + offsetX, tr[1] + offsetY, tr[2] + 0.002);
     l.visible = this.showHitAreas;
     l.renderOrder = 10;
     return l;

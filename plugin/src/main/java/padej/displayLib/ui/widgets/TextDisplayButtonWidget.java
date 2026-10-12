@@ -276,8 +276,9 @@ public class TextDisplayButtonWidget implements Widget {
      */
     private void cachePosition() {
         display.getLocation(positionScratch);
-        float tx = translation != null ? translation.x : 0.0f;
-        // Якорь TextDisplay - низ текста по центру; зону поднимаем на половину высоты фона,
+        // Клиент рисует текст от x = 1 - k/2 до 1 + k/2 (translate(1 - k/2)): центр текста на 1 px правее якоря
+        float tx = (translation != null ? translation.x : 0.0f) + TEXT_PIXEL * scaleX;
+        // Якорь TextDisplay - низ текста по центру; зону поднимаем на половину высоты текста,
         // чтобы tolerance задавал прямоугольник вокруг центра нарисованного текста.
         float ty = (translation != null ? translation.y : 0.0f) + hitCenterOffsetY();
         float tz = translation != null ? translation.z : 0.0f;
@@ -302,7 +303,22 @@ public class TextDisplayButtonWidget implements Widget {
     float hitCenterOffsetY() {
         int lines = estimateSize(text, lineWidth)[1];
         float heightPx = lines * LINE_HEIGHT;
-        return heightPx / 2.0f * TEXT_PIXEL * scaleY;
+        // Клиент: фон от -1 до l-1 px (локально [0, l]), строки текста от 0 до l px -> локально [-1, l-1]:
+        // центр строк на l/2 - 1 px выше якоря. Одиночный объект (спрайт/голова) - верхние 8 px строки,
+        // локально [1, 9]: центр ровно на l/2.
+        float textShift = lines == 1 && isObjectOnly(text) ? 0.0f : 1.0f;
+        return (heightPx / 2.0f - textShift) * TEXT_PIXEL * scaleY;
+    }
+
+    /** Текст состоит только из объектов (спрайт/голова) без букв. */
+    static boolean isObjectOnly(Component c) {
+        if (c == null) return false;
+        boolean[] seen = {false, false}; // [object, text]
+        for (Component part : c.iterable(net.kyori.adventure.text.ComponentIteratorType.DEPTH_FIRST)) {
+            if (part instanceof net.kyori.adventure.text.ObjectComponent) seen[0] = true;
+            else if (part instanceof TextComponent t && !t.content().isEmpty()) seen[1] = true;
+        }
+        return seen[0] && !seen[1];
     }
 
     /**

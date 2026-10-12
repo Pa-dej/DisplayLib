@@ -34,9 +34,14 @@ export function visualRect(w: Widget): Rect {
 
 /** Зона наведения (tolerance вокруг центра: у текста - центр нарисованного текста). */
 export function hitRect(w: Widget): Rect {
-  const tx = w.position[0] + w.translation[0];
+  let tx = w.position[0] + w.translation[0];
   let ty = w.position[1] + w.translation[1];
-  if (w.type !== 'ITEM_BUTTON') ty += (layout(widgetText(w), w.lineWidth).bgH / 2) * calibration.px * w.scale[1];
+  if (w.type !== 'ITEM_BUTTON') {
+    const L = layout(widgetText(w), w.lineWidth);
+    const objectOnly = L.lines.length === 1 && L.lines[0].length > 0 && L.lines[0].every((r) => !!r.sprite);
+    tx += calibration.px * w.scale[0];
+    ty += (L.bgH / 2 - (objectOnly ? 0 : 1)) * calibration.px * w.scale[1];
+  }
   return { l: tx - w.tolerance[0], r: tx + w.tolerance[0], b: ty - w.tolerance[1], t: ty + w.tolerance[1] };
 }
 
