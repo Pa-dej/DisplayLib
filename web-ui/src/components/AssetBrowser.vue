@@ -17,7 +17,22 @@ const CATS: { id: string; atlas: string; label: string; prefix?: string }[] = [
   { id: 'banner', atlas: 'minecraft:banner_patterns', label: 'Узоры знамён' },
   { id: 'shield', atlas: 'minecraft:shield_patterns', label: 'Узоры щитов' },
   { id: 'trims', atlas: 'minecraft:armor_trims', label: 'Узоры брони' },
+  { id: 'heads', atlas: '', label: 'Головы игроков' },
 ];
+const HEAD_WORDS = ['player', 'head', 'skull', 'голов', 'игрок', 'skin', 'скин', 'ник'];
+const headHint = computed(() => cat.value.id !== 'heads' && HEAD_WORDS.some((w) => q.value.trim().toLowerCase().includes(w)));
+const headName = ref('Steve');
+const headHat = ref(true);
+const headFace = computed(() => 'https://mc-heads.net/avatar/' + encodeURIComponent(headName.value.trim() || 'Steve') + '/64' + (headHat.value ? '' : '/nohelm'));
+function pickHead() {
+  if (!currentScreen.value) return;
+  const w = addWidget('SPRITE_BUTTON');
+  w.player = headName.value.trim() || 'Steve'; w.hat = headHat.value; w.sprite = '';
+  w.scale = [1, 1, 1]; w.tolerance = [0.1, 0.1]; w.backgroundAlpha = 0;
+  touch();
+  notify('Голова ' + w.player + ' добавлена');
+  emit('close');
+}
 const cat = ref(CATS[0]);
 const q = ref('');
 const sub = ref('');     // подпапка (для интерфейса: hud, icon, widget, …)
@@ -26,6 +41,7 @@ const limit = ref(400);
 /** Все имена категории (атлас + префикс). */
 const names = computed<string[]>(() => {
   void spriteIndex.loaded;
+  if (!cat.value.atlas) return [];
   const all = spriteIndex.byAtlas[cat.value.atlas] ?? [];
   const c = cat.value;
   if (c.id === 'gui') return all.filter((n) => !n.startsWith('mob_effect/'));
@@ -86,15 +102,23 @@ function onKey(e: KeyboardEvent) { if (e.key === 'Escape') emit('close'); }
         <button class="btn sm" :class="{ primary: !sub }" @click="sub = ''">все</button>
         <button v-for="s in subs" :key="s" class="btn sm" :class="{ primary: sub === s }" @click="sub = s">{{ s }}</button>
       </div>
-      <div v-if="!spriteIndex.loaded" class="hint">Индекс спрайтов не загружен (assets/sprite-index.json).</div>
-      <div class="asset-grid">
+      <div v-if="headHint" class="callout" style="margin:4px 0">Головы игроков - не спрайты атласа, у них нет имени: это объект <code>player</code>, клиент берёт скин по нику. Смотри вкладку <a href="#" @click.prevent="cat = CATS[CATS.length - 1]">Головы игроков</a> или сегмент «Голова» в тексте.</div>
+      <div v-if="cat.id === 'heads'" class="head-pick">
+        <img :src="headFace" alt="" width="64" height="64" @error="($event.target as HTMLImageElement).style.visibility = 'hidden'" @load="($event.target as HTMLImageElement).style.visibility = 'visible'" />
+        <div class="stack">
+          <div class="row"><input type="text" v-model="headName" placeholder="Ник игрока" style="width:220px" @keydown.enter="pickHead" /><label class="row"><input type="checkbox" v-model="headHat" /> шапка</label><button class="btn primary" @click="pickHead"><Icon name="plus" /> Добавить голову</button></div>
+          <div class="hint">В файле экрана: <code>player: "{{ headName || 'Steve' }}"</code> у кнопки или <code>{ player: "{{ headName || 'Steve' }}" }</code> сегментом в тексте. Квадрат 8×8, как спрайт; текстуру клиент (1.21.9+) берёт по нику сам - профиль/текстуру задать нельзя. Превью - с mc-heads.net.</div>
+        </div>
+      </div>
+      <div v-else-if="!spriteIndex.loaded" class="hint">Индекс спрайтов не загружен (assets/sprite-index.json).</div>
+      <div v-if="cat.id !== 'heads'" class="asset-grid">
         <button v-for="n in shown" :key="n" class="asset" :title="n + ' · ' + cat.atlas" @click="pick(n)">
           <img :src="texturePath(n, cat.atlas)" loading="lazy" decoding="async" alt="" />
           <span>{{ short(n) }}</span>
         </button>
       </div>
-      <div v-if="list.length > shown.length" class="row" style="justify-content:center"><button class="btn" @click="limit += 400">Показать ещё ({{ list.length - shown.length }})</button></div>
-      <div class="hint">Клик по спрайту добавляет на текущий экран SPRITE_BUTTON с этим спрайтом. Имена - как в файле экрана: items/blocks без атласа, остальные с атласом.</div>
+      <div v-if="cat.id !== 'heads' && list.length > shown.length" class="row" style="justify-content:center"><button class="btn" @click="limit += 400">Показать ещё ({{ list.length - shown.length }})</button></div>
+      <div v-if="cat.id !== 'heads'" class="hint">Клик по спрайту добавляет на текущий экран SPRITE_BUTTON с этим спрайтом. Имена - как в файле экрана: items/blocks без атласа, остальные с атласом.</div>
     </div>
   </div>
 </template>
