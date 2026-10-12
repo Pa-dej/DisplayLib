@@ -22,7 +22,13 @@ export function visualRect(w: Widget): Rect {
     return { l: tx - hw, r: tx + hw, b: ty - hh, t: ty + hh };
   }
   const L = layout(widgetText(w), w.lineWidth);
-  const wb = L.bgW * calibration.px * w.scale[0], hb = L.bgH * calibration.px * w.scale[1];
+  const px = calibration.px;
+  const wb = L.bgW * px * w.scale[0], hb = L.bgH * px * w.scale[1];
+  if (w.backgroundAlpha < 26) {
+    // фон не рисуется - считаем по глифам, как сцена
+    const l = tx - wb / 2 + calibration.bgLeft * px * w.scale[0];
+    return { l, r: l + L.width * px * w.scale[0], b: ty + hb - (calibration.bgTop + L.height) * px * w.scale[1], t: ty + hb - calibration.bgTop * px * w.scale[1] };
+  }
   return { l: tx - wb / 2, r: tx + wb / 2, b: ty, t: ty + hb }; // якорь - низ по центру
 }
 

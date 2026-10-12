@@ -31,6 +31,8 @@ interface Node {
   /** Якорь сущности (translation): hover-анимации масштабируют/вращают вокруг него, как в игре. */
   pivot: THREE.Group;
   mesh: THREE.Mesh;
+  /** Видимые габариты в локальных координатах pivot (до масштаба): у текста с прозрачным фоном - сами глифы, иначе фон/текстура. */
+  visual: { l: number; r: number; b: number; t: number };
   /** Базовая трансформация pivot (без hover-дельт). */
   base: { tr: [number, number, number]; scale: [number, number, number]; rotDeg: number; center: [number, number]; item: boolean };
   hit: THREE.LineSegments | null;
@@ -509,7 +511,7 @@ export class ScreenScene {
     const bg = hovered ? w.hoveredBackgroundColor : w.backgroundColor;
     const alpha = hovered ? w.hoveredBackgroundAlpha : w.backgroundAlpha;
     const { texture, layout: L } = buildTextTexture(text, w.alignment, bg, alpha, 4, w.lineWidth);
-    return this.textNode(w.uid, texture, L.bgW, L.bgH, w.scale, w.translation, w.position, calibration.textDepthOffset, w.tolerance, true, w.rotation);
+    return this.textNode(w.uid, texture, L.bgW, L.bgH, w.scale, w.translation, w.position, calibration.textDepthOffset, w.tolerance, true, w.rotation, alpha < 26 ? { width: L.width, height: L.height } : null);
   }
 
   private buildBackground(b: Background): Node {
@@ -523,7 +525,7 @@ export class ScreenScene {
   }
 
   private textNode(uid: string, texture: THREE.Texture, bgW: number, bgH: number, scale: [number, number, number], tr: [number, number, number],
-    pos: [number, number, number], depth: number, tol: [number, number] | null, selectable: boolean, rotationDeg = 0): Node {
+    pos: [number, number, number], depth: number, tol: [number, number] | null, selectable: boolean, rotationDeg = 0, ink: { width: number; height: number } | null = null): Node {
     const px = calibration.px;
     const wBlocks = bgW * px, hBlocks = bgH * px;
     const geo = new THREE.PlaneGeometry(wBlocks, hBlocks);
@@ -544,7 +546,12 @@ export class ScreenScene {
     // зона наведения: плагин поднимает центр на половину высоты фона (TextDisplayButtonWidget.hitCenterOffsetY)
     const hit = tol ? this.hitRect(tol, tr, (bgH / 2) * px * scale[1]) : null;
     if (hit) group.add(hit);
-    const n: Node = { uid, group, pivot, mesh, hit, base: { tr: [tr[0], tr[1], tr[2]], scale: [scale[0], scale[1], scale[2]], rotDeg: rotationDeg, center: [centerX, centerY], item: false },
+    // видимые габариты: при невидимом фоне (альфа < 26 клиент фон не рисует) - прямоугольник глифов, иначе фон
+    const planeL = centerX - wBlocks / 2;
+    const visual = ink
+      ? { l: planeL + calibration.bgLeft * px, r: planeL + (calibration.bgLeft + ink.width) * px, b: hBlocks - (calibration.bgTop + ink.height) * px, t: hBlocks - calibration.bgTop * px }
+      : { l: planeL, r: planeL + wBlocks, b: 0, t: hBlocks };
+    const n: Node = { uid, group, pivot, mesh, hit, visual, base: { tr: [tr[0], tr[1], tr[2]], scale: [scale[0], scale[1], scale[2]], rotDeg: rotationDeg, center: [centerX, centerY], item: false },
       dispose: () => { geo.dispose(); mat.dispose(); texture.dispose(); hit?.geometry.dispose(); } };
     this.applyDelta(n, IDENTITY);
     return n;
@@ -572,7 +579,7 @@ export class ScreenScene {
     group.position.copy(this.worldPos(w.position, calibration.itemDepthOffset));
     const hit = this.hitRect(w.tolerance, w.translation);
     group.add(hit);
-    const n: Node = { uid: w.uid, group, pivot, mesh, hit, base: { tr: [w.translation[0], w.translation[1], w.translation[2]], scale: [w.scale[0], w.scale[1], w.scale[2]], rotDeg: w.rotation, center: [0, 0], item: true },
+    const n: Node = { uid: w.uid, group, pivot, mesh, hit, visual: { l: -size / 2, r: size / 2, b: -size / 2, t: size / 2 }, base: { tr: [w.translation[0], w.translation[1], w.translation[2]], scale: [w.scale[0], w.scale[1], w.scale[2]], rotDeg: w.rotation, center: [0, 0], item: true },
       dispose: () => { geo.dispose(); mat.dispose(); hit.geometry.dispose(); } };
     this.applyDelta(n, IDENTITY);
     return n;
@@ -601,17 +608,14 @@ export class ScreenScene {
     this.extraBoxes = [];
     for (const uid of this.extraSelected) {
       const m = this.nodes.get(uid); if (!m) continue;
-      m.mesh.updateWorldMatrix(true, false);
-      const box = new THREE.Box3().setFromObject(m.mesh); box.expandByScalar(0.01);
+      const box = this.visualBox(m); box.expandByScalar(0.004);
       const h = new THREE.Box3Helper(box, new THREE.Color(0xffc400));
       (h.material as THREE.LineBasicMaterial).depthTest = false; (h.material as THREE.LineBasicMaterial).transparent = true; (h.material as THREE.LineBasicMaterial).opacity = 0.6;
       h.renderOrder = 11; this.scene.add(h); this.extraBoxes.push(h);
     }
     const n = this.selected ? this.nodes.get(this.selected) : null;
     if (!n) return;
-    n.mesh.updateWorldMatrix(true, false);
-    const box = new THREE.Box3().setFromObject(n.mesh);
-    box.expandByScalar(0.01);
+    const box = this.visualBox(n); box.expandByScalar(0.004);
     const helper = new THREE.Box3Helper(box, new THREE.Color(0xffc400));
     (helper.material as THREE.LineBasicMaterial).depthTest = false;
     helper.renderOrder = 11;
@@ -727,7 +731,7 @@ export class ScreenScene {
     for (const n of this.nodes.values()) {
       if (n.locked) continue;
       n.mesh.updateWorldMatrix(true, false);
-      const c = new THREE.Box3().setFromObject(n.mesh).getCenter(new THREE.Vector3()).project(this.camera);
+      const c = this.visualBox(n).getCenter(new THREE.Vector3()).project(this.camera);
       if (c.z > 1) continue;
       const x = (c.x + 1) / 2 * W, y = (1 - c.y) / 2 * H;
       if (x >= l && x <= r && y >= t && y <= b) out.push(n.uid);
@@ -809,10 +813,18 @@ export class ScreenScene {
     return (2 * dist * Math.tan((this.camera.fov * Math.PI) / 360)) / Math.max(1, this.canvas.clientHeight);
   }
 
-  /** Прямоугольник видимой части узла (mesh) в плоскости экрана, если группа стоит в (x, y). */
-  private rectAt(n: Node, x: number, y: number): Rect {
+  /** Мировой бокс видимых габаритов узла (visual через матрицу pivot: масштаб, поворот, hover-дельты). */
+  private visualBox(n: Node): THREE.Box3 {
     n.group.updateMatrixWorld(true);
-    const box = new THREE.Box3().setFromObject(n.mesh); // мировой бокс при текущей позиции группы
+    const v = n.visual, z = 0;
+    const box = new THREE.Box3();
+    for (const [x, y] of [[v.l, v.b], [v.r, v.b], [v.l, v.t], [v.r, v.t]]) box.expandByPoint(new THREE.Vector3(x, y, z).applyMatrix4(n.pivot.matrixWorld));
+    return box;
+  }
+
+  /** Прямоугольник видимой части узла в плоскости экрана, если группа стоит в (x, y). Им же пользуются привязки, выравнивание и рамка выделения. */
+  private rectAt(n: Node, x: number, y: number): Rect {
+    const box = this.visualBox(n);
     const ox = n.group.position.x, oy = n.group.position.y;
     return { l: box.min.x - ox + x, r: box.max.x - ox + x, b: box.min.y - oy + y, t: box.max.y - oy + y };
   }
