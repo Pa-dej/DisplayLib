@@ -2,7 +2,7 @@
 // Панель группы: выбрано несколько виджетов. Положение правится «как у одного»: центр группы (сдвиг всех),
 // масштаб (вокруг центра, вместе с позициями, tolerance и смещениями анимаций), поворот (вокруг центра или у каждого),
 // а translation / tolerance / scale можно задать всем одинаковыми. Плюс копирование свойств с главного.
-import { computed, ref } from 'vue';
+import { computed } from 'vue';
 import Icon from './Icon.vue';
 import VecInput from './fields/VecInput.vue';
 import { state, selectedWidgets, selectedWidget, snapshot, touch, removeWidgets, selectedUids } from '../store';
@@ -22,8 +22,7 @@ function setCenter(v: number[]) {
   for (const w of ws.value) w.position = [r(w.position[0] + d[0]), r(w.position[1] + d[1]), r(w.position[2] + d[2])];
 }
 
-// ---- масштаб группы вокруг центра
-const scaleK = ref(1);
+// ---- масштаб группы вокруг центра (быстрые кнопки; применяется сразу)
 function scaleAnim(a: HoverAnimation | null, k: number) {
   if (!a) return;
   const v3 = (v: Vec3): Vec3 => [r(v[0] * k), r(v[1] * k), r(v[2] * k)];
@@ -41,31 +40,31 @@ function applyScale(k: number) {
     w.tolerance = [r(w.tolerance[0] * k), r(w.tolerance[1] * k)];
     scaleAnim(w.hoverAnimation, k);
   }
-  touch(); scaleK.value = 1;
+  touch();
 }
 
-// ---- одинаковые значения всем
-const same = (pick: (w: Widget) => readonly number[]) => computed(() => {
-  const first = ws.value[0]; if (!first) return null;
-  const a = pick(first); return ws.value.every((w) => pick(w).every((v, i) => v === a[i])) ? [...a] : null;
+// ---- поля «как у одного виджета»: показываем значение первого (если у всех разные - помечаем ≠), правка ставит всем
+const mixed = (pick: (w: Widget) => readonly number[]) => computed(() => {
+  const first = ws.value[0]; if (!first) return false;
+  const a = pick(first); return ws.value.some((w) => pick(w).some((v, i) => v !== a[i]));
 });
-const sameScale = same((w) => w.scale), sameTr = same((w) => w.translation), sameTol = same((w) => w.tolerance);
-const sameRot = computed(() => { const f = ws.value[0]; return f && ws.value.every((w) => w.rotation === f.rotation) ? f.rotation : null; });
+const scaleV = computed(() => [...(ws.value[0]?.scale ?? [1, 1, 1])]), trV = computed(() => [...(ws.value[0]?.translation ?? [0, 0, 0])]), tolV = computed(() => [...(ws.value[0]?.tolerance ?? [0.1, 0.1])]);
+const scaleMixed = mixed((w) => w.scale), trMixed = mixed((w) => w.translation), tolMixed = mixed((w) => w.tolerance);
 function setAll<K extends 'scale' | 'translation' | 'tolerance'>(k: K, v: number[]) { for (const w of ws.value) (w as any)[k] = [...v]; touch(); }
-function setRotation(deg: number) { snapshot(); for (const w of ws.value) w.rotation = deg; touch(); }
 
-// ---- поворот группы вокруг центра: позиции едут по дуге, у каждого rotation += угол
-const groupRot = ref(0);
-function rotateGroup(deg: number) {
-  if (!deg) return;
-  snapshot();
-  const c = center.value, a = (deg * Math.PI) / 180, cos = Math.cos(a), sin = Math.sin(a);
+// ---- поворот: слайдер как у одного виджета. Если у всех одинаковый rotation - показываем его; сдвиг слайдера
+// поворачивает группу вокруг центра (позиции по дуге) и прибавляет дельту к rotation каждого.
+const rotMixed = computed(() => { const f = ws.value[0]; return !!f && ws.value.some((w) => w.rotation !== f.rotation); });
+const groupRot = computed(() => (rotMixed.value ? 0 : ws.value[0]?.rotation ?? 0));
+function rotateTo(deg: number) {
+  const d = deg - groupRot.value; if (!d) return;
+  const c = center.value, a = (d * Math.PI) / 180, cos = Math.cos(a), sin = Math.sin(a);
   for (const w of ws.value) {
     const dx = w.position[0] - c[0], dy = w.position[1] - c[1];
     w.position = [r(c[0] + dx * cos - dy * sin), r(c[1] + dx * sin + dy * cos), w.position[2]];
-    w.rotation = r(w.rotation + deg);
+    w.rotation = r(w.rotation + d);
   }
-  touch(); groupRot.value = 0;
+  touch();
 }
 
 // ---- копировать с главного
@@ -90,29 +89,17 @@ const num = (e: Event) => Number((e.target as HTMLInputElement).value);
   <div class="hint" style="margin-bottom:8px">Главный - <code>{{ selectedWidget?.id || '(без id)' }}</code> (его панель - по клику без Shift). Поля ниже правят всех выделенных сразу.</div>
 
   <div class="section">
-    <h3>Положение группы</h3>
-    <div class="field"><label>центр</label><VecInput :model-value="center" :labels="['X', 'Y', 'Z']" :step="0.05" @update:model-value="setCenter($event)" /></div>
-    <div class="hint">Середина охватывающего прямоугольника позиций; правка сдвигает все виджеты на одну и ту же дельту (как перетаскивание).</div>
-    <div class="field"><label>масштаб ×</label><div class="row wrap">
-      <input type="number" min="0.05" step="0.05" style="width:72px" v-model.number="scaleK" @keydown.enter="applyScale(scaleK)" />
-      <button class="btn sm" @click="applyScale(scaleK)" :disabled="!(scaleK > 0) || scaleK === 1">Применить</button>
-      <button class="btn sm" @click="applyScale(0.5)">½</button><button class="btn sm" @click="applyScale(2)">×2</button>
+    <h3>Положение</h3>
+    <div class="field"><label>position</label><VecInput :model-value="center" :labels="['X', 'Y', 'Z']" :step="0.05" @update:model-value="setCenter($event)" /></div>
+    <div class="field"><label>scale<span v-if="scaleMixed" class="hint" title="У виджетов разные значения; показано первого, правка задаст всем"> ≠</span></label><VecInput :model-value="scaleV" :labels="['x', 'y', 'z']" :step="0.05" @update:model-value="setAll('scale', $event)" /></div>
+    <div class="field"><label>translation<span v-if="trMixed" class="hint" title="Разные; правка задаст всем"> ≠</span></label><VecInput :model-value="trV" :labels="['x', 'y', 'z']" :step="0.01" @update:model-value="setAll('translation', $event)" /></div>
+    <div class="field"><label>rotation<span v-if="rotMixed" class="hint" title="Разные; слайдер поворачивает группу на дельту"> ≠</span></label><div class="row">
+      <input type="range" min="-180" max="180" step="1" class="grow" :value="groupRot" title="Поворот группы вокруг её центра" @pointerdown="snapshot()" @input="rotateTo(num($event))" @dblclick="snapshot(); rotateTo(0)" />
+      <input type="number" step="1" style="width:64px" :value="groupRot" @focus="snapshot()" @input="rotateTo(num($event) || 0)" /><span class="hint">°</span>
     </div></div>
-    <div class="hint">Вокруг центра группы: позиции, scale, translation, tolerance и смещения hover-анимаций - пропорции сохраняются.</div>
-    <div class="field"><label>повернуть на</label><div class="row wrap">
-      <input type="number" step="5" style="width:72px" v-model.number="groupRot" @keydown.enter="rotateGroup(groupRot)" /><span class="hint">°</span>
-      <button class="btn sm" @click="rotateGroup(groupRot)" :disabled="!groupRot">Применить</button>
-      <button class="btn sm" @click="rotateGroup(90)">+90</button><button class="btn sm" @click="rotateGroup(-90)">−90</button>
-    </div></div>
-    <div class="hint">Вокруг центра группы: позиции идут по дуге, к rotation каждого прибавляется угол.</div>
-  </div>
-
-  <div class="section">
-    <h3>Одинаково всем</h3>
-    <div class="field"><label>scale</label><div class="row"><VecInput v-if="sameScale" :model-value="sameScale" :labels="['x', 'y', 'z']" :step="0.05" @update:model-value="setAll('scale', $event)" /><template v-else><span class="hint grow">разные</span><button class="btn sm" @click="snapshot(); setAll('scale', ws[0].scale)">Как у первого</button></template></div></div>
-    <div class="field"><label>translation</label><div class="row"><VecInput v-if="sameTr" :model-value="sameTr" :labels="['x', 'y', 'z']" :step="0.01" @update:model-value="setAll('translation', $event)" /><template v-else><span class="hint grow">разные</span><button class="btn sm" @click="snapshot(); setAll('translation', ws[0].translation)">Как у первого</button></template></div></div>
-    <div class="field"><label>rotation</label><div class="row"><input v-if="sameRot != null" type="number" step="1" style="width:72px" :value="sameRot" @focus="snapshot()" @input="setRotation(num($event))" /><template v-else><span class="hint grow">разные</span><button class="btn sm" @click="setRotation(ws[0].rotation)">Как у первого</button></template><span class="hint">°</span></div></div>
-    <div class="field"><label>tolerance</label><div class="row"><VecInput v-if="sameTol" :model-value="sameTol" :labels="['Полуширина', 'Полувысота']" :step="0.01" :min="0" @update:model-value="setAll('tolerance', $event)" /><template v-else><span class="hint grow">разные</span><button class="btn sm" @click="snapshot(); setAll('tolerance', ws[0].tolerance)">Как у первого</button></template></div></div>
+    <div class="field"><label>tolerance<span v-if="tolMixed" class="hint" title="Разные; правка задаст всем"> ≠</span></label><VecInput :model-value="tolV" :labels="['Полуширина', 'Полувысота']" :step="0.01" :min="0" @update:model-value="setAll('tolerance', $event)" /></div>
+    <div class="field"><label>масштаб группы</label><div class="row"><button class="btn sm" @click="applyScale(0.5)">½</button><button class="btn sm" @click="applyScale(0.8)">×0.8</button><button class="btn sm" @click="applyScale(1.25)">×1.25</button><button class="btn sm" @click="applyScale(2)">×2</button></div></div>
+    <div class="hint">position - центр охватывающего прямоугольника (правка сдвигает всех). Поворот - вокруг центра группы: позиции идут по дуге, rotation каждого меняется на ту же дельту. «Масштаб группы» - вокруг центра: позиции, scale, translation, tolerance и смещения hover-анимаций.</div>
   </div>
 
   <div class="section">
