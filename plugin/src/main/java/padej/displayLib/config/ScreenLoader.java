@@ -287,7 +287,7 @@ public class ScreenLoader {
                 return null;
             }
             type = has(data, "material") ? WidgetDefinition.WidgetType.ITEM_BUTTON
-                    : has(data, "sprite") ? WidgetDefinition.WidgetType.SPRITE_BUTTON
+                    : has(data, "sprite", "player", "head") ? WidgetDefinition.WidgetType.SPRITE_BUTTON
                     : WidgetDefinition.WidgetType.TEXT_BUTTON;
         }
         widget.setType(type);
@@ -338,6 +338,12 @@ public class ScreenLoader {
         if (sprite != null) widget.setSprite(sprite.trim());
         String atlas = str(data, "atlas");
         if (atlas != null) widget.setAtlas(atlas.trim());
+        String player = str(data, "player", "head");
+        if (player != null && !player.isBlank()) widget.setPlayer(player.trim());
+        String hoveredPlayer = str(data, "hoveredPlayer", "hovered_player", "hoveredHead", "hovered_head");
+        if (hoveredPlayer != null && !hoveredPlayer.isBlank()) widget.setHoveredPlayer(hoveredPlayer.trim());
+        Boolean hat = bool(data, "hat");
+        if (hat != null) widget.setHat(hat);
         String hoveredSprite = str(data, "hoveredSprite", "hovered_sprite");
         if (hoveredSprite != null) widget.setHoveredSprite(hoveredSprite.trim());
         // тинт спрайта: color / spriteColor, hoveredColor / hoveredSpriteColor (имя или hex, как у текста)

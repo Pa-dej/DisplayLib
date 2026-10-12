@@ -178,6 +178,11 @@ public class WidgetDefinition {
 
     /** Спрайт при наведении (для SPRITE_BUTTON); если не задан - тот же, что {@link #sprite}. */
     private String hoveredSprite;
+    /** Голова игрока вместо спрайта (объект player, клиент 1.21.9+): ник; текстуру клиент берёт сам. */
+    private String player;
+    private String hoveredPlayer;
+    /** Слой шапки скина у головы. */
+    private boolean hat = true;
     /** Тинт спрайта (имя или hex, как color у текста); null - без тинта. */
     private String spriteColor;
     /** Тинт при наведении; null - как spriteColor. */
@@ -299,6 +304,12 @@ public class WidgetDefinition {
     
     public String getMaterial() { return material; }
     public String getSprite() { return sprite; }
+    public String getPlayer() { return player; }
+    public void setPlayer(String p) { this.player = p; }
+    public String getHoveredPlayer() { return hoveredPlayer; }
+    public void setHoveredPlayer(String p) { this.hoveredPlayer = p; }
+    public boolean isHat() { return hat; }
+    public void setHat(boolean h) { this.hat = h; }
     public void setSprite(String sprite) { this.sprite = sprite; }
     public String getAtlas() { return atlas; }
     public void setAtlas(String atlas) { this.atlas = atlas; }

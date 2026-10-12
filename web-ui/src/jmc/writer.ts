@@ -17,7 +17,9 @@ function arr(a: readonly number[]): string { return '[' + a.map(jnum).join(', ')
 function same(a: readonly number[], b: readonly number[]): boolean { return a.length === b.length && a.every((v, i) => Math.abs(v - b[i]) < 1e-9); }
 function richText(t: RichText): string {
   if (typeof t === 'string') return jstr(t);
-  return '[ ' + t.map((s) => s.sprite !== undefined
+  return '[ ' + t.map((s) => s.player !== undefined
+    ? '{ player: ' + jstr(s.player) + (s.hat === false ? ', hat: false' : '') + (s.color ? ', color: ' + jstr(s.color) : '') + ' }'
+    : s.sprite !== undefined
     ? '{ ' + (atlasFor(s.atlas, s.sprite) ? 'atlas: ' + jstr(atlasFor(s.atlas, s.sprite)!) + ', ' : '') + 'sprite: ' + jstr(spriteFor(s.atlas, s.sprite)) + (s.color ? ', color: ' + jstr(s.color) : '') + ' }'
     : '{ text: ' + jstr(s.text) + (s.color ? ', color: ' + jstr(s.color) : '') + ' }').join(', ') + ' ]';
 }
@@ -93,9 +95,15 @@ export function widgetToJmc(w: Widget, opts: WriteOptions): string {
     if (w.frames.length) { f.push(`frames: [ ${w.frames.map(richText).join(', ')} ]`); f.push(`frameInterval: ${w.frameInterval}`); }
     if (w.hoveredFrames.length) { f.push(`hoveredFrames: [ ${w.hoveredFrames.map(richText).join(', ')} ]`); if (w.hoveredFrameInterval > 0 || v) f.push(`hoveredFrameInterval: ${w.hoveredFrameInterval > 0 ? w.hoveredFrameInterval : w.frameInterval}`); }
   } else if (w.type === 'SPRITE_BUTTON') {
-    const at = atlasFor(w.atlas, w.sprite); if (at) f.push(`atlas: ${jstr(at)}`);
-    f.push(`sprite: ${jstr(spriteFor(w.atlas, w.sprite))}`);
-    if (w.hoveredSprite) f.push(`hoveredSprite: ${jstr(w.hoveredSprite)}`);
+    if (w.player) {
+      f.push(`player: ${jstr(w.player)}`);
+      if (w.hoveredPlayer) f.push(`hoveredPlayer: ${jstr(w.hoveredPlayer)}`);
+      if (!w.hat || v) f.push(`hat: ${w.hat}`);
+    } else {
+      const at = atlasFor(w.atlas, w.sprite); if (at) f.push(`atlas: ${jstr(at)}`);
+      f.push(`sprite: ${jstr(spriteFor(w.atlas, w.sprite))}`);
+      if (w.hoveredSprite) f.push(`hoveredSprite: ${jstr(w.hoveredSprite)}`);
+    }
     if (w.spriteColor) f.push(`spriteColor: ${jstr(w.spriteColor)}`);
     if (w.hoveredSpriteColor) f.push(`hoveredSpriteColor: ${jstr(w.hoveredSpriteColor)}`);
   } else {

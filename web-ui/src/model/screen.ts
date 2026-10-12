@@ -20,6 +20,9 @@ export interface Segment {
   color?: string;
   sprite?: string;
   atlas?: string;
+  /** Голова игрока (объект player): ник; hat - слой шапки (по умолчанию да). */
+  player?: string;
+  hat?: boolean;
 }
 
 /** Текст: строка или сегменты. */
@@ -106,6 +109,10 @@ export interface Widget {
   /** null - по умолчанию клиента/плагина: items для item/..., иначе blocks */
   atlas: string | null;
   hoveredSprite: string | null;
+  /** Голова игрока вместо спрайта: ник (объект player, клиент 1.21.9+); null - спрайт. */
+  player: string | null;
+  hoveredPlayer: string | null;
+  hat: boolean;
   /** Тинт спрайта (имя цвета или #hex); null - без тинта (белый). */
   spriteColor: string | null;
   /** Тинт при наведении; null - как spriteColor. */
@@ -224,6 +231,9 @@ export function defaultWidget(type: WidgetType = 'TEXT_BUTTON'): Widget {
     sprite: 'item/diamond_sword',
     atlas: null,
     hoveredSprite: null,
+    player: null,
+    hoveredPlayer: null,
+    hat: true,
     spriteColor: null,
     hoveredSpriteColor: null,
   };
@@ -269,5 +279,5 @@ export function cloneDeep<T>(v: T): T {
 export function richToPlain(t: RichText | null | undefined): string {
   if (t == null) return '';
   if (typeof t === 'string') return t;
-  return t.map((s) => (s.sprite !== undefined ? '[' + s.sprite + ']' : s.text)).join('');
+  return t.map((s) => (s.player !== undefined ? '[@' + s.player + ']' : s.sprite !== undefined ? '[' + s.sprite + ']' : s.text)).join('');
 }

@@ -134,6 +134,14 @@ public final class WidgetAPI {
         }
     }
 
+    /** Голова игрока вместо текста/спрайта: {@code player("Steve")}, {@code player("Steve", false)} - без шапки. Текстуру клиент берёт по нику. */
+    public void player(String name) { player(name, true); }
+    public void player(String name, boolean hat) {
+        if (widget instanceof TextDisplayButtonWidget t && t.isValid()) {
+            t.setText(padej.displayLib.ui.ScreenSupport.headComponent(name, hat, null));
+        }
+    }
+
     /** Спрайт при наведении (SPRITE_BUTTON). */
     public void hoveredSprite(String atlas, String sprite) {
         if (widget instanceof TextDisplayButtonWidget t && t.isValid()) {

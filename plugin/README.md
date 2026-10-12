@@ -116,7 +116,7 @@ dyn widgets = [
 
 Поля виджетов: `id`, `type`, `position`, `scale`, `tolerance`, `translation`, `rotation` (градусы в плоскости экрана, + = против часовой, вокруг центра виджета; зона наведения не поворачивается), `text`, `hoveredText`,
 `alignment`, `backgroundColor`, `backgroundAlpha`, `hoveredBackgroundColor`, `hoveredBackgroundAlpha`,
-`material`, `glowOnHover`, `glowColor`, `sprite`, `atlas`, `hoveredSprite`, `tooltip`, `tooltipColor`, `tooltipDelay`,
+`material`, `glowOnHover`, `glowColor`, `sprite`, `atlas`, `hoveredSprite`, `player`/`hoveredPlayer`/`hat` (голова игрока по нику - объект `player`, клиент 1.21.9+; и сегмент `{ player: "Steve" }` в тексте), `tooltip`, `tooltipColor`, `tooltipDelay`,
 `lineWidth` (ширина переноса текста, px шрифта, по умолчанию 200), `clickSound` (ключ звука `ui.button.click` / константа `UI_BUTTON_CLICK` / таблица `{ sound, volume, pitch }` / `false`; по умолчанию текст - `block.dispenser.fail` pitch 2, предмет - `ui.button.click`), `hoverSound` (то же, играет при наведении; считается hover-реакцией), `onClick`, `hoverAnimation` (у `ROTATE` - `angle` и `axis`: `[0, 0, 1]` - в плоскости экрана, `[0, 1, 0]` - вокруг вертикали; складывается со статическим `rotation`). Тип можно не писать: есть `material` - `ITEM_BUTTON`, есть `sprite` - `SPRITE_BUTTON`,
 иначе `TEXT_BUTTON`. `SPRITE_BUTTON` - это TextDisplay с компонентом-объектом (`{"atlas": ..., "sprite": ...}`),
 поэтому у него есть фон, hover и `tolerance` как у текстовой кнопки; из скрипта - `widget.sprite("item/apple")`.

@@ -33,7 +33,8 @@ function rich(v: JmcValue): RichText | null {
       if (typeof p === 'string') segs.push({ text: p });
       else if (p && typeof p === 'object') {
         const pt = p as JmcTable;
-        if (pt.sprite != null) segs.push({ text: '', sprite: String(pt.sprite), atlas: atlasOrNull(pt.atlas == null ? undefined : String(pt.atlas), String(pt.sprite)), color: pt.color == null ? undefined : String(pt.color) });
+        if (pt.player != null) segs.push({ text: '', player: String(pt.player), hat: pt.hat === false ? false : undefined, color: pt.color == null ? undefined : String(pt.color) });
+        else if (pt.sprite != null) segs.push({ text: '', sprite: String(pt.sprite), atlas: atlasOrNull(pt.atlas == null ? undefined : String(pt.atlas), String(pt.sprite)), color: pt.color == null ? undefined : String(pt.color) });
         else segs.push({ text: pt.text == null ? '' : String(pt.text), color: pt.color == null ? undefined : String(pt.color) });
       }
     }
@@ -128,7 +129,7 @@ export function tableToWidget(d: JmcTable, index: number, warnings: string[]): W
   let type = enumValue(['TEXT_BUTTON', 'ITEM_BUTTON', 'SPRITE_BUTTON'] as const, typeStr);
   if (!type) {
     if (typeStr != null) { warnings.push(`виджет #${index}: неизвестный type '${typeStr}'`); return null; }
-    type = get(d, 'material') != null ? 'ITEM_BUTTON' : get(d, 'sprite') != null ? 'SPRITE_BUTTON' : 'TEXT_BUTTON';
+    type = get(d, 'material') != null ? 'ITEM_BUTTON' : get(d, 'sprite', 'player', 'head') != null ? 'SPRITE_BUTTON' : 'TEXT_BUTTON';
   }
   const w = defaultWidget(type);
   // дефолты плагина, а не редактора
@@ -149,6 +150,9 @@ export function tableToWidget(d: JmcTable, index: number, warnings: string[]): W
   const sp = str(d, 'sprite'); if (sp != null) w.sprite = sp.trim();
   const at = str(d, 'atlas'); if (at != null) w.atlas = atlasOrNull(at, w.sprite) ?? null;
   const hs = str(d, 'hoveredSprite', 'hovered_sprite'); if (hs != null) w.hoveredSprite = hs.trim();
+  const pl = str(d, 'player', 'head'); if (pl != null && pl.trim()) w.player = pl.trim();
+  const hpl = str(d, 'hoveredPlayer', 'hovered_player'); if (hpl != null && hpl.trim()) w.hoveredPlayer = hpl.trim();
+  const hat = bool(d, 'hat'); if (hat != null) w.hat = hat;
   const spc = str(d, 'spriteColor', 'sprite_color', 'color'); if (spc != null && spc.trim()) w.spriteColor = spc.trim();
   const hsc = str(d, 'hoveredSpriteColor', 'hovered_sprite_color', 'hoveredColor', 'hovered_color'); if (hsc != null && hsc.trim()) w.hoveredSpriteColor = hsc.trim();
   if (type === 'SPRITE_BUTTON' && !w.sprite) warnings.push(`виджет ${w.id || '#' + index}: SPRITE_BUTTON без sprite`);

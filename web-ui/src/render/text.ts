@@ -4,6 +4,7 @@ import type { RichText, RGB, Segment } from '../model/screen';
 import { calibration } from './metrics';
 import { font } from './font';
 import { drawSprite } from './sprites';
+import { drawHead } from './heads';
 
 export const NAMED_COLORS: Record<string, string> = {
   black: '#000000', dark_blue: '#0000AA', dark_green: '#00AA00', dark_aqua: '#00AAAA', dark_red: '#AA0000',
@@ -19,13 +20,14 @@ export function cssColor(c: string | undefined, fallback = '#FFFFFF'): string {
   return NAMED_COLORS[c.toLowerCase()] ?? fallback;
 }
 
-export interface Run { text: string; color: string; bold: boolean; sprite?: string; atlas?: string }
+export interface Run { text: string; color: string; bold: boolean; sprite?: string; atlas?: string; player?: string; hat?: boolean }
 
 /** Строки из RichText: сегменты + §-коды внутри строк (клиент их разбирает в литеральном тексте). */
 export function toRuns(t: RichText): Run[][] {
   const segs: Segment[] = typeof t === 'string' ? [{ text: t }] : t;
   const lines: Run[][] = [[]];
   for (const s of segs) {
+    if (s.player !== undefined) { if (s.player) lines[lines.length - 1].push({ text: '', color: cssColor(s.color), bold: false, sprite: '@' + s.player, player: s.player, hat: s.hat !== false }); continue; }
     if (s.sprite !== undefined) { if (s.sprite) lines[lines.length - 1].push({ text: '', color: cssColor(s.color), bold: false, sprite: s.sprite, atlas: s.atlas }); continue; }
     let color = cssColor(s.color);
     let bold = false;
@@ -131,6 +133,7 @@ export function buildTextTexture(t: RichText, align: 'LEFT' | 'CENTERED' | 'RIGH
     const y0 = calibration.bgTop + i * lh;
     let x = x0;
     for (const r of line) {
+      if (r.player) { drawHead(ctx, r.player, r.hat !== false, x, y0, S); x += runWidth(r); continue; }
       if (r.sprite) { drawSprite(ctx, r.sprite, r.atlas, x, y0, S, r.color); x += runWidth(r); continue; }
       font.draw(ctx, r.text, x, y0, S, r.color, calibration.shadow);
       if (r.bold) font.draw(ctx, r.text, x + 1, y0, S, r.color, false);

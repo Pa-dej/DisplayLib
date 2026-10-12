@@ -69,6 +69,18 @@ dyn widgets = [
 `speed` → `mob_effect/speed` в gui. Сегменты без `color` всегда белые - цвет соседнего сегмента не протекает.
 Имена из прежних YAML-файлов в snake_case (`tick_rate`, `screen_type`) тоже принимаются.
 
+## Головы игроков
+
+```java
+{ id: "hello", text: [ { text: "Привет от " }, { player: "Steve" }, { text: "!" } ] },   // голова в тексте, 8×8 как спрайт
+{ id: "avatar", player: "Notch", hoveredPlayer: "jeb_", hat: false, scale: [3, 3, 1] },  // SPRITE_BUTTON с головой вместо спрайта
+```
+
+Объект `player` текстового компонента (клиент 1.21.9+, то же, что `{"type":"object","object":"player","player":"Steve"}` в tellraw):
+квадрат 8×8 текстовых пикселей, текстуру клиент берёт сам по нику - профиль или текстуру с сервера передать нельзя,
+поэтому задаётся только ник. `hat` - слой шапки скина (по умолчанию да), `color` - тинт как у спрайтов.
+Из скрипта: `widget.player("Steve")`, `widget.player("Steve", false)`.
+
 ## Поворот, тинт спрайтов, звуки
 
 ```java

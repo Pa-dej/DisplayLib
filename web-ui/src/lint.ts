@@ -72,7 +72,7 @@ export function hasHoverVisual(w: Widget, s: Screen): boolean {
   if (w.hoverSound && w.hoverSound !== 'none') return true;
   if (w.hoverAnimation && !pub) return true;
   if (w.type === 'ITEM_BUTTON') return w.glowOnHover;
-  if (w.type === 'SPRITE_BUTTON' && ((w.hoveredSprite && w.hoveredSprite !== w.sprite) || (w.hoveredSpriteColor && w.hoveredSpriteColor !== w.spriteColor))) return true;
+  if (w.type === 'SPRITE_BUTTON' && ((w.hoveredSprite && w.hoveredSprite !== w.sprite) || (w.hoveredPlayer && w.hoveredPlayer !== w.player) || (w.hoveredSpriteColor && w.hoveredSpriteColor !== w.spriteColor))) return true;
   if (w.hoveredText != null && w.hoveredText !== '') return true;
   if (w.hoveredFrames.length && !pub) return true;
   if (w.backgroundAlpha !== w.hoveredBackgroundAlpha) return true;
@@ -100,7 +100,7 @@ export function lintScreen(s: Screen, script: ScriptInfo | null, screenIds: stri
     if (inert) out.push({ level: 'info', uid: w.uid, text: `${name}: статичный - без действия и реакции на наведение, плагин его не обсчитывает` });
     else hits.push({ w, r: hitRect(w) });
     if (w.type === 'ITEM_BUTTON' && !w.material) out.push({ level: 'error', uid: w.uid, text: `${name}: не задан material` });
-    if (w.type === 'SPRITE_BUTTON' && !w.sprite) out.push({ level: 'error', uid: w.uid, text: `${name}: не задан sprite` });
+    if (w.type === 'SPRITE_BUTTON' && !w.sprite && !w.player) out.push({ level: 'error', uid: w.uid, text: `${name}: не задан sprite / player` });
     if (bg && !w.hidden && !inside(visualRect(w), bg)) out.push({ level: 'warn', uid: w.uid, text: `${name}: выходит за фон` });
   }
   for (let i = 0; i < hits.length; i++) for (let j = i + 1; j < hits.length; j++) {

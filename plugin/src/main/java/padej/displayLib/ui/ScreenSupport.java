@@ -118,7 +118,9 @@ public final class ScreenSupport {
         // Текст - обычная строка или форматированные сегменты; у SPRITE_BUTTON - спрайт из атласа;
         // с кадрами анимации - первый кадр
         Component textComponent;
-        if (def.getType() == WidgetDefinition.WidgetType.SPRITE_BUTTON) {
+        if (def.getType() == WidgetDefinition.WidgetType.SPRITE_BUTTON && def.getPlayer() != null) {
+            textComponent = headComponent(def.getPlayer(), def.isHat(), def.getSpriteColor() != null ? parseColor(def.getSpriteColor()) : null);
+        } else if (def.getType() == WidgetDefinition.WidgetType.SPRITE_BUTTON) {
             textComponent = spriteComponent(def.getAtlas(), def.getSprite(), def.getSpriteColor() != null ? parseColor(def.getSpriteColor()) : null);
         } else if (def.getFrames() != null) {
             textComponent = parseFormattedText(def.getFrames().get(0));
@@ -129,7 +131,12 @@ public final class ScreenSupport {
         }
 
         Component hoveredTextComponent;
-        if (def.getType() == WidgetDefinition.WidgetType.SPRITE_BUTTON) {
+        if (def.getType() == WidgetDefinition.WidgetType.SPRITE_BUTTON && def.getPlayer() != null) {
+            TextColor hc = def.getHoveredSpriteColor() != null ? parseColor(def.getHoveredSpriteColor())
+                    : def.getSpriteColor() != null ? parseColor(def.getSpriteColor()) : null;
+            hoveredTextComponent = def.getHoveredPlayer() != null || def.getHoveredSpriteColor() != null
+                    ? headComponent(def.getHoveredPlayer() != null ? def.getHoveredPlayer() : def.getPlayer(), def.isHat(), hc) : textComponent;
+        } else if (def.getType() == WidgetDefinition.WidgetType.SPRITE_BUTTON) {
             TextColor hc = def.getHoveredSpriteColor() != null ? parseColor(def.getHoveredSpriteColor())
                     : def.getSpriteColor() != null ? parseColor(def.getSpriteColor()) : null;
             hoveredTextComponent = def.getHoveredSprite() != null || def.getHoveredSpriteColor() != null
@@ -348,6 +355,15 @@ public final class ScreenSupport {
                 // Простая строка без форматирования
                 builder.append(Component.text(string));
             } else if (part instanceof Map<?, ?> partMap) {
+                Object player = partMap.get("player");
+                if (player != null) {
+                    // Сегмент-голова: {player: "Steve", hat: true} - объект player (клиент 1.21.9+), квадрат 8×8 как спрайт
+                    Object hat = partMap.get("hat");
+                    Object headColor = partMap.get("color");
+                    builder.append(headComponent(player.toString(), hat == null || !"false".equalsIgnoreCase(hat.toString()),
+                            headColor != null ? parseColor(headColor.toString()) : null));
+                    continue;
+                }
                 Object sprite = partMap.get("sprite");
                 if (sprite != null) {
                     // Сегмент-спрайт: {sprite: "item/iron_ingot"} или {atlas: "minecraft:items", sprite: "..."}
@@ -406,6 +422,16 @@ public final class ScreenSupport {
         } catch (InvalidKeyException e) {
             return Component.text("[" + sprite + "]");
         }
+    }
+
+    /**
+     * Голова игрока в тексте - {@code {"type":"object","object":"player","player":"Steve"}} (клиент 1.21.9+):
+     * текстуру клиент берёт по нику сам (профиль с сервера не передаётся). {@code hat} - слой шапки скина.
+     */
+    public static Component headComponent(String player, boolean hat, TextColor color) {
+        if (player == null || player.isBlank()) return Component.empty();
+        return Component.object(ObjectContents.playerHead().name(player.trim()).hat(hat).build())
+                .color(color != null ? color : NamedTextColor.WHITE);
     }
 
     /** {atlas, sprite} с подставленными атласом и папкой (см. {@link #spriteComponent}). */

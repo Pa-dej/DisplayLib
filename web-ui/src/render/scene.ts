@@ -975,6 +975,7 @@ export function frameIndexAt(w: Widget, hovered: boolean, tick: number): number 
 /** Что показывает TextDisplay виджета: текст (или hoveredText), кадр анимации, либо спрайт SPRITE_BUTTON. */
 export function widgetText(w: Widget, hovered = false, tick = editorTick()): RichText {
   if (w.type === 'SPRITE_BUTTON') {
+    if (w.player) { const pl = hovered && w.hoveredPlayer ? w.hoveredPlayer : w.player; return [{ text: '', player: pl, hat: w.hat, color: (hovered && w.hoveredSpriteColor) || w.spriteColor || undefined }]; }
     const sp = hovered && w.hoveredSprite ? w.hoveredSprite : w.sprite;
     const col = (hovered && w.hoveredSpriteColor) || w.spriteColor || undefined;
     return [{ text: '', sprite: sp || 'item/barrier', atlas: w.atlas ?? undefined, color: col }];

@@ -47,6 +47,7 @@ function setType(t: string) {
   if (t === 'SPRITE_BUTTON') { if (!w.value.sprite) w.value.sprite = 'item/diamond_sword'; if (w.value.scale[0] < 1) w.value.scale = [2, 2, 1]; }
   touch();
 }
+function setSpriteSource(v: string) { snapshot(); if (v === 'player') { w.value.player = w.value.player || 'Steve'; } else { w.value.player = null; w.value.hoveredPlayer = null; } touch(); }
 function toggleHoveredSprite() { snapshot(); w.value.hoveredSprite = w.value.hoveredSprite ? null : w.value.sprite; touch(); }
 function setAction(a: string) {
   snapshot();
@@ -87,9 +88,18 @@ function fmt(n: number) { return (Math.round(n * 1000) / 1000).toString(); }
 
     <div class="section" v-if="w.type === 'SPRITE_BUTTON'">
       <h3>Спрайт</h3>
+      <div class="field"><label>источник</label><select :value="w.player != null ? 'player' : 'sprite'" @change="setSpriteSource(($event.target as HTMLSelectElement).value)"><option value="sprite">Спрайт атласа</option><option value="player">Голова игрока (по нику)</option></select></div>
+      <template v-if="w.player != null">
+        <div class="field"><label>player</label><input type="text" :value="w.player" placeholder="Ник игрока" @focus="snapshot()" @input="w.player = text($event).trim(); touch()" /></div>
+        <div class="field"><label>hoveredPlayer</label><div class="row"><input v-if="w.hoveredPlayer != null" type="text" class="grow" :value="w.hoveredPlayer" @focus="snapshot()" @input="w.hoveredPlayer = text($event).trim(); touch()" /><span v-else class="hint grow">Как player</span><button class="btn sm" @click="snapshot(); w.hoveredPlayer = w.hoveredPlayer != null ? null : w.player; touch()">{{ w.hoveredPlayer != null ? 'Убрать' : 'Задать' }}</button></div></div>
+        <div class="field"><label></label><label class="row"><input type="checkbox" :checked="w.hat" @change="snapshot(); w.hat = ($event.target as HTMLInputElement).checked; touch()" /> Слой шапки скина</label></div>
+        <div class="hint">Объект <code>player</code> в тексте (клиент 1.21.9+): квадрат 8×8, текстуру клиент берёт по нику сам - профиль/текстуру с сервера передать нельзя. В превью лицо грузится с mc-heads.net, пока нет - Стив.</div>
+      </template>
+      <template v-else>
       <div class="field"><label>atlas</label><div><input type="text" list="atlas-list" :value="w.atlas ?? ''" @focus="snapshot()" @input="w.atlas = text($event).trim() || null; touch()" placeholder="Авто: item/… → items, иначе blocks" /><datalist id="atlas-list"><option v-for="a in ATLASES" :key="a.id" :value="a.id">{{ a.hint }} · напр. {{ a.example }}</option></datalist></div></div>
       <div class="field"><label>sprite</label><SpriteInput v-model="w.sprite" :atlas="w.atlas" @update:atlas="w.atlas = $event" /></div>
       <div class="field"><label>hoveredSprite</label><div class="row"><SpriteInput v-if="w.hoveredSprite != null" v-model="w.hoveredSprite" :atlas="w.atlas" @update:atlas="w.atlas = $event" class="grow" /><span v-else class="hint grow">Как sprite</span><button class="btn sm" @click="toggleHoveredSprite">{{ w.hoveredSprite != null ? 'Убрать' : 'Задать' }}</button></div></div>
+      </template>
       <div class="field"><label>spriteColor</label><TintInput v-model="w.spriteColor" none="без тинта" /></div>
       <div class="field"><label>hoveredSpriteColor</label><TintInput v-model="w.hoveredSpriteColor" none="как spriteColor" /></div>
       <div class="hint">Тинт - цвет текста, на который клиент умножает текстуру: белые/серые иконки (HUD, эффекты, узоры) красятся чисто, цветные предметы лишь затемняются.</div>

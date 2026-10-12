@@ -47,7 +47,7 @@ export function morphText(a: string, b: string, f: number): string {
   return prefix + bMid.slice(0, nb) + aMid.slice(aMid.length - na) + suffix;
 }
 
-const hasSprite = (t: RichText) => typeof t !== 'string' && t.some((s) => s.sprite !== undefined);
+const hasSprite = (t: RichText) => typeof t !== 'string' && t.some((s) => s.sprite !== undefined || s.player !== undefined);
 const firstColor = (t: RichText): string | undefined => (typeof t === 'string' ? undefined : t.find((s) => s.color)?.color);
 
 export const lerp = (a: number, b: number, f: number) => a + (b - a) * f;
@@ -76,7 +76,7 @@ export function matchedAt(from: Widget, to: Widget, f: number, steps: number): W
   if (hasSprite(a) || hasSprite(b) || from.type !== to.type) {
     // спрайт с любой стороны - смена на половине; SPRITE_BUTTON рисуется своим полем sprite
     const src = step < 0.5 ? from : to;
-    w.type = src.type; w.text = frameText(src); w.frames = []; w.sprite = src.sprite; w.atlas = src.atlas; w.spriteColor = src.spriteColor;
+    w.type = src.type; w.text = frameText(src); w.frames = []; w.sprite = src.sprite; w.atlas = src.atlas; w.spriteColor = src.spriteColor; w.player = src.player; w.hat = src.hat;
     return w;
   }
   const ca = firstColor(a), cb = firstColor(b);

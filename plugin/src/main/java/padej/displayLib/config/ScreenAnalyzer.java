@@ -121,7 +121,7 @@ public final class ScreenAnalyzer {
                         if (why != null) lines.add("§e" + name + ": клик не сработает - " + why);
                     }
                     if (def.getType() == WidgetDefinition.WidgetType.ITEM_BUTTON && def.getMaterial() == null) lines.add("§c" + name + ": нет material");
-                    if (def.getType() == WidgetDefinition.WidgetType.SPRITE_BUTTON && def.getSprite() == null) lines.add("§c" + name + ": нет sprite");
+                    if (def.getType() == WidgetDefinition.WidgetType.SPRITE_BUTTON && def.getSprite() == null && def.getPlayer() == null) lines.add("§c" + name + ": нет sprite/player");
                 }
             }
             Set<String> inert = screen.getInertWidgetIds();
@@ -190,6 +190,8 @@ public final class ScreenAnalyzer {
         }
         if (def.getType() == WidgetDefinition.WidgetType.SPRITE_BUTTON && def.getHoveredSprite() != null
                 && !def.getHoveredSprite().equals(def.getSprite())) return true;
+        if (def.getType() == WidgetDefinition.WidgetType.SPRITE_BUTTON && def.getHoveredPlayer() != null
+                && !def.getHoveredPlayer().equals(def.getPlayer())) return true;
         if (def.getType() == WidgetDefinition.WidgetType.SPRITE_BUTTON && def.getHoveredSpriteColor() != null
                 && !def.getHoveredSpriteColor().equalsIgnoreCase(def.getSpriteColor())) return true;
         if (def.getHoveredText() != null && !def.getHoveredText().isEmpty()
