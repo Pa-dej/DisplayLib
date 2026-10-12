@@ -87,25 +87,6 @@ dyn widgets = [
   По умолчанию клик у текста/спрайта - `block.dispenser.fail` (pitch 2), у предмета - `ui.button.click`; `hoverSound` по
   умолчанию нет (и он тоже делает виджет интерактивным).
 
-## Объёмные предметы и головы игроков
-
-```java
-{ id: "cube", material: "GRASS_BLOCK", itemTransform: "NONE", tilt: [30, 45], scale: [0.5, 0.5, 0.5] },  // блок кубом в изометрии
-{ id: "me",   skull: "@viewer", itemTransform: "FIXED", tilt: [20, -30] },     // голова того, кто смотрит
-{ id: "notch", skull: "Notch" },                                                 // по имени (или UUID) - профиль дотянется с Mojang
-{ id: "custom", skull: "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvLi4uIn19fQ==" }, // Value с minecraft-heads.com
-{ id: "url",   skull: "https://textures.minecraft.net/texture/<hash>" },
-```
-
-- `itemTransform` - как `ItemDisplay` показывает предмет: `GUI` (по умолчанию) - плоская иконка как в инвентаре;
-  `FIXED` - объёмно, как в рамке (блоки в половину размера); `NONE` - полный размер; `HEAD`, `GROUND`,
-  `THIRDPERSON_RIGHTHAND`, … - остальные режимы клиента. Синонимы: `block`/`3d` = `FIXED`, `icon` = `GUI`.
-- `tilt: [x, y]` - наклон объёмного предмета в градусах (вокруг X - кивок, вокруг Y - разворот), поверх `rotation`.
-- `skull` - голова игрока; `material` при этом можно не писать (станет `PLAYER_HEAD`). Имя/UUID требуют запроса
-  к Mojang - он идёт асинхронно, голова появится через мгновение; base64-значение или URL текстуры ставятся сразу
-  и работают офлайн; `@viewer` - голова смотрящего (на публичных экранах - Стив). Из скрипта: `widget.skull("...")`.
-  Форма-таблица тоже принимается: `skull: { owner: "Notch" }`, `{ texture: "..." }`, `{ url: "..." }`.
-
 ## Действия `onClick`
 
 | Запись | Что делает |

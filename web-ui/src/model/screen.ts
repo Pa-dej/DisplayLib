@@ -100,12 +100,6 @@ export interface Widget {
   // ITEM_BUTTON
   material: string;
   glowOnHover: boolean;
-  /** Как ItemDisplay показывает предмет: GUI - иконка; FIXED/NONE/HEAD/GROUND/… - объёмно (блок кубом). */
-  itemTransform: string;
-  /** Наклон объёмного предмета [вокруг X, вокруг Y], градусы. */
-  tilt: [number, number];
-  /** Голова игрока (PLAYER_HEAD): имя/uuid/@viewer/base64-текстура/URL; null - обычный предмет. */
-  skull: string | null;
   glowColor: RGB | null;
   // SPRITE_BUTTON (TextDisplay со спрайтом атласа; фон/hover - как у текста)
   sprite: string;
@@ -226,9 +220,6 @@ export function defaultWidget(type: WidgetType = 'TEXT_BUTTON'): Widget {
     hoveredBackgroundAlpha: type === 'TEXT_BUTTON' ? 220 : 0,
     material: 'DIAMOND',
     glowOnHover: true,
-    itemTransform: 'GUI',
-    tilt: [0, 0],
-    skull: null,
     glowColor: null,
     sprite: 'item/diamond_sword',
     atlas: null,

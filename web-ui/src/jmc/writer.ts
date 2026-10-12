@@ -119,9 +119,6 @@ export function widgetToJmc(w: Widget, opts: WriteOptions): string {
     if (v || w.hoveredBackgroundAlpha !== 0) f.push(`hoveredBackgroundAlpha: ${w.hoveredBackgroundAlpha}`);
   } else {
     if (v || !w.glowOnHover) f.push(`glowOnHover: ${w.glowOnHover}`);
-    if (w.skull) f.push(`skull: ${jstr(w.skull)}`);
-    if (v || w.itemTransform !== 'GUI') f.push(`itemTransform: ${jstr(w.itemTransform)}`);
-    if (v || w.tilt[0] !== 0 || w.tilt[1] !== 0) f.push(`tilt: ${arr(w.tilt)}`);
     if (w.glowColor) f.push(`glowColor: ${arr(w.glowColor)}`);
   }
   if (w.tooltip != null) {

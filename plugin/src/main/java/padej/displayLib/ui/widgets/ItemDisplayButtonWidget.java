@@ -52,9 +52,6 @@ public class ItemDisplayButtonWidget implements Widget {
     private Vector3f translation;
     /** Поворот в плоскости экрана, градусы (+ = против часовой для зрителя). */
     private float rotationDeg = 0.0f;
-    /** Наклон [вокруг X, вокруг Y], градусы. */
-    private float[] tilt = {0.0f, 0.0f};
-    private padej.displayLib.config.SkullSpec skull;
     private Transformation hoveredTransformation;
     private int hoveredTransformationDuration;
     private padej.displayLib.config.HoverAnimation hoverAnimation;
@@ -134,9 +131,6 @@ public class ItemDisplayButtonWidget implements Widget {
         widget.itemMeta = config.getItemMeta();
         widget.translation = config.getTranslation();
         widget.rotationDeg = config.getRotation();
-        widget.tilt = config.getTilt();
-        widget.skull = config.getSkull();
-        if (widget.skull != null) widget.applySkull(viewer);
         widget.hoveredTransformation = config.getHoveredTransformation();
         widget.hoveredTransformationDuration = config.getHoveredTransformationDuration();
         widget.hoverAnimation = config.getHoverAnimation();
@@ -170,43 +164,7 @@ public class ItemDisplayButtonWidget implements Widget {
 
     /** Статический поворот: сущность развёрнута к зрителю на yaw+180, её локальная Z смотрит от зрителя - знак угла обратный. */
     Quaternionf baseRotation() {
-        // кадр предмета развёрнут на 180° вокруг Y (yaw + 180): оси X и Z для зрителя обратные
-        Quaternionf q = new Quaternionf().rotateZ((float) -Math.toRadians(rotationDeg));
-        if (tilt != null && (tilt[0] != 0 || tilt[1] != 0)) q.rotateX((float) -Math.toRadians(tilt[0])).rotateY((float) Math.toRadians(tilt[1]));
-        return q;
-    }
-
-    /**
-     * Голова игрока: профиль с текстурой ставится сразу; имя/uuid без текстуры дотягиваются с Mojang
-     * асинхронно, после чего предмет обновляется на сущности.
-     */
-    private void applySkull(Player viewer) {
-        if (skull == null || itemType != Material.PLAYER_HEAD) return;
-        com.destroystokyo.paper.profile.PlayerProfile profile = skull.profile(viewer);
-        setSkullMeta(profile);
-        if (!skull.needsLookup()) return;
-        org.bukkit.Bukkit.getScheduler().runTaskAsynchronously(DisplayLib.getInstance(), () -> {
-            boolean ok;
-            try { ok = profile.complete(true); } catch (Exception e) { ok = false; }
-            if (!ok) { DisplayLib.getInstance().getLogger().warning("Player head: profile for '" + skull.owner() + "' not found"); return; }
-            org.bukkit.Bukkit.getScheduler().runTask(DisplayLib.getInstance(), () -> {
-                setSkullMeta(profile);
-                if (display != null && display.isValid()) display.setItemStack(targetItem());
-            });
-        });
-    }
-
-    private void setSkullMeta(com.destroystokyo.paper.profile.PlayerProfile profile) {
-        ItemStack tmp = new ItemStack(Material.PLAYER_HEAD);
-        if (tmp.getItemMeta() instanceof org.bukkit.inventory.meta.SkullMeta sm) { sm.setPlayerProfile(profile); itemMeta = sm; }
-    }
-
-    /** Сменить голову из скрипта: {@code widget.skull("Notch")}, {@code widget.skull("@viewer")}, base64 или URL текстуры. */
-    public void setSkull(padej.displayLib.config.SkullSpec spec) {
-        this.skull = spec;
-        if (itemType != Material.PLAYER_HEAD) { itemType = Material.PLAYER_HEAD; itemMeta = null; }
-        applySkull(viewer);
-        if (display != null && display.isValid()) display.setItemStack(targetItem());
+        return new Quaternionf().rotateZ((float) -Math.toRadians(rotationDeg));
     }
 
     /** Целевой предмет. */

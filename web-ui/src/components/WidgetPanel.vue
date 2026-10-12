@@ -60,7 +60,6 @@ function handlerName(id: string): string {
   return /^[A-Za-z_][A-Za-z0-9_]*$/.test(id) ? id : 'onClick';
 }
 function toggleAnim() { snapshot(); w.value.hoverAnimation = w.value.hoverAnimation ? null : { ...defaultHoverAnimation(), preset: 'LIFT' }; touch(); }
-function setSkull(v: string) { const s = v.trim(); w.value.skull = s || null; if (s && w.value.material !== 'PLAYER_HEAD') w.value.material = 'PLAYER_HEAD'; touch(); }
 function toggleGlowColor() { snapshot(); w.value.glowColor = w.value.glowColor ? null : [255, 255, 255]; touch(); }
 function toggleTooltipColor() { snapshot(); w.value.tooltipColor = w.value.tooltipColor ? null : [134, 135, 136]; touch(); }
 function fmt(n: number) { return (Math.round(n * 1000) / 1000).toString(); }
@@ -141,21 +140,6 @@ function fmt(n: number) { return (Math.round(n * 1000) / 1000).toString(); }
     <div class="section" v-if="w.type === 'ITEM_BUTTON'">
       <h3>Предмет</h3>
       <div class="field"><label>material</label><MaterialInput v-model="w.material" /></div>
-      <div class="field"><label>itemTransform</label><div class="row"><select :value="w.itemTransform" @change="snapshot(); w.itemTransform = ($event.target as HTMLSelectElement).value; touch()">
-        <option value="GUI">GUI - иконка как в инвентаре</option>
-        <option value="FIXED">FIXED - объёмно, как в рамке (½ блока)</option>
-        <option value="NONE">NONE - объёмно, полный размер</option>
-        <option value="HEAD">HEAD - как на голове</option>
-        <option value="GROUND">GROUND - как на земле (½)</option>
-        <option value="THIRDPERSON_RIGHTHAND">THIRDPERSON_RIGHTHAND</option>
-        <option value="FIRSTPERSON_RIGHTHAND">FIRSTPERSON_RIGHTHAND</option>
-      </select></div></div>
-      <div class="field" v-if="w.itemTransform !== 'GUI'"><label>tilt</label><div class="row"><VecInput v-model="w.tilt" :labels="['вокруг X (кивок)', 'вокруг Y (разворот)']" :step="5" /><span class="hint">° - изометрия: 30 / 45</span></div></div>
-      <div class="field"><label>skull</label><div class="row">
-        <input type="text" class="grow" :value="w.skull ?? ''" placeholder="Имя, UUID, @viewer, base64-текстура или URL" @focus="snapshot()" @input="setSkull(text($event))" />
-        <button class="btn sm" v-if="w.skull" title="Голова того, кто смотрит на экран (только приватные)" @click="snapshot(); setSkull('@viewer')">@viewer</button>
-      </div></div>
-      <div class="hint">Голова игрока: укажи <code>skull</code> - материал сам станет PLAYER_HEAD. Имя/UUID плагин дотягивает с Mojang асинхронно; значение <code>Value</code> с minecraft-heads.com (base64) или URL <code>textures.minecraft.net/texture/…</code> ставится сразу и работает без сети. Объёмный вид - transform FIXED/NONE + tilt. Превью голов по имени грузится с mc-heads.net; по текстуре - если сервис знает этот хеш, иначе показывается Стив.</div>
       <div class="field"><label></label><label class="row"><input type="checkbox" :checked="w.glowOnHover" @change="snapshot(); w.glowOnHover = ($event.target as HTMLInputElement).checked; touch()" /> Свечение при наведении</label></div>
       <div class="field"><label>glowColor</label><div class="row"><ColorInput v-if="w.glowColor" v-model="w.glowColor" /><button class="btn sm" @click="toggleGlowColor">{{ w.glowColor ? 'Убрать' : 'Задать' }}</button></div></div>
     </div>

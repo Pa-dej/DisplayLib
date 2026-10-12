@@ -192,11 +192,6 @@ public final class WidgetAPI {
         else if (widget instanceof ItemDisplayButtonWidget i) i.setTranslation((float) x, (float) y, (float) z, ticks);
     }
 
-    /** Голова игрока (ITEM_BUTTON): имя, uuid, {@code "@viewer"}, base64-текстура или URL текстуры. */
-    public void skull(String spec) {
-        if (widget instanceof ItemDisplayButtonWidget i) { padej.displayLib.config.SkullSpec s = padej.displayLib.config.SkullSpec.parse(spec); if (s != null) i.setSkull(s); }
-    }
-
     /** Поворот в плоскости экрана, градусы (+ = против часовой). */
     public double rotation() {
         return widget instanceof TextDisplayButtonWidget t ? t.getRotation()
