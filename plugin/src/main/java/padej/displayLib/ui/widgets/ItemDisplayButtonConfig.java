@@ -162,6 +162,13 @@ public class ItemDisplayButtonConfig {
 
     /** Поворот в плоскости экрана, градусы (+ = против часовой для зрителя). */
     private float rotation = 0.0f;
+    private float[] tilt = {0.0f, 0.0f};
+    private padej.displayLib.config.SkullSpec skull;
+
+    public ItemDisplayButtonConfig setTilt(float[] t) { if (t != null && t.length >= 2) this.tilt = new float[] {t[0], t[1]}; return this; }
+    public float[] getTilt() { return tilt; }
+    public ItemDisplayButtonConfig setSkull(padej.displayLib.config.SkullSpec s) { this.skull = s; return this; }
+    public padej.displayLib.config.SkullSpec getSkull() { return skull; }
 
     public ItemDisplayButtonConfig setRotation(float degrees) {
         this.rotation = degrees;

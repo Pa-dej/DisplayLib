@@ -15,6 +15,7 @@ import { itemTexture } from './items';
 import { computeSnap, type Guide, type Rect } from './snap';
 import { IDENTITY, isIdentity, targetOf, durationMs, easingOf, tweenAt, type HoverDelta, type HoverTween } from './hoverAnim';
 import { planMorph, matchedAt, backgroundAt, type MorphPlan } from './morph';
+import { isCube, cubeScale, blockMaterials, headMaterials } from './cubes';
 
 export interface SceneCallbacks {
   /** additive - Shift/Ctrl зажат: добавить/убрать из выделения, а не заменить. */
@@ -34,7 +35,7 @@ interface Node {
   /** Видимые габариты в локальных координатах pivot (до масштаба): у текста с прозрачным фоном - сами глифы, иначе фон/текстура. */
   visual: { l: number; r: number; b: number; t: number };
   /** Базовая трансформация pivot (без hover-дельт). */
-  base: { tr: [number, number, number]; scale: [number, number, number]; rotDeg: number; center: [number, number]; item: boolean };
+  base: { tr: [number, number, number]; scale: [number, number, number]; rotDeg: number; center: [number, number]; item: boolean; tilt?: [number, number] };
   hit: THREE.LineSegments | null;
   /** Заблокирован в редакторе: не выбирается кликом и не перетаскивается. */
   locked?: boolean;
@@ -427,8 +428,13 @@ export class ScreenScene {
     const a = THREE.MathUtils.degToRad(b.rotDeg);
     const comp: [number, number] = b.item || b.rotDeg === 0 ? [0, 0] : [hc * Math.sin(a), hc - hc * Math.cos(a)];
     n.pivot.position.set((b.tr[0] + d.offset[0]) * xs + comp[0] * xs, b.tr[1] + d.offset[1] + comp[1], b.tr[2] + d.offset[2]);
-    n.pivot.scale.set(sx, sy, 1);
+    n.pivot.scale.set(sx, sy, b.item ? Math.max(1e-4, b.scale[2] * d.mul[2]) : 1); // у объёмных предметов глубина - scale.z
     const q = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), a);
+    if (b.item && b.tilt && (b.tilt[0] || b.tilt[1])) {
+      // наклон объёмного предмета: вокруг X (кивок), затем вокруг Y (разворот) - в кадре зрителя
+      q.multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), THREE.MathUtils.degToRad(b.tilt[0])));
+      q.multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), THREE.MathUtils.degToRad(b.tilt[1])));
+    }
     if (d.angle) q.multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(d.axis[0] * xs, d.axis[1], d.axis[2]).normalize(), THREE.MathUtils.degToRad(d.angle)));
     n.pivot.quaternion.copy(q);
   }
@@ -563,12 +569,18 @@ export class ScreenScene {
   }
 
   private buildItem(w: Widget): Node {
-    const tex = itemTexture(w.material);
-    const size = calibration.itemSize;
-    const geo = new THREE.PlaneGeometry(size, size);
-    const mat = tex
-      ? new THREE.MeshBasicMaterial({ map: tex, transparent: true, alphaTest: 0.05 })
-      : new THREE.MeshBasicMaterial({ color: 0xff00ff, transparent: true, opacity: 0.6 });
+    const cube = isCube(w.material, w.itemTransform);
+    const size = cube ? cubeScale(w.itemTransform) : calibration.itemSize;
+    let geo: THREE.BufferGeometry, mat: THREE.Material | THREE.Material[];
+    if (cube) {
+      // объёмный предмет: блок или голова игрока кубом, как ItemDisplay с transform FIXED/NONE/HEAD
+      geo = new THREE.BoxGeometry(size, size, size);
+      mat = w.material.toLowerCase() === 'player_head' ? headMaterials(w.skull) : blockMaterials(w.material);
+    } else {
+      const tex = itemTexture(w.material);
+      geo = new THREE.PlaneGeometry(size, size);
+      mat = tex ? new THREE.MeshBasicMaterial({ map: tex, transparent: true, alphaTest: 0.05 }) : new THREE.MeshBasicMaterial({ color: 0xff00ff, transparent: true, opacity: 0.6 });
+    }
     const mesh = new THREE.Mesh(geo, mat);
     const hovered = this.hoverPreview && this.hovered === w.uid && w.glowOnHover;
     mesh.userData.uid = w.uid;
@@ -584,8 +596,8 @@ export class ScreenScene {
     group.position.copy(this.worldPos(w.position, calibration.itemDepthOffset));
     const hit = this.hitRect(w.tolerance, w.translation);
     group.add(hit);
-    const n: Node = { uid: w.uid, group, pivot, mesh, hit, visual: { l: -size / 2, r: size / 2, b: -size / 2, t: size / 2 }, base: { tr: [w.translation[0], w.translation[1], w.translation[2]], scale: [w.scale[0], w.scale[1], w.scale[2]], rotDeg: w.rotation, center: [0, 0], item: true },
-      dispose: () => { geo.dispose(); mat.dispose(); hit.geometry.dispose(); } };
+    const n: Node = { uid: w.uid, group, pivot, mesh, hit, visual: { l: -size / 2, r: size / 2, b: -size / 2, t: size / 2 }, base: { tr: [w.translation[0], w.translation[1], w.translation[2]], scale: [w.scale[0], w.scale[1], w.scale[2]], rotDeg: w.rotation, center: [0, 0], item: true, tilt: [w.tilt[0], w.tilt[1]] },
+      dispose: () => { geo.dispose(); (Array.isArray(mat) ? mat : [mat]).forEach((m) => m.dispose()); hit.geometry.dispose(); } };
     this.applyDelta(n, IDENTITY);
     return n;
   }

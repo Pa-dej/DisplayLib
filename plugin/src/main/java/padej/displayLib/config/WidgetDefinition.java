@@ -190,6 +190,12 @@ public class WidgetDefinition {
     
     /** Включить свечение при наведении (для ITEM_BUTTON) */
     private boolean glowOnHover = true;
+    /** Голова игрока (material PLAYER_HEAD): владелец/текстура. */
+    private SkullSpec skull;
+    /** Как ItemDisplay показывает предмет: GUI (иконка, по умолчанию), FIXED (как в рамке - 3D блок), NONE, HEAD, GROUND, THIRDPERSON_RIGHTHAND… */
+    private String itemTransform = "GUI";
+    /** Наклон 3D-предмета: [вокруг X, вокруг Y] градусы - чтобы блок/голову показать в изометрии. */
+    private float[] tilt = {0.0f, 0.0f};
 
     /**
      * Статический виджет (результат {@link ScreenAnalyzer} при загрузке): клик ничего не делает и
@@ -311,6 +317,12 @@ public class WidgetDefinition {
     public void setMaterial(String material) { this.material = material; }
     
     public boolean isGlowOnHover() { return glowOnHover; }
+    public SkullSpec getSkull() { return skull; }
+    public void setSkull(SkullSpec s) { this.skull = s; }
+    public String getItemTransform() { return itemTransform; }
+    public void setItemTransform(String t) { this.itemTransform = t; }
+    public float[] getTilt() { return tilt; }
+    public void setTilt(float[] t) { this.tilt = t; }
 
     public boolean isInert() { return inert; }
     public void setInert(boolean inert) { this.inert = inert; }

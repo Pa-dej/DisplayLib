@@ -286,7 +286,7 @@ public class ScreenLoader {
                 plugin.getLogger().warning(where + ": invalid widget type '" + typeStr + "'");
                 return null;
             }
-            type = has(data, "material") ? WidgetDefinition.WidgetType.ITEM_BUTTON
+            type = has(data, "material", "skull", "head") ? WidgetDefinition.WidgetType.ITEM_BUTTON
                     : has(data, "sprite") ? WidgetDefinition.WidgetType.SPRITE_BUTTON
                     : WidgetDefinition.WidgetType.TEXT_BUTTON;
         }
@@ -351,6 +351,13 @@ public class ScreenLoader {
 
         Boolean glowOnHover = bool(data, "glowOnHover", "glow_on_hover");
         if (glowOnHover != null) widget.setGlowOnHover(glowOnHover);
+
+        SkullSpec skull = SkullSpec.parse(JmcValues.toJava(get(data, "skull", "head", "owner", "texture")));
+        if (skull != null) { widget.setSkull(skull); if (widget.getMaterial() == null) widget.setMaterial("PLAYER_HEAD"); }
+        String itemTransform = str(data, "itemTransform", "item_transform", "transform", "display");
+        if (itemTransform != null && !itemTransform.isBlank()) widget.setItemTransform(itemTransform.trim().toUpperCase());
+        float[] tilt = floats(data, 2, "tilt");
+        if (tilt != null) widget.setTilt(tilt);
 
         int[] glowColor = ints(data, 3, "glowColor", "glow_color");
         if (glowColor != null) widget.setGlowColor(glowColor);

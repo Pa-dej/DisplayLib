@@ -66,6 +66,14 @@ function atlasOrNull(atlas: string | null | undefined, sprite: string): string |
   return full === inferredAtlas(sprite) ? undefined : a;
 }
 
+const TRANSFORMS = ['GUI', 'FIXED', 'NONE', 'HEAD', 'GROUND', 'THIRDPERSON_LEFTHAND', 'THIRDPERSON_RIGHTHAND', 'FIRSTPERSON_LEFTHAND', 'FIRSTPERSON_RIGHTHAND'];
+function normalizeTransform(s: string): string {
+  let k = s.trim().toUpperCase().replace(/[ -]/g, '_');
+  if (k === 'BLOCK' || k === '3D' || k === 'FRAME') k = 'FIXED';
+  if (k === 'ICON' || k === 'ITEM' || k === 'FLAT') k = 'GUI';
+  return TRANSFORMS.includes(k) ? k : 'GUI';
+}
+
 export interface ToModelResult { screen: Screen; warnings: string[] }
 
 export function tableToScreen(data: JmcTable, fileName: string): ToModelResult {
@@ -128,7 +136,7 @@ export function tableToWidget(d: JmcTable, index: number, warnings: string[]): W
   let type = enumValue(['TEXT_BUTTON', 'ITEM_BUTTON', 'SPRITE_BUTTON'] as const, typeStr);
   if (!type) {
     if (typeStr != null) { warnings.push(`виджет #${index}: неизвестный type '${typeStr}'`); return null; }
-    type = get(d, 'material') != null ? 'ITEM_BUTTON' : get(d, 'sprite') != null ? 'SPRITE_BUTTON' : 'TEXT_BUTTON';
+    type = get(d, 'material', 'skull', 'head') != null ? 'ITEM_BUTTON' : get(d, 'sprite') != null ? 'SPRITE_BUTTON' : 'TEXT_BUTTON';
   }
   const w = defaultWidget(type);
   // дефолты плагина, а не редактора
@@ -153,6 +161,14 @@ export function tableToWidget(d: JmcTable, index: number, warnings: string[]): W
   const hsc = str(d, 'hoveredSpriteColor', 'hovered_sprite_color', 'hoveredColor', 'hovered_color'); if (hsc != null && hsc.trim()) w.hoveredSpriteColor = hsc.trim();
   if (type === 'SPRITE_BUTTON' && !w.sprite) warnings.push(`виджет ${w.id || '#' + index}: SPRITE_BUTTON без sprite`);
   const g = bool(d, 'glowOnHover', 'glow_on_hover'); if (g != null) w.glowOnHover = g;
+  const it = str(d, 'itemTransform', 'item_transform', 'transform', 'display'); if (it != null && it.trim()) w.itemTransform = normalizeTransform(it);
+  const tl = nums(d, 2, 'tilt'); if (tl) w.tilt = [tl[0], tl[1]];
+  const sk = get(d, 'skull', 'head', 'owner', 'texture');
+  if (sk != null) {
+    if (typeof sk === 'object' && !Array.isArray(sk)) { const t = sk as JmcTable; w.skull = str(t, 'texture', 'value') ?? str(t, 'url') ?? str(t, 'owner', 'player', 'name'); }
+    else w.skull = String(sk).trim() || null;
+    if (w.skull && !w.material) w.material = 'PLAYER_HEAD';
+  }
   const gc = nums(d, 3, 'glowColor', 'glow_color'); if (gc) w.glowColor = gc as RGB;
   const p = nums(d, 3, 'position'); if (p) w.position = p as Vec3;
   const sc = nums(d, 3, 'scale'); if (sc) w.scale = sc as Vec3;

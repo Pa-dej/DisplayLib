@@ -184,6 +184,17 @@ public final class ScreenSupport {
      * @param onClick            действие по клику или null
      * @param withHoverAnimation применять ли hoverAnimation из YAML (для публичных экранов отключено)
      */
+    static ItemDisplay.ItemDisplayTransform parseItemTransform(String s) {
+        if (s == null || s.isBlank()) return ItemDisplay.ItemDisplayTransform.GUI;
+        String k = s.trim().toUpperCase(java.util.Locale.ROOT).replace(' ', '_').replace('-', '_');
+        switch (k) {
+            case "BLOCK", "3D", "FRAME": k = "FIXED"; break;
+            case "ICON", "ITEM", "FLAT": k = "GUI"; break;
+            default: break;
+        }
+        try { return ItemDisplay.ItemDisplayTransform.valueOf(k); } catch (IllegalArgumentException e) { return ItemDisplay.ItemDisplayTransform.GUI; }
+    }
+
     static ItemDisplayButtonConfig itemConfig(WidgetDefinition def, Runnable onClick, boolean withHoverAnimation, boolean interactive) {
         float[] s = def.getScale();
         float[] t = def.getTolerance();
@@ -195,7 +206,9 @@ public final class ScreenSupport {
                 .setTranslation(new Vector3f(tr[0], tr[1], tr[2]))
                 .setRotation(def.getRotation())
                 .setGlowOnHover(def.isGlowOnHover())
-                .setDisplayTransform(ItemDisplay.ItemDisplayTransform.GUI)
+                .setDisplayTransform(parseItemTransform(def.getItemTransform()))
+                .setTilt(def.getTilt())
+                .setSkull(def.getSkull())
                 .setInteractive(interactive)
                 .setPosition(new WidgetPosition(0, 0, 0)); // позиция уже вычислена в resolveLocation()
 
