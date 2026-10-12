@@ -56,7 +56,8 @@ export class ScreenScene {
   private nodes = new Map<string, Node>();
   private bgNode: Node | null = null;
   private grid: THREE.Group;
-  private selectionBox: THREE.LineSegments | null = null;
+  /** Экранный оверлей выделения (SVG поверх canvas): плоский контур по видимым габаритам, как outline в Blender. */
+  private overlay: SVGSVGElement;
   private raycaster = new THREE.Raycaster();
   private pointer = new THREE.Vector2();
   private dragging: { uid: string; plane: THREE.Plane; offset: THREE.Vector3; start: [number, number, number]; moved: boolean; pointerId: number } | null = null;
@@ -67,7 +68,6 @@ export class ScreenScene {
   private selected: string | null = null;
   /** Остальные выделенные (без гизмо, с рамкой). */
   private extraSelected: string[] = [];
-  private extraBoxes: THREE.Box3Helper[] = [];
   /** Рамка выделения (Shift+драг по пустому): экранные координаты. */
   private marquee: { x0: number; y0: number; x1: number; y1: number; el: HTMLDivElement } | null = null;
   private hovered: string | null = null;
@@ -117,6 +117,10 @@ export class ScreenScene {
     });
     this.gizmo.addEventListener('objectChange', () => this.onGizmoMove());
 
+    this.overlay = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    this.overlay.setAttribute('class', 'select-overlay');
+    canvas.parentElement?.appendChild(this.overlay);
+
     this.viewHelper = new ViewHelper(this.camera, canvas);
     this.viewHelper.center = this.controls.target;
     (this.viewHelper as any).setLabels?.('X', 'Y', 'Z');
@@ -161,6 +165,7 @@ export class ScreenScene {
 
   dispose(): void {
     cancelAnimationFrame(this.frame);
+    this.overlay.remove();
     this.canvas.removeEventListener('pointerdown', this.onDown);
     this.canvas.removeEventListener('pointermove', this.onMoveEv);
     this.canvas.removeEventListener('pointerup', this.onUp);
@@ -602,25 +607,37 @@ export class ScreenScene {
   setShowGrid(on: boolean): void { this.showGrid = on; this.grid.visible = on; }
   setSnap(step: number): void { this.snap = step; }
 
-  private updateSelectionBox(): void {
-    if (this.selectionBox) { this.scene.remove(this.selectionBox); this.selectionBox.geometry.dispose(); this.selectionBox = null; }
-    for (const b of this.extraBoxes) { this.scene.remove(b); b.geometry.dispose(); }
-    this.extraBoxes = [];
-    for (const uid of this.extraSelected) {
-      const m = this.nodes.get(uid); if (!m) continue;
-      const box = this.visualBox(m); box.expandByScalar(0.004);
-      const h = new THREE.Box3Helper(box, new THREE.Color(0xffc400));
-      (h.material as THREE.LineBasicMaterial).depthTest = false; (h.material as THREE.LineBasicMaterial).transparent = true; (h.material as THREE.LineBasicMaterial).opacity = 0.6;
-      h.renderOrder = 11; this.scene.add(h); this.extraBoxes.push(h);
+  /** Контур выделения рисуется каждый кадр в SVG-оверлее (drawSelection); тут - только совместимость с вызовами. */
+  private updateSelectionBox(): void { this.drawSelection(); }
+
+  /** Экранные координаты углов видимого прямоугольника узла (с поворотом и hover-дельтами); null - за камерой. */
+  private screenQuad(n: Node): [number, number][] | null {
+    n.group.updateMatrixWorld(true);
+    const W = this.canvas.clientWidth, H = this.canvas.clientHeight;
+    const v = n.visual; const out: [number, number][] = [];
+    for (const [x, y] of [[v.l, v.b], [v.r, v.b], [v.r, v.t], [v.l, v.t]]) {
+      const p = new THREE.Vector3(x, y, 0).applyMatrix4(n.pivot.matrixWorld).project(this.camera);
+      if (p.z > 1) return null;
+      out.push([((p.x + 1) / 2) * W, ((1 - p.y) / 2) * H]);
     }
+    return out;
+  }
+
+  private drawSelection(): void {
+    const W = this.canvas.clientWidth, H = this.canvas.clientHeight;
+    this.overlay.setAttribute('viewBox', `0 0 ${W} ${H}`);
+    let html = '';
+    const poly = (n: Node, primary: boolean) => {
+      const q = this.screenQuad(n); if (!q) return;
+      // контур чуть снаружи габаритов: сдвиг каждой вершины от центра на 3 px
+      const cx = q.reduce((a, p) => a + p[0], 0) / 4, cy = q.reduce((a, p) => a + p[1], 0) / 4;
+      const pts = q.map(([x, y]) => { const dx = x - cx, dy = y - cy, l = Math.hypot(dx, dy) || 1; return `${(x + (dx / l) * 3).toFixed(1)},${(y + (dy / l) * 3).toFixed(1)}`; }).join(' ');
+      html += `<polygon points="${pts}" class="${primary ? 'sel' : 'sel extra'}"/>`;
+    };
+    for (const uid of this.extraSelected) { const n = this.nodes.get(uid); if (n) poly(n, false); }
     const n = this.selected ? this.nodes.get(this.selected) : null;
-    if (!n) return;
-    const box = this.visualBox(n); box.expandByScalar(0.004);
-    const helper = new THREE.Box3Helper(box, new THREE.Color(0xffc400));
-    (helper.material as THREE.LineBasicMaterial).depthTest = false;
-    helper.renderOrder = 11;
-    this.selectionBox = helper as unknown as THREE.LineSegments;
-    this.scene.add(helper);
+    if (n) poly(n, true);
+    if (this.overlay.innerHTML !== html) this.overlay.innerHTML = html;
   }
 
   // ---------------------------------------------------------------- мышь
@@ -924,6 +941,7 @@ export class ScreenScene {
     this.tickFrames();
     this.tickTweens();
     this.tickMorph();
+    if (this.selected || this.extraSelected.length || this.overlay.innerHTML) this.drawSelection();
     const w = this.canvas.clientWidth, h = this.canvas.clientHeight;
     const pr = this.renderer.getPixelRatio();
     if (w && h && (this.canvas.width !== Math.floor(w * pr) || this.canvas.height !== Math.floor(h * pr))) {
