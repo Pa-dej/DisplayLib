@@ -7,6 +7,8 @@ dyn render = {
     type: "BLOCK",
     blocks: ["minecraft:orange_concrete", "minecraft:shroomlight", "minecraft:magma_block"],
     brightness: 15,
+    glow: true,                  // контур свечения (только ITEM и BLOCK), виден сквозь блоки
+    glowColor: "#ff7a1a",        // цвет контура; без него - белый
 };
 
 dyn emitter = { shape: "CIRCLE", radius: 0.6, count: 0, duration: 60, rate: 0.8 };

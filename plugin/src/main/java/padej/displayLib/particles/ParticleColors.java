@@ -154,10 +154,19 @@ public final class ParticleColors {
 
     /**
      * Число по доле жизни: {@code 0.5} - постоянное, {@code [1, 0]} - от и до,
-     * {@code [[0, 0], [0.2, 1], [0.8, 1], [1, 0]]} - с явными долями.
+     * {@code [[0, 0], [0.2, 1], [0.8, 1], [1, 0]]} - с явными долями. У точки может быть третий элемент
+     * {@code [x, dy]} - изгиб отрезка, который к ней приходит: кривая проходит через узел на доле {@code x}
+     * отрезка (0.25..0.75, 0.5 - середина), на {@code dy} выше прямой (минус - ниже). Это квадратичная
+     * кривая Безье: {@code [[0, 1], [1, 0, [0.5, -0.3]]]} - быстро гаснет в начале и плавно в конце.
+     *
+     * @param bends изгиб отрезка {@code i-1 → i} ({@code bends[i]}) или {@code null} - прямая
      */
-    public record Curve(double[] at, double[] values) {
-        public static final Curve ONE = new Curve(new double[]{0}, new double[]{1});
+    public record Curve(double[] at, double[] values, double[][] bends) {
+        public static final Curve ONE = new Curve(new double[]{0}, new double[]{1}, null);
+
+        public Curve(double[] at, double[] values) {
+            this(at, values, null);
+        }
 
         public double sample(double t) {
             if (t <= at[0]) return values[0];
@@ -165,14 +174,32 @@ public final class ParticleColors {
                 if (t <= at[i]) {
                     double span = at[i] - at[i - 1];
                     double k = span <= 0 ? 1 : (t - at[i - 1]) / span;
-                    return values[i - 1] + (values[i] - values[i - 1]) * k;
+                    double[] bend = bends != null ? bends[i] : null;
+                    return bend == null ? values[i - 1] + (values[i] - values[i - 1]) * k
+                            : bent(values[i - 1], values[i], bend[0], bend[1], k);
                 }
             }
             return values[values.length - 1];
         }
 
+        /**
+         * Квадратичная кривая Безье от (0, v0) до (1, v1), проходящая при параметре 1/2 через узел
+         * (x, прямая(x) + dy): контрольная точка C = 2·узел - (P0 + P2)/2. По x кривая монотонна, пока
+         * x в 0.25..0.75; значение в доле u - решение квадратного уравнения x(s) = u.
+         */
+        static double bent(double v0, double v1, double x, double dy, double u) {
+            x = Math.max(0.25, Math.min(0.75, x));
+            double cx = 2 * x - 0.5;
+            double my = v0 + (v1 - v0) * x + dy;
+            double cy = 2 * my - (v0 + v1) / 2;
+            double a = 1 - 2 * cx;
+            double s = Math.abs(a) < 1e-9 ? u : (-cx + Math.sqrt(Math.max(0, cx * cx + a * u))) / a;
+            return (1 - s) * (1 - s) * v0 + 2 * (1 - s) * s * cy + s * s * v1;
+        }
+
         public boolean isConstantOne() {
             for (double v : values) if (v != 1) return false;
+            if (bends != null) for (double[] b : bends) if (b != null && b[1] != 0) return false;
             return true;
         }
 
@@ -189,17 +216,25 @@ public final class ParticleColors {
                     }
                     return new Curve(at, values);
                 }
-                List<double[]> stops = stops(list, field);
+                List<double[]> stops = stops(list, field, true);
                 if (stops != null) {
                     double[] at = new double[stops.size()], values = new double[stops.size()];
+                    double[][] bends = null;
                     for (int i = 0; i < stops.size(); i++) {
                         List<?> pair = (List<?>) list.get(i);
                         if (!(pair.get(1) instanceof Number n)) throw new IllegalArgumentException(field + ": expected [time, number] pairs");
                         at[i] = stops.get(i)[0];
                         values[i] = n.doubleValue();
+                        if (pair.size() == 3) {
+                            if (!(pair.get(2) instanceof List<?> b) || b.size() != 2 || !(b.get(0) instanceof Number bx) || !(b.get(1) instanceof Number by)) {
+                                throw new IllegalArgumentException(field + ": bend must be [x, dy], e.g. [0.5, 0.2, [0.5, -0.1]]");
+                            }
+                            if (bends == null) bends = new double[stops.size()][];
+                            bends[i] = new double[]{Math.max(0.25, Math.min(0.75, bx.doubleValue())), by.doubleValue()};
+                        }
                     }
                     checkOrder(at, field);
-                    return new Curve(at, values);
+                    return new Curve(at, values, bends);
                 }
             }
             throw new IllegalArgumentException(field + ": expected a number, [from, to] or [[time, value], ...]");
@@ -208,9 +243,14 @@ public final class ParticleColors {
 
     /** Пары [доля, значение]: список долей, если все элементы - такие пары, иначе null. */
     private static List<double[]> stops(List<?> list, String field) {
+        return stops(list, field, false);
+    }
+
+    /** То же; {@code withBend} - у точки может быть третий элемент (изгиб кривой). */
+    private static List<double[]> stops(List<?> list, String field, boolean withBend) {
         List<double[]> out = new ArrayList<>();
         for (Object item : list) {
-            if (!(item instanceof List<?> pair) || pair.size() != 2 || !(pair.get(0) instanceof Number t)) return null;
+            if (!(item instanceof List<?> pair) || (pair.size() != 2 && !(withBend && pair.size() == 3)) || !(pair.get(0) instanceof Number t)) return null;
             out.add(new double[]{t.doubleValue()});
         }
         return out;

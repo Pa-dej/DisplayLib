@@ -18,6 +18,10 @@ class ParticleSimTest {
         return ParticleEffect.parse((JTable) Config.parse("dyn render = { text: \"*\" }; " + src), "t");
     }
 
+    private static ParticleEffect pixel(String src) {
+        return ParticleEffect.parse((JTable) Config.parse("dyn render = { type: \"PIXEL\" }; " + src), "t");
+    }
+
     /** Пол: всё ниже y = 0 - камень. */
     private static final ParticleSim.Solid FLOOR = (x, y, z) -> y < 0;
 
@@ -197,5 +201,25 @@ class ParticleSimTest {
         ParticleSim.planSegment(b, m, null, 4);
         assertEquals(1, b.x);
         assertEquals(0, b.vy);
+    }
+
+    /** Кадры вида: линейный размер - один кадр на всю жизнь; кривые - столько, сколько нужно. */
+    @Test
+    void transformKeyframesFollowCurves() {
+        ParticleEffect.Animation linear = parse("dyn animation = { scale: 1, endScale: 0 };").animation();
+        assertArrayEquals(new int[]{40}, ParticleSim.transformPlan(linear, 1, 0xffffffff, false, 0, 40), "LINEAR - один кадр");
+        int[] eased = ParticleSim.transformPlan(parse("dyn animation = { scale: 1, endScale: 0, easing: \"EASE_IN\" };").animation(), 1, 0xffffffff, false, 0, 40);
+        assertTrue(eased.length > 2, "EASE_IN дробится: " + java.util.Arrays.toString(eased));
+        int[] spin = ParticleSim.transformPlan(linear, 1, 0xffffffff, false, 20, 40);
+        for (int n : spin) assertTrue(n <= 8, "поворот меньше 180° за кадр");
+        ParticleEffect.Animation flame = pixel("dyn animation = { scale: 0.1, color: [[0, \"#ffffff\"], [0.2, \"#fcd303\"], [0.7, \"#de400b\"], [1, \"#00000000\"]] };").animation();
+        int[] colored = ParticleSim.transformPlan(flame, 0.1, 0xffffffff, true, 0, 30);
+        assertTrue(colored.length >= 3, java.util.Arrays.toString(colored));
+        assertEquals(30, java.util.Arrays.stream(colored).sum());
+        // эталон для web-ui (test/particles-sim.test.ts)
+        System.out.println("REF eased=" + java.util.Arrays.toString(eased) + " spin=" + java.util.Arrays.toString(spin)
+                + " colored=" + java.util.Arrays.toString(colored)
+                + " fade=" + java.util.Arrays.toString(ParticleSim.transformPlan(parse("dyn animation = { scale: 0.5, fadeIn: 4, endScale: 0.2, easing: \"EASE_OUT\" };").animation(), 0.5, 0xffffffff, false, 0, 60))
+                + " opac=" + java.util.Arrays.toString(ParticleSim.transformPlan(pixel("dyn animation = { scale: 0.2, opacity: [[0, 0], [0.2, 1], [1, 0, [0.4, 0.3]]] };").animation(), 0.2, 0xff33aaee, true, 0, 50)));
     }
 }

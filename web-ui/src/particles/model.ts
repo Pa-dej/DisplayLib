@@ -11,8 +11,12 @@ export type Billboard = 'FIXED' | 'VERTICAL' | 'HORIZONTAL' | 'CENTER';
 /** Число или случайное значение из диапазона: [min, max]; min == max - точное значение. */
 export type Range = [number, number];
 
-/** Точка градиента/кривой: доля жизни 0..1 (null - точки распределены равномерно) и значение. */
-export interface Stop<T> { at: number | null; value: T }
+/**
+ * Точка градиента/кривой: доля жизни 0..1 (null - точки распределены равномерно) и значение.
+ * bend (только у кривых) - изгиб отрезка, который приходит в эту точку: узел [x, dy] - кривая проходит
+ * на доле x отрезка (0.25..0.75) на dy выше прямой; null/нет - прямая.
+ */
+export interface Stop<T> { at: number | null; value: T; bend?: [number, number] | null }
 
 export interface Render {
   type: RenderType;
@@ -28,7 +32,9 @@ export interface Render {
   shadow: boolean;
   background: RGB | null;
   backgroundAlpha: number | null;
+  /** Контур свечения (клиент рисует у ITEM и BLOCK) и его цвет; null - белый */
   glow: boolean;
+  glowColor: string | null;
 }
 
 export interface Emitter {
@@ -92,7 +98,7 @@ export function defaultRender(type: RenderType = 'PIXEL'): Render {
   return {
     type, text: type === 'TEXT' ? '★' : null, variants: [], colors: [], items: type === 'ITEM' ? ['GOLD_NUGGET'] : [],
     blocks: type === 'BLOCK' ? ['minecraft:glowstone'] : [], billboard: type === 'BLOCK' ? 'FIXED' : 'CENTER',
-    brightness: null, shadow: false, background: null, backgroundAlpha: null, glow: false,
+    brightness: null, shadow: false, background: null, backgroundAlpha: null, glow: false, glowColor: null,
   };
 }
 export function defaultEmitter(): Emitter {

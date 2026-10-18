@@ -79,15 +79,16 @@ function times<T>(stops: Stop<T>[]): number[] {
 }
 
 export interface Gradient { at: number[]; colors: number[] }
-export interface Curve { at: number[]; values: number[] }
+export interface Curve { at: number[]; values: number[]; bends: ([number, number] | null)[] | null }
 
 export function gradientOf(stops: Stop<string>[] | null): Gradient | null {
   if (!stops?.length) return null;
   return { at: times(stops), colors: stops.map((s) => parseColor(s.value) ?? 0xffffffff) };
 }
 export function curveOf(stops: Stop<number>[] | null): Curve {
-  if (!stops?.length) return { at: [0], values: [1] };
-  return { at: times(stops), values: stops.map((s) => s.value) };
+  if (!stops?.length) return { at: [0], values: [1], bends: null };
+  const bends = stops.some((s) => s.bend) ? stops.map((s, i) => (i > 0 && s.bend ? s.bend : null)) : null;
+  return { at: times(stops), values: stops.map((s) => s.value), bends };
 }
 
 export function sampleGradient(g: Gradient, t: number): number {
@@ -105,8 +106,31 @@ export function sampleCurve(c: Curve, t: number): number {
   for (let i = 1; i < c.at.length; i++) {
     if (t <= c.at[i]) {
       const span = c.at[i] - c.at[i - 1];
-      return c.values[i - 1] + (c.values[i] - c.values[i - 1]) * (span <= 0 ? 1 : (t - c.at[i - 1]) / span);
+      const k = span <= 0 ? 1 : (t - c.at[i - 1]) / span;
+      const b = c.bends?.[i];
+      return b ? bent(c.values[i - 1], c.values[i], b[0], b[1], k) : c.values[i - 1] + (c.values[i] - c.values[i - 1]) * k;
     }
   }
   return c.values[c.values.length - 1];
+}
+
+/**
+ * Квадратичная кривая Безье от (0, v0) до (1, v1) через узел (x, прямая(x) + dy) при параметре 1/2
+ * (как Curve.bent в плагине): контрольная точка C = 2·узел - (P0 + P2)/2, x в 0.25..0.75 - монотонно по x.
+ */
+export function bent(v0: number, v1: number, x: number, dy: number, u: number): number {
+  x = Math.max(0.25, Math.min(0.75, x));
+  const cx = 2 * x - 0.5;
+  const my = v0 + (v1 - v0) * x + dy;
+  const cy = 2 * my - (v0 + v1) / 2;
+  const a = 1 - 2 * cx;
+  const s = Math.abs(a) < 1e-9 ? u : (-cx + Math.sqrt(Math.max(0, cx * cx + a * u))) / a;
+  return (1 - s) * (1 - s) * v0 + 2 * (1 - s) * s * cy + s * s * v1;
+}
+/** Точка кривой Безье отрезка по параметру s (для рисования в редакторе): [доля отрезка, значение]. */
+export function bentPoint(v0: number, v1: number, x: number, dy: number, s: number): [number, number] {
+  x = Math.max(0.25, Math.min(0.75, x));
+  const cx = 2 * x - 0.5;
+  const cy = 2 * (v0 + (v1 - v0) * x + dy) - (v0 + v1) / 2;
+  return [2 * (1 - s) * s * cx + s * s, (1 - s) * (1 - s) * v0 + 2 * (1 - s) * s * cy + s * s * v1];
 }

@@ -283,8 +283,8 @@ html:not(.dark) .tok-op { color: #0e7490; }
 .seg > button + button { border-left: 1px solid var(--vp-c-divider); }
 .seg > button:hover { color: var(--vp-c-brand-1); }
 .seg > button.on { background: var(--vp-c-brand-soft); color: var(--vp-c-brand-1); font-weight: 600; }
-.seg.wide { display: flex; }
-.seg.wide > button { flex: 1; justify-content: center; }
+.seg.wide, .field .seg { display: flex; width: 100%; }
+.field .seg > button, .seg.wide > button { flex: 1 1 0; justify-content: center; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .mode-switch > button { height: 32px; padding: 0 14px; font-size: 13px; }
 .pinspector .hint { font-size: 12px; }
 .pinspector p.hint { margin: 6px 0 8px; }
@@ -303,6 +303,29 @@ html:not(.dark) .tok-op { color: #0e7490; }
 .plist-row { display: flex; gap: 4px; align-items: center; width: 100%; }
 .plist-row > :first-child { flex: 1; min-width: 0; }
 .stops { display: flex; flex-direction: column; gap: 4px; }
+/* градиент и кривая (StopsEditor) */
+.grad-edit { position: relative; padding: 0 10px; user-select: none; cursor: copy; }
+.grad-bar { position: relative; height: 34px; border-radius: 7px; border: 1px solid var(--vp-c-divider); overflow: hidden; }
+.grad-bar > span { position: absolute; inset: 0; }
+.grad-handles { position: relative; height: 26px; margin: 0 -10px; }
+.grad-handle { position: absolute; top: 4px; width: 18px; height: 20px; margin-left: -9px; padding: 2px; border-radius: 5px; border: 1px solid var(--vp-c-divider); background: var(--vp-c-bg-elv); cursor: ew-resize; touch-action: none; box-shadow: 0 1px 3px rgba(0,0,0,.25); }
+.grad-handle::before { content: ''; position: absolute; left: 50%; top: -5px; margin-left: -4px; border: 4px solid transparent; border-top: 0; border-bottom: 5px solid var(--vp-c-divider); }
+.grad-handle > span { position: absolute; inset: 2px; border-radius: 3px; overflow: hidden; }
+.grad-handle > span > span { position: absolute; inset: 0; }
+.grad-handle.on { border-color: var(--vp-c-brand-1); box-shadow: 0 0 0 2px var(--vp-c-brand-soft), 0 1px 3px rgba(0,0,0,.25); }
+.grad-handle.on::before { border-bottom-color: var(--vp-c-brand-1); }
+.curve-edit { position: relative; height: 150px; border-radius: 8px; border: 1px solid var(--vp-c-divider); background: var(--vp-c-bg-soft); overflow: hidden; user-select: none; cursor: crosshair; }
+.curve-edit svg { display: block; }
+.curve-edit .grid line { stroke: var(--vp-c-divider); stroke-width: 1; }
+.curve-edit .grid text { fill: var(--vp-c-text-3); font-size: 9.5px; font-family: var(--vp-font-family-mono); }
+.curve-edit .area { fill: color-mix(in srgb, var(--vp-c-brand-1) 14%, transparent); }
+.curve-edit .line { fill: none; stroke: var(--vp-c-brand-1); stroke-width: 2; stroke-linejoin: round; }
+.curve-edit .pt circle { fill: var(--vp-c-bg-elv); stroke: var(--vp-c-brand-1); stroke-width: 2; cursor: move; touch-action: none; }
+.curve-edit .pt.on circle { fill: var(--vp-c-brand-1); stroke: var(--vp-c-bg-elv); }
+.curve-edit .node rect { fill: var(--vp-c-bg-elv); stroke: var(--vp-c-text-3); stroke-width: 1.5; stroke-dasharray: 2 2; cursor: grab; touch-action: none; }
+.curve-edit .node.bent rect { stroke: #d9a441; stroke-dasharray: none; fill: color-mix(in srgb, #d9a441 25%, var(--vp-c-bg-elv)); }
+.curve-edit .node:hover rect, .curve-edit .pt:hover circle { stroke-width: 2.5; }
+.stops-hint { margin: 2px 0 0 !important; font-size: 11px !important; line-height: 1.35; }
 .stops-preview { position: relative; height: 26px; margin-bottom: 4px; }
 .stops-preview .bar { position: absolute; inset: 0; width: 100%; height: 100%; border-radius: 6px; border: 1px solid var(--vp-c-divider); overflow: hidden; display: block; }
 .stops-preview .checker { background: repeating-conic-gradient(#999 0 25%, #ddd 0 50%) 0 0 / 10px 10px; }
@@ -341,11 +364,12 @@ html:not(.dark) .tok-op { color: #0e7490; }
 .cp-hue:focus-visible, .cp-alpha:focus-visible { box-shadow: 0 0 0 2px var(--vp-c-brand-1); }
 .cp-alpha-fill { position: absolute; inset: 0; border-radius: 6px; }
 .cp-thumb { position: absolute; top: 50%; width: 14px; height: 14px; margin: -7px 0 0 -7px; border-radius: 50%; border: 2px solid #fff; box-shadow: 0 0 0 1px rgba(0,0,0,.35), 0 1px 3px rgba(0,0,0,.4); pointer-events: none; }
-.cp-fields { display: flex; gap: 6px; align-items: center; }
+.cp-fields { display: grid; grid-template-columns: 1fr auto; gap: 6px; align-items: end; }
+.cp-fields .cp-modes { grid-column: 1 / -1; justify-self: start; }
 .cp-modes { flex: none; }
 .cp-modes > button { padding: 0 6px; font-size: 11px; }
 .cp-inputs { flex: 1; display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 4px; min-width: 0; }
-.cp-inputs input { width: 100%; height: 26px; padding: 0 4px; text-align: center; font-family: var(--vp-font-family-mono); font-size: 12px; -moz-appearance: textfield; }
+.cp-inputs input { width: 100%; min-width: 0; height: 28px; padding: 0 2px; text-align: center; font-family: var(--vp-font-family-mono); font-size: 12px; -moz-appearance: textfield; }
 .cp-inputs input::-webkit-inner-spin-button { display: none; }
 .cp-inputs label { display: flex; flex-direction: column; align-items: center; gap: 1px; min-width: 0; }
 .cp-inputs label > span { font-size: 9.5px; color: var(--vp-c-text-3); line-height: 1; }

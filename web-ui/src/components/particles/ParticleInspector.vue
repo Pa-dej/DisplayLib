@@ -12,6 +12,10 @@ import RichTextInput from '../fields/RichTextInput.vue';
 import MaterialInput from '../fields/MaterialInput.vue';
 import VecInput from '../fields/VecInput.vue';
 import ColorInput from '../fields/ColorInput.vue';
+import ColorPicker from '../fields/ColorPicker.vue';
+import { compile, transformPlan } from '../../particles/sim';
+import { parseColor } from '../../particles/colors';
+import { cloneEffect } from '../../particles/model';
 import { snapshot, touch } from '../../store';
 import { currentEffect, currentEffectDoc, currentEffectErrors, setEffectId } from '../../particles/store';
 import { RENDER_TYPES, SHAPES, BILLBOARDS, EASINGS, burstCount, type RenderType, type Stop } from '../../particles/model';
@@ -75,6 +79,44 @@ function setVariant(i: number, v: RichText | null) { const a = [...variants.valu
 // ---- фон текста
 function setBg(on: boolean) { edit(() => { r.value.background = on ? [0, 0, 0] : null; r.value.backgroundAlpha = on ? 64 : null; }); }
 
+// ---- цвет: постоянный (render.colors, случайный из списка) или градиент по жизни (animation.color).
+// В плагине градиент заменяет colors, поэтому это выбор, а не два поля; спрятанное помним, чтобы
+// переключение туда-обратно ничего не теряло.
+const gradientMode = computed(() => an.value.color != null);
+const stash = new WeakMap<object, { colors: string[]; color: Stop<string>[] | null }>();
+function setColorMode(gradient: boolean) {
+  if (gradient === gradientMode.value) return;
+  edit(() => {
+    const prev = stash.get(e.value) ?? { colors: [], color: null };
+    if (gradient) {
+      stash.set(e.value, { ...prev, colors: r.value.colors });
+      const base = r.value.colors[0] ?? '#ffffff';
+      const c = parseColor(base) ?? 0xffffffff;
+      an.value.color = prev.color ?? [{ at: null, value: base }, { at: null, value: '#' + (c & 0xffffff).toString(16).padStart(6, '0') + '00' }];
+      r.value.colors = [];
+    } else {
+      stash.set(e.value, { ...prev, color: an.value.color });
+      r.value.colors = prev.colors.length ? prev.colors : [an.value.color?.[0]?.value ?? '#ffffff'];
+      an.value.color = null;
+    }
+  });
+}
+
+// ---- нагрузка: кадры вида на среднюю частицу (как LiveParticle) - сейчас, с линейной кривой и с выбранной
+const load = computed(() => {
+  void currentEffect.value; // пересчёт при правке
+  const eff = e.value;
+  const mean = (x: [number, number]) => (x[0] + x[1]) / 2;
+  const life = Math.max(1, Math.round(mean(eff.motion.lifetime)));
+  const colored = textual.value;
+  const start = parseColor(eff.render.colors[0] ?? '#ffffff') ?? 0xffffffff;
+  const count = (easing: typeof eff.animation.easing) => {
+    const x = cloneEffect(eff); x.animation.easing = easing;
+    return transformPlan(compile(x), mean(eff.animation.scale), start, colored, (Math.abs(eff.animation.spin[0]) + Math.abs(eff.animation.spin[1])) / 2, life).length;
+  };
+  return { current: count(eff.animation.easing), linear: count('LINEAR'), eased: count(eff.animation.easing === 'LINEAR' ? 'EASE_IN' : eff.animation.easing) };
+});
+
 const COLOR_DEFAULT: Stop<string>[] = [{ at: null, value: '#ffffff' }, { at: null, value: '#ffffff00' }];
 const OPACITY_DEFAULT: Stop<number>[] = [{ at: null, value: 1 }, { at: null, value: 0 }];
 const blockNames = ITEM_NAMES;
@@ -94,7 +136,7 @@ const blockNames = ITEM_NAMES;
         <div class="field"><label title="Кто видит частицы: все игроки рядом или только тот, для кого запущен эффект">viewers</label>
           <div class="seg">
             <button :class="{ on: e.viewers === 'ALL' }" @click="edit(() => (e.viewers = 'ALL'))">Все рядом</button>
-            <button :class="{ on: e.viewers === 'OWNER' }" @click="edit(() => (e.viewers = 'OWNER'))">Только владелец</button>
+            <button :class="{ on: e.viewers === 'OWNER' }" @click="edit(() => (e.viewers = 'OWNER'))" title="Только игрок, для которого запущен эффект">Владелец</button>
           </div></div>
         <div class="field"><label title="Максимум тиков между пакетами движения (1-59). Меньше - точнее путь, больше - меньше трафика. На прямых участках плагин сам растягивает кадр до этого значения">keyframeTicks</label>
           <NumInput v-model="e.keyframeTicks" :int="true" :step="1" :min="1" :max="59" /></div>
@@ -127,19 +169,33 @@ const blockNames = ITEM_NAMES;
             <input type="text" class="grow" list="pblock-names" :value="value" @focus="snapshot()" @input="set(($event.target as HTMLInputElement).value)" />
           </ListInput>
           <datalist id="pblock-names"><option v-for="n in blockNames" :key="n" :value="'minecraft:' + n" /></datalist></div>
-        <div v-if="textual" class="field stack"><label :title="r.type === 'PIXEL' ? 'Цвет квадрата; несколько - случайный на частицу' : 'Цвет текста; несколько - случайный на частицу'">colors</label>
-          <ListInput v-model="r.colors" add="#ffffff" v-slot="{ value, set }">
-            <PColorInput :model-value="value" @update:model-value="set" />
-          </ListInput>
-          <span v-if="!r.colors.length" class="hint">{{ r.type === 'PIXEL' ? 'Без цвета - белый' : 'Без цвета - как в тексте' }}</span></div>
-
+        <template v-if="textual">
+          <div class="field"><label title="Постоянный - цвет на всю жизнь (из списка - случайный на частицу); по жизни - градиент от рождения к смерти">Цвет</label>
+            <div class="seg">
+              <button :class="{ on: !gradientMode }" @click="setColorMode(false)">Постоянный</button>
+              <button :class="{ on: gradientMode }" @click="setColorMode(true)">По жизни</button>
+            </div></div>
+          <div v-if="!gradientMode" class="field stack"><label :title="r.type === 'PIXEL' ? 'Цвет квадрата; несколько - случайный на частицу' : 'Цвет текста; несколько - случайный на частицу'">colors <span class="hint">{{ r.colors.length > 1 ? 'случайный из ' + r.colors.length : '' }}</span></label>
+            <ListInput v-model="r.colors" add="#ffffff" v-slot="{ value, set }">
+              <PColorInput :model-value="value" @update:model-value="set" />
+            </ListInput>
+            <span v-if="!r.colors.length" class="hint">{{ r.type === 'PIXEL' ? 'Без цвета - белый' : 'Без цвета - как в тексте' }}</span></div>
+          <div v-else class="field stack"><label title="Цвет по доле жизни: смешивание в OkLab, как в плагине">color <span class="hint">по доле жизни</span></label>
+            <StopsEditor v-model="an.color as any" kind="color" :defaults="COLOR_DEFAULT" /></div>
+        </template>
         <div class="field"><label title="Как частица поворачивается к игроку">billboard</label>
           <select :value="r.billboard" @focus="snapshot()" @change="r.billboard = ($event.target as HTMLSelectElement).value as any; touch()">
             <option v-for="b in BILLBOARDS" :key="b" :value="b">{{ b }}</option>
           </select></div>
         <div class="field"><label title="Своя яркость 0-15 (15 - светится в темноте); пусто - освещение мира">brightness</label>
           <NumInput v-model="r.brightness" :int="true" :step="1" :min="0" :max="15" nullable placeholder="мир" /></div>
-        <div class="field"><label title="Светящийся контур (glowing)">glow</label><input type="checkbox" :checked="r.glow" @change="edit(() => (r.glow = !r.glow))" /></div>
+        <template v-if="!textual">
+          <div class="field"><label title="Светящийся контур (glowing): виден сквозь блоки">glow</label><input type="checkbox" :checked="r.glow" @change="edit(() => (r.glow = !r.glow))" /></div>
+          <div v-if="r.glow" class="field"><label title="Цвет контура (glowColorOverride); без цвета - белый">glowColor</label>
+            <div class="row"><ColorPicker :size="28" :model-value="r.glowColor ?? '#ffffff'" @update:model-value="r.glowColor = $event; touch()" />
+              <span class="hint grow">{{ r.glowColor ?? 'белый' }}</span>
+              <button v-if="r.glowColor" class="btn sm" @click="edit(() => (r.glowColor = null))">Белый</button></div></div>
+        </template>
         <template v-if="r.type === 'TEXT'">
           <div class="field"><label>shadow</label><input type="checkbox" :checked="r.shadow" @change="edit(() => (r.shadow = !r.shadow))" /></div>
           <div class="field"><label>background</label>
@@ -150,16 +206,16 @@ const blockNames = ITEM_NAMES;
 
       <div class="section">
         <h3>Испускание <span class="hint">emitter</span></h3>
-        <div class="field"><label title="Откуда вылетают частицы">shape</label>
+        <div class="field stack"><label title="Откуда вылетают частицы">shape</label>
           <div class="seg"><button v-for="s in SHAPES" :key="s" :class="{ on: em.shape === s }" @click="edit(() => (em.shape = s))">{{ s }}</button></div></div>
         <div v-if="em.shape === 'SPHERE' || em.shape === 'CIRCLE'" class="field"><label>radius</label><NumInput v-model="em.radius" :step="0.05" :min="0" /></div>
         <div v-if="em.shape === 'BOX'" class="field"><label title="Полные размеры коробки x, y, z">size</label><VecInput :model-value="em.size" @update:model-value="em.size = $event as any" :min="0" :labels="['x', 'y', 'z']" /></div>
         <div v-if="em.shape !== 'POINT'" class="field"><label title="Только по поверхности формы (по контуру для круга)">surface</label><input type="checkbox" :checked="em.surface" @change="edit(() => (em.surface = !em.surface))" /></div>
-        <div class="field"><label>Когда</label>
+        <div class="field stack"><label title="Всплеск - все частицы сразу; N тиков - поток rate частиц за тик; бесконечно - пока не остановят">Когда</label>
           <div class="seg">
             <button :class="{ on: mode === 'burst' }" @click="setMode('burst')" title="Все частицы сразу">Всплеск</button>
             <button :class="{ on: mode === 'ticks' }" @click="setMode('ticks')" title="Испускать rate частиц за тик в течение duration тиков">N тиков</button>
-            <button :class="{ on: mode === 'forever' }" @click="setMode('forever')" title="duration: -1 - пока не остановят (stop / handle.stop())">Пока не остановят</button>
+            <button :class="{ on: mode === 'forever' }" @click="setMode('forever')" title="duration: -1 - пока не остановят (stop / handle.stop())">Бесконечно</button>
           </div></div>
         <div class="field"><label :title="mode === 'burst' ? 'Частиц во всплеске' : 'Частиц сразу в начале (кроме потока)'">count</label>
           <NumInput v-model="em.count" :int="true" :step="1" :min="0" nullable :placeholder="String(burstCount({ ...em, count: null }))" /></div>
@@ -197,18 +253,28 @@ const blockNames = ITEM_NAMES;
         <h3>Анимация <span class="hint">animation</span></h3>
         <div class="field"><label title="Начальный размер, блоков">scale</label><RangeInput v-model="an.scale" :step="0.01" :min="0" /></div>
         <div class="field"><label title="Размер к концу жизни - множитель начального (0 - исчезает, 1 - не меняется)">endScale</label><NumInput v-model="an.endScale" :step="0.05" :min="0" /></div>
-        <div v-if="an.endScale !== 1" class="field"><label>easing</label>
-          <select :value="an.easing" @focus="snapshot()" @change="an.easing = ($event.target as HTMLSelectElement).value as any; touch()"><option v-for="x in EASINGS" :key="x" :value="x">{{ x }}</option></select></div>
+        <template v-if="an.endScale !== 1">
+          <div class="field"><label title="Как размер идёт к endScale">Кривая размера</label>
+            <div class="seg">
+              <button :class="{ on: an.easing === 'LINEAR' }" @click="edit(() => (an.easing = 'LINEAR'))" title="Размер меняется по прямой - клиент ведёт его сам, один пакет на всю жизнь">Линейная</button>
+              <button :class="{ on: an.easing !== 'LINEAR' }" @click="an.easing === 'LINEAR' && edit(() => (an.easing = 'EASE_IN'))" title="Своя кривая (easing): плавнее, но сервер шлёт кадры чаще">Своя</button>
+            </div></div>
+          <template v-if="an.easing !== 'LINEAR'">
+            <div class="field"><label>easing</label>
+              <select :value="an.easing" @focus="snapshot()" @change="an.easing = ($event.target as HTMLSelectElement).value as any; touch()"><option v-for="x in EASINGS.filter((x) => x !== 'LINEAR')" :key="x" :value="x">{{ x }}</option></select></div>
+            <div class="callout warn load-warn"><b>Больше нагрузки.</b> Клиент умеет вести размер только по прямой, поэтому кривую сервер разбивает на кадры:
+              ≈{{ load.eased }} пакет(а) вида на частицу вместо {{ load.linear }}. Для сотен частиц это заметно — оставьте «Линейная», если разница не видна.</div>
+          </template>
+        </template>
         <div class="field"><label title="Тиков на рост от 0 до размера в начале жизни">fadeIn</label><NumInput v-model="an.fadeIn" :int="true" :step="1" :min="0" /></div>
         <div class="field"><label title="Начальный поворот в плоскости частицы, градусов">rotation</label><RangeInput v-model="an.rotation" :step="5" unit="°" /></div>
         <div class="field"><label title="Вращение, градусов за тик">spin</label><RangeInput v-model="an.spin" :step="1" unit="°/т" /></div>
         <template v-if="textual">
-          <div class="field stack"><label title="Цвет по доле жизни (смешивание в OkLab, как в плагине). Заменяет colors">color</label>
-            <StopsEditor v-model="an.color as any" kind="color" :defaults="COLOR_DEFAULT" /></div>
           <div class="field stack"><label title="Множитель непрозрачности по доле жизни">opacity</label>
             <StopsEditor v-model="an.opacity as any" kind="number" :defaults="OPACITY_DEFAULT" :max="1" /></div>
         </template>
         <p v-else class="hint">Цвет и прозрачность по жизни есть только у PIXEL и TEXT.</p>
+        <p class="hint" title="Сколько раз за жизнь частицы сервер шлёт размер/поворот/цвет (для средней частицы). Позиция считается отдельно - см. «пакетов/с» в предпросмотре">Кадров вида на частицу: ≈{{ load.current }}</p>
       </div>
     </template>
   </aside>

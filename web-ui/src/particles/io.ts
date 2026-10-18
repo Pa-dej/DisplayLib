@@ -88,6 +88,8 @@ export function tableToEffect(top: JmcTable, fallbackId: string): ParseResult {
     render.background = bg && bg.length >= 3 && bg.slice(0, 3).every((x) => typeof x === 'number') ? (bg.slice(0, 3) as RGB) : null;
     const ba = num(rt, 'backgroundAlpha', 'bgAlpha'); render.backgroundAlpha = ba == null ? null : clamp(Math.round(ba), 0, 255);
     render.glow = bool(rt, 'glow') ?? false;
+    const gc = get(rt, 'glowColor');
+    if (gc != null) render.glowColor = color(gc, 'render.glowColor');
   }
 
   // ---- emitter
@@ -169,10 +171,10 @@ export function colorString(v: JmcValue): string | null {
   return null;
 }
 
-function stopsOf(list: JmcValue[]): number[] | null {
+function stopsOf(list: JmcValue[], withBend = false): number[] | null {
   const out: number[] = [];
   for (const item of list) {
-    if (!Array.isArray(item) || item.length !== 2 || typeof item[0] !== 'number') return null;
+    if (!Array.isArray(item) || (item.length !== 2 && !(withBend && item.length === 3)) || typeof item[0] !== 'number') return null;
     out.push(item[0]);
   }
   return out;
@@ -202,10 +204,19 @@ function curveFrom(v: JmcValue, errors: string[]): Stop<number>[] | null {
   if (typeof v === 'number') return [{ at: null, value: v }];
   if (Array.isArray(v) && v.length) {
     if (v.every((x) => typeof x === 'number')) return (v as number[]).map((x) => ({ at: null, value: x }));
-    const at = stopsOf(v);
+    const at = stopsOf(v, true);
     if (at && v.every((p) => typeof (p as JmcValue[])[1] === 'number')) {
       checkOrder(at, field, errors);
-      return v.map((p, i) => ({ at: at[i], value: (p as number[])[1] }));
+      return v.map((p, i) => {
+        const item = p as JmcValue[];
+        const stop: Stop<number> = { at: at[i], value: item[1] as number };
+        if (item.length === 3) {
+          const b = item[2];
+          if (Array.isArray(b) && b.length === 2 && typeof b[0] === 'number' && typeof b[1] === 'number') stop.bend = [Math.max(0.25, Math.min(0.75, b[0])), b[1]];
+          else errors.push(`${field}: изгиб - [x, dy], например [0.5, 0.2, [0.5, -0.1]]`);
+        }
+        return stop;
+      });
     }
   }
   errors.push(`${field}: ожидается число, [от, до] или [[доля, значение], ...]`);
@@ -258,10 +269,16 @@ function tableJ(fields: [string, string][], indent = ''): string {
   return '{\n' + fields.map(([k, v]) => indent + '    ' + k + ': ' + v + ',').join('\n') + '\n' + indent + '}';
 }
 
+/** Изгиб, неотличимый от прямой, не пишем. */
+const isStraight = (b: [number, number] | null | undefined) => !b || (Math.abs(b[1]) < 1e-9);
 function stopsJ<T>(stops: Stop<T>[], val: (v: T) => string): string {
+  const bends = stops.some((s, i) => i > 0 && !isStraight(s.bend));
   if (stops.length === 1 && stops[0].at == null) return val(stops[0].value);
-  const explicit = stops.every((s) => s.at != null);
-  const items = stops.map((s) => (explicit ? '[' + jnum(s.at!) + ', ' + val(s.value) + ']' : val(s.value)));
+  const explicit = bends || stops.every((s) => s.at != null);
+  const at = (s: Stop<T>, i: number) => s.at ?? (stops.length === 1 ? 0 : i / (stops.length - 1));
+  const items = stops.map((s, i) => (explicit
+    ? '[' + jnum(Math.round(at(s, i) * 10000) / 10000) + ', ' + val(s.value) + (i > 0 && !isStraight(s.bend) ? ', [' + jnum(Math.round(s.bend![0] * 1000) / 1000) + ', ' + jnum(Math.round(s.bend![1] * 1000) / 1000) + ']' : '') + ']'
+    : val(s.value)));
   const inline = '[' + items.join(', ') + ']';
   if (inline.length <= 72) return inline;
   return '[\n' + items.map((i) => '        ' + i + ',').join('\n') + '\n    ]';
@@ -293,7 +310,10 @@ export function effectToJmc(e: ParticleEffect): string {
     if (r.background) rf.push(['background', vecJ(r.background)]);
     if (r.background && r.backgroundAlpha != null) rf.push(['backgroundAlpha', jnum(r.backgroundAlpha)]);
   }
-  if ((r.type === 'ITEM' || r.type === 'BLOCK') && r.glow) rf.push(['glow', 'true']);
+  if ((r.type === 'ITEM' || r.type === 'BLOCK') && r.glow) {
+    rf.push(['glow', 'true']);
+    if (r.glowColor) rf.push(['glowColor', jstr(r.glowColor)]);
+  }
   L.push('dyn render = ' + tableJ(rf) + ';');
   L.push('');
 

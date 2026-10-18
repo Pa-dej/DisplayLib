@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import { parseJmc, type JmcTable } from '../src/jmc/parser';
 import { tableToEffect } from '../src/particles/io';
-import { lerpColor, parseColor } from '../src/particles/colors';
-import { compile, body, step, planSegment, colorAt, scaleAt } from '../src/particles/sim';
+import { lerpColor, parseColor, curveOf, sampleCurve } from '../src/particles/colors';
+import { compile, body, step, planSegment, colorAt, scaleAt, transformPlan } from '../src/particles/sim';
 
 // Эталонные числа - вывод тех же функций плагина (Java: ParticleColors, ParticleSim) на тех же входных данных.
 const fx = (s: string) => compile(tableToEffect(parseJmc('dyn render = { type: "PIXEL" }; ' + s) as JmcTable, 't').effect);
@@ -51,5 +51,27 @@ describe('частицы: порт совпадает с плагином', () =
     const c = fx('dyn animation = { scale: 1, endScale: 0, easing: "EASE_IN_OUT", fadeIn: 4 };');
     const got = Array.from({ length: 11 }, (_, i) => scaleAt(c, 0.7, i * 2, 20));
     got.forEach((v, i) => expect(v).toBeCloseTo(REF.scale[i], 12));
+  });
+});
+
+describe('кадры вида и изгиб кривых - как в плагине', () => {
+  it('transformPlan', () => {
+    const lin = fx('dyn animation = { scale: 1, endScale: 0 };');
+    expect(transformPlan(lin, 1, 0xffffffff, false, 0, 40)).toEqual([40]);
+    expect(transformPlan(fx('dyn animation = { scale: 1, endScale: 0, easing: "EASE_IN" };'), 1, 0xffffffff, false, 0, 40)).toEqual([13, 12, 9, 5, 1]);
+    expect(transformPlan(lin, 1, 0xffffffff, false, 20, 40)).toEqual([8, 8, 8, 8, 8]);
+    expect(transformPlan(fx('dyn animation = { scale: 0.1, color: [[0, "#ffffff"], [0.2, "#fcd303"], [0.7, "#de400b"], [1, "#00000000"]] };'), 0.1, 0xffffffff, true, 0, 30)).toEqual([4, 1, 1, 14, 1, 5, 3, 1]);
+    expect(transformPlan(fx('dyn animation = { scale: 0.5, fadeIn: 4, endScale: 0.2, easing: "EASE_OUT" };'), 0.5, 0xffffffff, false, 0, 60)).toEqual([2, 2, 18, 14, 12, 10, 2]);
+    expect(transformPlan(fx('dyn animation = { scale: 0.2, opacity: [[0, 0], [0.2, 1], [1, 0, [0.4, 0.3]]] };'), 0.2, 0xff33aaee, true, 0, 50)).toEqual([10, 12, 11, 14, 3]);
+  });
+  it('изгиб', () => {
+    const c = (s: string) => curveOf(tableToEffect(parseJmc('dyn render = { type: "PIXEL" }; dyn animation = { opacity: ' + s + ' };') as JmcTable, 't').effect.animation.opacity);
+    const skew = c('[[0, 0], [1, 1, [0.3, 0.2]]]');
+    const bump = c('[[0, 1], [1, 1, [0.5, -0.5]]]');
+    const two = c('[[0, 1], [0.4, 0.5, [0.7, 0.1]], [1, 0, [0.25, -0.2]]]');
+    const got = [sampleCurve(skew, 0.1), sampleCurve(skew, 0.6), sampleCurve(bump, 0.2), sampleCurve(two, 0.33), sampleCurve(two, 0.81)];
+    const ref = [0.2500000000000001, 0.75, 0.6800000000000002, 0.6795614591379635, 0.04368817239268028];
+    got.forEach((v, i) => expect(v).toBeCloseTo(ref[i], 12));
+    expect(sampleCurve(c('[[0, 1], [1, 0, [0.5, -0.3]]]'), 0.5)).toBeCloseTo(0.2, 12);
   });
 });

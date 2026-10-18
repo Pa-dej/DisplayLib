@@ -312,6 +312,88 @@ public final class ParticleSim {
         return ParticleColors.withOpacity(c, a.opacity().sample(t));
     }
 
+    /** Допустимое отличие размера на прямой клиента от настоящего, доля размера. */
+    static final double TRANSFORM_SCALE_TOLERANCE = 0.03;
+    /** То же в абсолютных единицах (для маленьких частиц и около нуля). */
+    static final double TRANSFORM_SCALE_FLOOR = 0.003;
+    /** Допустимое отличие каждого канала ARGB цвета от настоящего (0..255). */
+    static final int TRANSFORM_COLOR_TOLERANCE = 5;
+
+    /**
+     * Длина кадра вида (размер, цвет): самый длинный отрезок от возраста {@code from} (не больше
+     * {@code maxSteps}), на котором линейная интерполяция клиента - размер по прямой, цвет поканально
+     * в ARGB от {@code fromScale}/{@code fromColor} - отходит от настоящих значений не больше допусков.
+     * Линейный размер без кривой цвета проходит всю жизнь одним кадром; нелинейный easing, fadeIn,
+     * градиенты и кривые прозрачности дробят жизнь на столько кадров, сколько нужно глазу.
+     *
+     * @param colored цвет меняется у сущности (PIXEL, TEXT); иначе сравнивается только размер
+     */
+    public static int planTransform(ParticleEffect.Animation a, double startScale, int startColor, boolean colored,
+                                    double fromScale, int fromColor, int from, int life, int maxSteps) {
+        if (maxSteps <= 1) return Math.max(1, maxSteps);
+        double[] scales = new double[maxSteps + 1];
+        int[] colors = colored ? new int[maxSteps + 1] : null;
+        for (int j = 1; j <= maxSteps; j++) {
+            scales[j] = scaleAt(a, startScale, from + j, life);
+            if (colored) colors[j] = colorAt(a, startColor, from + j, life);
+        }
+        int best = 1;
+        for (int n = 2; n <= maxSteps; n++) {
+            boolean ok = true;
+            for (int j = 1; j < n && ok; j++) {
+                double f = (double) j / n;
+                double lerpScale = fromScale + (scales[n] - fromScale) * f;
+                double tolerance = Math.max(TRANSFORM_SCALE_TOLERANCE * Math.abs(scales[j]), TRANSFORM_SCALE_FLOOR);
+                if (Math.abs(lerpScale - scales[j]) > tolerance) ok = false;
+                else if (colored && !closeArgb(lerpArgb(fromColor, colors[n], f), colors[j])) ok = false;
+            }
+            if (!ok) break;
+            best = n;
+        }
+        return best;
+    }
+
+    /**
+     * Длины всех кадров вида за жизнь частицы - так же, как их отправляет {@link LiveParticle}
+     * (с ограничением поворота меньше 180° за кадр). Для оценки нагрузки и тестов.
+     */
+    public static int[] transformPlan(ParticleEffect.Animation a, double startScale, int startColor, boolean colored,
+                                      double spin, int life) {
+        java.util.List<Integer> out = new java.util.ArrayList<>();
+        double sentScale = scaleAt(a, startScale, 0, life);
+        int sentColor = colorAt(a, startColor, 0, life);
+        int visual = 0;
+        while (visual < life) {
+            int steps = life - visual;
+            if (spin != 0) steps = Math.min(steps, Math.max(1, (int) (170 / Math.abs(spin))));
+            steps = planTransform(a, startScale, startColor, colored, sentScale, sentColor, visual, life, steps);
+            out.add(steps);
+            visual += steps;
+            sentScale = scaleAt(a, startScale, visual, life);
+            if (colored) sentColor = colorAt(a, startColor, visual, life);
+        }
+        return out.stream().mapToInt(Integer::intValue).toArray();
+    }
+
+    /** Как клиент интерполирует цвет фона: каждый канал ARGB по прямой. */
+    public static int lerpArgb(int a, int b, double f) {
+        if (f <= 0 || a == b) return a;
+        if (f >= 1) return b;
+        int out = 0;
+        for (int sh = 24; sh >= 0; sh -= 8) {
+            int x = (a >>> sh) & 0xff, y = (b >>> sh) & 0xff;
+            out |= ((int) Math.round(x + (y - x) * f) & 0xff) << sh;
+        }
+        return out;
+    }
+
+    private static boolean closeArgb(int a, int b) {
+        for (int sh = 24; sh >= 0; sh -= 8) {
+            if (Math.abs(((a >>> sh) & 0xff) - ((b >>> sh) & 0xff)) > TRANSFORM_COLOR_TOLERANCE) return false;
+        }
+        return true;
+    }
+
     /** Угол в плоскости частицы, градусы. */
     public static double rotationAt(double start, double spin, int age) {
         return start + spin * age;

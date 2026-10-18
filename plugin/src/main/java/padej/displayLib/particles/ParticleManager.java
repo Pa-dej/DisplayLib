@@ -337,6 +337,7 @@ public final class ParticleManager implements Listener {
                     common.accept(d);
                     d.setItemStack(new ItemStack(m));
                     d.setGlowing(render.glow());
+                    if (render.glow() && render.glowColor() != null) d.setGlowColorOverride(Color.fromRGB(render.glowColor()));
                     d.setTransformation(initial(effect, scale, rotation, center));
                 });
             }
@@ -348,6 +349,7 @@ public final class ParticleManager implements Listener {
                     common.accept(d);
                     d.setBlock(data);
                     d.setGlowing(render.glow());
+                    if (render.glow() && render.glowColor() != null) d.setGlowColorOverride(Color.fromRGB(render.glowColor()));
                     d.setTransformation(initial(effect, scale, rotation, center));
                 });
             }

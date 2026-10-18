@@ -267,3 +267,74 @@ export function colorAt(c: Compiled, startColor: number, age: number, life: numb
   const col = c.gradient ? sampleGradient(c.gradient, t) : startColor;
   return withOpacity(col, sampleCurve(c.opacity, t));
 }
+
+// ---------------------------------------------------------------- кадры вида (как ParticleSim.planTransform)
+
+export const TRANSFORM_SCALE_TOLERANCE = 0.03;
+export const TRANSFORM_SCALE_FLOOR = 0.003;
+export const TRANSFORM_COLOR_TOLERANCE = 5;
+
+/** Клиент интерполирует цвет фона поканально в ARGB. */
+export function lerpArgb(a: number, b: number, f: number): number {
+  if (f <= 0 || a === b) return a;
+  if (f >= 1) return b;
+  let out = 0;
+  for (let sh = 24; sh >= 0; sh -= 8) {
+    const x = (a >>> sh) & 0xff, y = (b >>> sh) & 0xff;
+    out |= (javaRound(x + (y - x) * f) & 0xff) << sh;
+  }
+  return out >>> 0;
+}
+/** Math.round Java (полуцелые - вверх), совпадает с Math.round JS для положительных. */
+const javaRound = (v: number) => Math.floor(v + 0.5);
+function closeArgb(a: number, b: number): boolean {
+  for (let sh = 24; sh >= 0; sh -= 8) if (Math.abs(((a >>> sh) & 0xff) - ((b >>> sh) & 0xff)) > TRANSFORM_COLOR_TOLERANCE) return false;
+  return true;
+}
+
+/**
+ * Длина кадра вида от возраста from (не больше maxSteps): линейная интерполяция клиента размера и цвета
+ * не отходит от настоящих значений дальше допусков. LINEAR без кривых цвета - один кадр на всю жизнь.
+ */
+export function planTransform(c: Compiled, startScale: number, startColor: number, colored: boolean,
+  fromScale: number, fromColor: number, from: number, life: number, maxSteps: number): number {
+  if (maxSteps <= 1) return Math.max(1, maxSteps);
+  const scales = new Float64Array(maxSteps + 1);
+  const colors = colored ? new Array<number>(maxSteps + 1) : null;
+  for (let j = 1; j <= maxSteps; j++) {
+    scales[j] = scaleAt(c, startScale, from + j, life);
+    if (colors) colors[j] = colorAt(c, startColor, from + j, life);
+  }
+  let best = 1;
+  for (let n = 2; n <= maxSteps; n++) {
+    let ok = true;
+    for (let j = 1; j < n && ok; j++) {
+      const f = j / n;
+      const lerpScale = fromScale + (scales[n] - fromScale) * f;
+      const tol = Math.max(TRANSFORM_SCALE_TOLERANCE * Math.abs(scales[j]), TRANSFORM_SCALE_FLOOR);
+      if (Math.abs(lerpScale - scales[j]) > tol) ok = false;
+      else if (colors && !closeArgb(lerpArgb(fromColor, colors[n], f), colors[j])) ok = false;
+    }
+    if (!ok) break;
+    best = n;
+  }
+  return best;
+}
+
+/** Длины всех кадров вида за жизнь (как ParticleSim.transformPlan): оценка нагрузки и тесты. */
+export function transformPlan(c: Compiled, startScale: number, startColor: number, colored: boolean, spin: number, life: number): number[] {
+  const out: number[] = [];
+  let sentScale = scaleAt(c, startScale, 0, life);
+  let sentColor = colorAt(c, startColor, 0, life);
+  let visual = 0;
+  while (visual < life) {
+    let steps = life - visual;
+    if (spin !== 0) steps = Math.min(steps, Math.max(1, Math.trunc(170 / Math.abs(spin))));
+    steps = planTransform(c, startScale, startColor, colored, sentScale, sentColor, visual, life, steps);
+    out.push(steps);
+    visual += steps;
+    sentScale = scaleAt(c, startScale, visual, life);
+    if (colored) sentColor = colorAt(c, startColor, visual, life);
+  }
+  return out;
+}

@@ -18,6 +18,7 @@ import ParticleSidebar from './components/particles/ParticleSidebar.vue';
 import ParticleInspector from './components/particles/ParticleInspector.vue';
 import ParticlePreview from './components/particles/ParticlePreview.vue';
 import ParticleImportDialog from './components/particles/ParticleImportDialog.vue';
+import ParticleExportDialog from './components/particles/ParticleExportDialog.vue';
 import { pstate, addEffect, saveCurrentEffect, saveAllEffects, restoreEffects, pcanUndo, pcanRedo, currentEffect } from './particles/store';
 
 const particles = computed(() => editorMode.value === 'particles');
@@ -29,6 +30,7 @@ const importOpen = ref(false);
 const assetsOpen = ref(false);
 const exportOpen = ref(false);
 const pimportOpen = ref(false);
+const pexportOpen = ref(false);
 const ready = ref(false);
 const dark = ref(document.documentElement.classList.contains('dark'));
 
@@ -52,6 +54,7 @@ onMounted(async () => {
     const inTextarea = tag === 'TEXTAREA';
     const mod = e.ctrlKey || e.metaKey;
     if (mod && e.code === 'KeyS') { e.preventDefault(); save(e.shiftKey); }
+    else if (mod && e.code === 'KeyE') { e.preventDefault(); if (particles.value) { if (currentEffect.value) pexportOpen.value = true; } else if (currentDoc.value) exportOpen.value = true; }
     else if (mod && e.code === 'KeyZ' && !inTextarea) { e.preventDefault(); e.shiftKey ? redo() : undo(); }
     else if (mod && e.code === 'KeyY' && !inTextarea) { e.preventDefault(); redo(); }
   });
@@ -77,6 +80,7 @@ onMounted(async () => {
       <div v-else class="btn-group">
         <button class="btn" @click="addEffect()"><Icon name="plus" /> Эффект</button>
         <button class="btn" @click="pimportOpen = true"><Icon name="file-import" /> Импорт .jmc</button>
+        <button class="btn" @click="pexportOpen = true" :disabled="!currentEffect" title="Текст .jmc с подсветкой: скопировать или скачать (Ctrl+E)"><Icon name="file-export" /> Экспорт</button>
         <button class="btn primary" @click="saveCurrentEffect" :disabled="!currentEffect" title="Скачать <id>.jmc - положить в plugins/DisplayLib/particles"><Icon name="download" /> Скачать <kbd style="opacity:.7">Ctrl+S</kbd></button>
         <button class="btn" @click="saveAllEffects" :disabled="!pstate.docs.length" title="Все эффекты одним zip: particles/*.jmc (Ctrl+Shift+S)"><Icon name="layer-group" /> Zip</button>
       </div>
@@ -103,6 +107,7 @@ onMounted(async () => {
       <ParticleInspector />
     </template>
     <ParticleImportDialog v-if="pimportOpen" @close="pimportOpen = false" />
+    <ParticleExportDialog v-if="pexportOpen" @close="pexportOpen = false" />
     <ImportDialog v-if="importOpen" @close="importOpen = false" />
     <AssetBrowser v-if="assetsOpen" @close="assetsOpen = false" />
     <ExportDialog v-if="exportOpen" @close="exportOpen = false" />

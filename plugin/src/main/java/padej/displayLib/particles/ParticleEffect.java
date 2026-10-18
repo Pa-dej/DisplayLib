@@ -38,11 +38,13 @@ public final class ParticleEffect {
     /**
      * Что рисует частица.
      *
-     * @param colors цвета ARGB: случайный на частицу (цвет текста у TEXT, цвет квадрата у PIXEL)
+     * @param colors    цвета ARGB: случайный на частицу (цвет текста у TEXT, цвет квадрата у PIXEL)
+     * @param glow      контур свечения (клиент рисует его у ITEM и BLOCK; у текста контура нет)
+     * @param glowColor цвет контура RGB или {@code null} - белый (цвет команды)
      */
     public record Render(RenderType type, List<Component> texts, List<Integer> colors, List<String> items,
                          List<String> blocks, Display.Billboard billboard, Integer brightness, boolean shadow,
-                         int backgroundArgb, boolean glow) {}
+                         int backgroundArgb, boolean glow, Integer glowColor) {}
 
     /**
      * Откуда и сколько.
@@ -205,8 +207,10 @@ public final class ParticleEffect {
         int alpha = bgAlpha != null ? Math.max(0, Math.min(255, bgAlpha)) : (bg != null ? 255 : 0);
         int argb = bg == null ? 0 : (alpha << 24) | (clamp255(bg[0]) << 16) | (clamp255(bg[1]) << 8) | clamp255(bg[2]);
         Boolean glow = JmcValues.bool(t, "glow");
+        Object glowColorValue = JmcValues.get(t, "glowColor");
+        Integer glowColor = glowColorValue == null ? null : ParticleColors.parse(glowColorValue, "render.glowColor") & 0xffffff;
         return new Render(type, List.copyOf(texts), List.copyOf(colors), List.copyOf(items), List.copyOf(blocks),
-                billboard, brightness, shadow != null && shadow, argb, glow != null && glow);
+                billboard, brightness, shadow != null && shadow, argb, glow != null && glow, glowColor);
     }
 
     private static Emitter parseEmitter(JTable t) {

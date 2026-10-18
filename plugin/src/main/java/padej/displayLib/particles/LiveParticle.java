@@ -157,7 +157,7 @@ final class LiveParticle {
     private void sendTransform(int keyframeTicks) {
         ParticleEffect.Animation animation = emission.effect.animation();
         int visual = age - 1;
-        int steps = Math.min(segmentLength(transformSegment++, keyframeTicks), life - visual);
+        int steps = life - visual;
         if (spin != 0) {
             // поворот за кадр (от последней отправленной трансформации) - меньше 180°,
             // иначе клиент повернёт кратчайшим путём, в обратную сторону
@@ -168,6 +168,10 @@ final class LiveParticle {
             nextTransform = Integer.MAX_VALUE;
             return;
         }
+        // кадр такой длины, чтобы прямая клиента не отходила от кривой размера/цвета (LINEAR - один кадр)
+        boolean colored = entity instanceof TextDisplay;
+        steps = ParticleSim.planTransform(animation, startScale, startColor, colored, sentScale, sentColor, visual, life, steps);
+        transformSegment++;
         int target = visual + steps;
         nextTransform = age + steps;
         double s = ParticleSim.scaleAt(animation, startScale, target, life);

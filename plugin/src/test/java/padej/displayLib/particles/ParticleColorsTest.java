@@ -128,4 +128,24 @@ class ParticleColorsTest {
         assertEquals(ParticleEffect.Emitter.FOREVER, e.emitter().duration());
         assertEquals(0, e.emitter().count());
     }
+
+    /** Изгиб отрезка: узел [x, dy] - кривая проходит через него; [0.5, 0] - прямая. */
+    @Test
+    void curveBend() {
+        ParticleColors.Curve c = ParticleColors.Curve.parse(jmc("[[0, 1], [1, 0, [0.5, -0.3]]]"), "o");
+        assertEquals(0.2, c.sample(0.5), 1e-9, "через узел");
+        assertEquals(1, c.sample(0), 1e-9);
+        assertEquals(0, c.sample(1), 1e-9);
+        ParticleColors.Curve straight = ParticleColors.Curve.parse(jmc("[[0, 1], [1, 0, [0.5, 0]]]"), "o");
+        assertEquals(0.25, straight.sample(0.75), 1e-9);
+        ParticleColors.Curve skew = ParticleColors.Curve.parse(jmc("[[0, 0], [1, 1, [0.3, 0.2]]]"), "o");
+        assertEquals(0.5, skew.sample(0.3), 1e-9, "узел в 0.3 на 0.2 выше прямой");
+        double prev = -1;
+        for (int i = 0; i <= 20; i++) { double v = skew.sample(i / 20.0); assertTrue(v >= prev - 1e-12); prev = v; }
+        ParticleColors.Curve bump = ParticleColors.Curve.parse(jmc("[[0, 1], [1, 1, [0.5, -0.5]]]"), "o");
+        assertEquals(0.5, bump.sample(0.5), 1e-9, "провал на ровном отрезке");
+        assertFalse(bump.isConstantOne());
+        assertThrows(IllegalArgumentException.class, () -> ParticleColors.Curve.parse(jmc("[[0, 1], [1, 0, 0.5]]"), "o"));
+        System.out.println("REF bend=" + skew.sample(0.1) + "," + skew.sample(0.6) + "," + bump.sample(0.2) + "," + ParticleColors.Curve.parse(jmc("[[0, 1], [0.4, 0.5, [0.7, 0.1]], [1, 0, [0.25, -0.2]]]"), "o").sample(0.33) + "," + ParticleColors.Curve.parse(jmc("[[0, 1], [0.4, 0.5, [0.7, 0.1]], [1, 0, [0.25, -0.2]]]"), "o").sample(0.81));
+    }
 }

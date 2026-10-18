@@ -27,7 +27,7 @@ export interface PlayOptions {
   seed: number;
 }
 
-interface View { mesh: THREE.Mesh; kind: string; textKey?: string }
+interface View { mesh: THREE.Mesh; kind: string; textKey?: string; mask?: THREE.Mesh }
 
 export class ParticleScene {
   readonly renderer: THREE.WebGLRenderer;
@@ -65,6 +65,7 @@ export class ParticleScene {
     this.controls.mouseButtons = { LEFT: THREE.MOUSE.ROTATE, MIDDLE: THREE.MOUSE.PAN, RIGHT: THREE.MOUSE.PAN };
     this.scene.add(this.makeFloor(), this.emitterGizmo, this.wallGroup);
     this.buildWall();
+    this.outlineScene.add(new THREE.Mesh(new THREE.PlaneGeometry(2, 2), this.outlineMat));
     this.resetCamera();
     canvas.addEventListener('contextmenu', (e) => e.preventDefault());
     canvas.addEventListener('mousedown', (e) => { if (e.button === 1) e.preventDefault(); });
@@ -188,8 +189,85 @@ export class ParticleScene {
   // ---------------------------------------------------------------- частицы
 
   private clearViews(): void {
-    for (const v of this.views.values()) { this.scene.remove(v.mesh); (v.mesh.material as THREE.Material).dispose(); }
-    this.views.clear();
+    for (const id of [...this.views.keys()]) this.removeView(id);
+  }
+  private removeView(id: number): void {
+    const v = this.views.get(id); if (!v) return;
+    this.scene.remove(v.mesh); (v.mesh.material as THREE.Material).dispose();
+    if (v.mask) { this.maskScene.remove(v.mask); (v.mask.material as THREE.Material).dispose(); }
+    this.views.delete(id);
+  }
+
+  // ---------------------------------------------------------------- свечение (glowing)
+  // Как клиент: силуэт светящихся сущностей рисуется цветом свечения в отдельный буфер (сквозь блоки),
+  // затем вокруг силуэта - контур в пару пикселей; сам силуэт не закрашивается.
+  private maskScene = new THREE.Scene();
+  private maskTarget: THREE.WebGLRenderTarget | null = null;
+  private outlineScene = new THREE.Scene();
+  private outlineCam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+  private outlineMat = new THREE.ShaderMaterial({
+    uniforms: { tMask: { value: null }, texel: { value: new THREE.Vector2(1, 1) }, radius: { value: 2 } },
+    vertexShader: 'varying vec2 vUv; void main() { vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }',
+    fragmentShader: `
+      uniform sampler2D tMask; uniform vec2 texel; uniform float radius; varying vec2 vUv;
+      void main() {
+        if (texture2D(tMask, vUv).a > 0.5) discard;
+        vec4 best = vec4(0.0);
+        for (int x = -3; x <= 3; x++) for (int y = -3; y <= 3; y++) {
+          if (float(abs(x)) > radius || float(abs(y)) > radius) continue;
+          vec4 c = texture2D(tMask, vUv + vec2(float(x), float(y)) * texel);
+          if (c.a > best.a) best = c;
+        }
+        if (best.a < 0.5) discard;
+        gl_FragColor = vec4(best.rgb, 1.0);
+        #include <colorspace_fragment>
+      }`,
+    transparent: true, depthTest: false, depthWrite: false,
+  });
+  private hasGlow = false;
+
+  private renderGlow(): void {
+    if (!this.hasGlow || !this.maskScene.children.length) return;
+    const size = this.renderer.getDrawingBufferSize(new THREE.Vector2());
+    if (!this.maskTarget || this.maskTarget.width !== size.x || this.maskTarget.height !== size.y) {
+      this.maskTarget?.dispose();
+      this.maskTarget = new THREE.WebGLRenderTarget(size.x, size.y);
+    }
+    for (const v of this.views.values()) {
+      if (!v.mask) continue;
+      v.mesh.updateMatrixWorld();
+      v.mask.matrix.copy(v.mesh.matrixWorld);
+      v.mask.visible = v.mesh.visible;
+    }
+    const r = this.renderer;
+    const prevColor = r.getClearColor(new THREE.Color()), prevAlpha = r.getClearAlpha();
+    r.setRenderTarget(this.maskTarget);
+    r.setClearColor(0x000000, 0); r.clear();
+    r.render(this.maskScene, this.camera);
+    r.setRenderTarget(null);
+    r.setClearColor(prevColor, prevAlpha);
+    this.outlineMat.uniforms.tMask.value = this.maskTarget.texture;
+    this.outlineMat.uniforms.texel.value.set(1 / size.x, 1 / size.y);
+    this.outlineMat.uniforms.radius.value = Math.max(1, Math.round(r.getPixelRatio() * 1.5));
+    const auto = r.autoClear; r.autoClear = false;
+    r.render(this.outlineScene, this.outlineCam);
+    r.autoClear = auto;
+  }
+
+  private addMask(v: View, e: ParticleEffect): void {
+    const src = v.mesh.material as THREE.MeshBasicMaterial;
+    const color = e.render.glowColor ? parseInt(e.render.glowColor.replace('#', '').slice(0, 6), 16) : 0xffffff;
+    // блок - сплошной куб; у предмета форму даёт прозрачность спрайта
+    const map = e.render.type === 'ITEM' ? src.map ?? null : null;
+    const mat = new THREE.MeshBasicMaterial({ color, map, alphaTest: map ? 0.1 : 0, depthTest: false, depthWrite: false, side: THREE.DoubleSide });
+    if (mat.map) {
+      // карта нужна только для формы: цвет - сплошной цвет свечения
+      mat.onBeforeCompile = (sh) => { sh.fragmentShader = sh.fragmentShader.replace('#include <map_fragment>', '#ifdef USE_MAP\n vec4 texelColor = texture2D( map, vMapUv ); diffuseColor.a *= texelColor.a;\n#endif'); };
+    }
+    const mask = new THREE.Mesh(v.mesh.geometry, mat);
+    mask.matrixAutoUpdate = false;
+    this.maskScene.add(mask);
+    v.mask = mask;
   }
 
   private richVariant(e: ParticleEffect, i: number): RichText {
@@ -263,6 +341,7 @@ export class ParticleScene {
     }
     this.scene.add(mesh);
     v = { mesh, kind: type };
+    if (e.render.glow && (type === 'ITEM' || type === 'BLOCK')) this.addMask(v, e);
     this.views.set(p.id, v);
     return v;
   }
@@ -276,7 +355,7 @@ export class ParticleScene {
     if (spriteState.revision !== this.spriteRevision) {
       this.spriteRevision = spriteState.revision;
       // догрузились текстуры: блоки без картинки создаём заново
-      for (const [id, v] of this.views) if (v.kind === 'BLOCK' && !(v.mesh.material as THREE.MeshBasicMaterial).map) { this.scene.remove(v.mesh); (v.mesh.material as THREE.Material).dispose(); this.views.delete(id); }
+      for (const [id, v] of this.views) if (v.kind === 'BLOCK' && !(v.mesh.material as THREE.MeshBasicMaterial).map) this.removeView(id);
     }
     const alive = new Set<number>();
     for (const p of rt.particles) {
@@ -314,7 +393,7 @@ export class ParticleScene {
       else m.scale.set(Math.max(w, 1e-4), Math.max(h, 1e-4), 1);
     }
     for (const [id, v] of this.views) {
-      if (!alive.has(id)) { this.scene.remove(v.mesh); (v.mesh.material as THREE.Material).dispose(); this.views.delete(id); }
+      if (!alive.has(id)) this.removeView(id);
     }
   }
 
@@ -344,6 +423,8 @@ export class ParticleScene {
     }
     this.controls.update();
     this.renderer.render(this.scene, this.camera);
+    this.hasGlow = !!this.effect?.render.glow;
+    this.renderGlow();
   };
 
   private resize(): void {

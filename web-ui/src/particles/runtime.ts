@@ -6,7 +6,7 @@ import type { ParticleEffect } from './model';
 import { burstCount } from './model';
 import {
   type Compiled, type Body, type Solid, type Segment, Rng, compile, body, spawnOffset, spawnVelocity, randomUnit,
-  planSegment, segmentLength, scaleAt, rotationAt, colorAt,
+  planSegment, planTransform, lerpArgb, scaleAt, rotationAt, colorAt,
 } from './sim';
 import { alpha } from './colors';
 
@@ -184,13 +184,17 @@ export class ParticleRuntime {
 
   /** LiveParticle.sendTransform */
   private sendTransform(p: Particle, K: number): void {
+    void K;
     const visual = p.age - 1;
-    let steps = Math.min(segmentLength(p.transformSegment++, K), p.life - visual);
+    let steps = p.life - visual;
     if (p.spin !== 0) {
       const maxSpan = Math.max(1, Math.floor(170 / Math.abs(p.spin)));
       steps = Math.min(steps, Math.max(1, maxSpan - (visual - p.sentAge)));
     }
     if (steps <= 0) { p.nextTransform = Number.MAX_SAFE_INTEGER; return; }
+    const colored = this.c.effect.render.type === 'TEXT' || this.c.effect.render.type === 'PIXEL';
+    steps = planTransform(this.c, p.startScale, p.startColor, colored, p.sentScale, p.sentColor, visual, p.life, steps);
+    p.transformSegment++;
     const target = visual + steps;
     p.nextTransform = p.age + steps;
     const s = scaleAt(this.c, p.startScale, target, p.life);
@@ -233,12 +237,6 @@ export class ParticleRuntime {
   }
 }
 
-/** Клиент интерполирует цвет фона поканально в ARGB (не в OkLab). */
-export function lerpArgb(a: number, b: number, f: number): number {
-  if (f <= 0 || a === b) return a;
-  if (f >= 1) return b;
-  const ch = (sh: number) => Math.round(((a >>> sh) & 0xff) + ((((b >>> sh) & 0xff) - ((a >>> sh) & 0xff)) * f));
-  return ((ch(24) << 24) | (ch(16) << 16) | (ch(8) << 8) | ch(0)) >>> 0;
-}
+export { lerpArgb } from './sim';
 
 export { alpha };
