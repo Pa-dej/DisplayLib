@@ -44,6 +44,16 @@ public final class ParticleSim {
         public double speedSq() {
             return vx * vx + vy * vy + vz * vz;
         }
+
+        /** Копия состояния (для просчёта вперёд). */
+        public Body copy() {
+            Body b = new Body(x, y, z, vx, vy, vz);
+            b.resting = resting; b.ghost = ghost;
+            b.cx = cx; b.cy = cy; b.cz = cz;
+            b.wx = wx; b.wy = wy; b.wz = wz;
+            b.random = random;
+            return b;
+        }
     }
 
     // -------------------------------------------------------------------------
@@ -240,6 +250,59 @@ public final class ParticleSim {
         double s = start * (1 + (a.endScale() - 1) * k);
         if (a.fadeIn() > 0 && age < a.fadeIn()) s *= (double) age / a.fadeIn();
         return Math.max(0, s);
+    }
+
+    // -------------------------------------------------------------------------
+    // Ключевые кадры
+    // -------------------------------------------------------------------------
+
+    /** Допустимое отличие скорости внутри отрезка от средней скорости отрезка (доля). */
+    static final double SEGMENT_SPEED_TOLERANCE = 0.12;
+    /** То же в абсолютных единицах для медленных частиц, блоков/тик. */
+    static final double SEGMENT_SPEED_FLOOR = 0.003;
+    /** Допустимое отклонение прямой клиента от настоящей траектории, блоков. */
+    static final double SEGMENT_PATH_TOLERANCE = 0.02;
+
+    /** Отрезок движения: сколько тиков и состояние тела в его конце. */
+    public record Segment(int length, Body end) {}
+
+    /**
+     * Самый длинный отрезок (не больше {@code maxLength}), который клиент может провести по прямой
+     * с постоянной скоростью незаметно для глаза: скорость на каждом тике отличается от средней
+     * не больше чем на {@link #SEGMENT_SPEED_TOLERANCE}, а путь отходит от прямой не дальше
+     * {@link #SEGMENT_PATH_TOLERANCE}. Глаз замечает именно скачки скорости между отрезками, поэтому
+     * там, где скорость меняется быстро (старт с сопротивлением, вершина дуги, отскок), отрезки
+     * короче, а на ровном полёте - длинные.
+     */
+    public static Segment planSegment(Body start, ParticleEffect.Motion m, Solid solid, int maxLength) {
+        maxLength = Math.max(1, maxLength);
+        Body cur = start.copy();
+        Body[] states = new Body[maxLength + 1];
+        double[] xs = new double[maxLength + 1], ys = new double[maxLength + 1], zs = new double[maxLength + 1];
+        xs[0] = start.x; ys[0] = start.y; zs[0] = start.z;
+        for (int i = 1; i <= maxLength; i++) {
+            step(cur, m, solid);
+            states[i] = cur.copy();
+            xs[i] = cur.x; ys[i] = cur.y; zs[i] = cur.z;
+        }
+        int best = 1;
+        for (int length = 2; length <= maxLength; length++) {
+            if (!smooth(xs, ys, zs, length)) break;
+            best = length;
+        }
+        return new Segment(best, states[best]);
+    }
+
+    private static boolean smooth(double[] xs, double[] ys, double[] zs, int length) {
+        double ax = (xs[length] - xs[0]) / length, ay = (ys[length] - ys[0]) / length, az = (zs[length] - zs[0]) / length;
+        double allowed = Math.max(SEGMENT_SPEED_TOLERANCE * Math.sqrt(ax * ax + ay * ay + az * az), SEGMENT_SPEED_FLOOR);
+        for (int j = 0; j < length; j++) {
+            double dx = xs[j + 1] - xs[j] - ax, dy = ys[j + 1] - ys[j] - ay, dz = zs[j + 1] - zs[j] - az;
+            if (dx * dx + dy * dy + dz * dz > allowed * allowed) return false;
+            double ex = xs[0] + ax * (j + 1) - xs[j + 1], ey = ys[0] + ay * (j + 1) - ys[j + 1], ez = zs[0] + az * (j + 1) - zs[j + 1];
+            if (ex * ex + ey * ey + ez * ez > SEGMENT_PATH_TOLERANCE * SEGMENT_PATH_TOLERANCE) return false;
+        }
+        return true;
     }
 
     /** Цвет (ARGB) в возрасте {@code age}: кривая {@code animation.color} (или стартовый цвет) с множителем {@code opacity}. */

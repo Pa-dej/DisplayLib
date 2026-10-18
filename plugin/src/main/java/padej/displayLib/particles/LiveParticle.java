@@ -14,19 +14,25 @@ import org.joml.Vector3f;
 /**
  * Частица в мире: Display-сущность и её физическое тело.
  *
- * <p>Сервер не шлёт пакет каждый тик. Позиция: раз в ровно {@code keyframeTicks} тиков тело
- * просчитывается на столько же вперёд и сущность телепортируется в эту точку с
- * {@code teleportDuration = keyframeTicks} - клиент ведёт её туда равномерно. Отрезок всегда
- * одной длины: длительность интерполяции позиции задана сущности заранее и не может меняться
- * от кадра к кадру без рассинхрона. Размер и поворот: трансформация с
- * {@code interpolationDuration} - её отрезки могут быть короче (быстрое вращение, конец жизни),
- * длительность приходит вместе с кадром.</p>
+ * <p>Сервер не шлёт пакет каждый тик. Позиция: тело просчитывается вперёд отрезками
+ * ({@link ParticleSim#planSegment}), и сущность телепортируется в конец отрезка с
+ * {@code teleportDuration} = его длине - клиент ведёт её туда по прямой с постоянной скоростью.
+ * Длина отрезка выбирается по траектории (короче там, где скорость быстро меняется, не длиннее
+ * {@code keyframeTicks}) и отправляется на кадр раньше. Размер, поворот, цвет: трансформация и
+ * цвет с {@code interpolationDuration} - короткие отрезки на старте, потом {@code keyframeTicks}.</p>
+ *
+ * <p>Клиент показывает частицу с задержкой ровно в один тик: первый кадр не может прийти в тик
+ * появления (интерполяция только что появившейся сущности не работает), поэтому вся анимация
+ * сдвинута на тик, а не «догоняет» его.</p>
  */
 final class LiveParticle {
     final ParticleEmission emission;
     final Display entity;
     final World world;
-    final ParticleSim.Body body;
+    /** Тело в момент последней цели клиента */
+    ParticleSim.Body body;
+    /** Следующий отрезок движения, его длина уже отправлена клиенту как teleportDuration */
+    ParticleSim.Segment planned;
     final int life;
     final double startScale;
     final double startRotation;
@@ -44,10 +50,10 @@ final class LiveParticle {
     final int spawnTick;
 
     int age;
-    /** Возраст, до которого просчитано тело (цель последнего кадра позиции) */
-    int simAge;
     int nextPosition = 1;
     int nextTransform = 1;
+    /** Номер отрезка вида (короткие отрезки на старте) */
+    int transformSegment;
     /** Возраст, к которому относится последняя отправленная трансформация */
     int sentAge;
     double sentScale = Double.NaN, sentRotation = Double.NaN;
@@ -110,41 +116,60 @@ final class LiveParticle {
     }
 
     /** Обработать текущий возраст: отправить кадры позиции и вида, если подошло их время. */
+    /**
+     * Длина {@code index}-го отрезка: на старте короткие (1, 1, 2, 2 тика), дальше {@code keyframeTicks}.
+     * В начале жизни скорость меняется сильнее всего (разлёт, сопротивление, гравитация), а внутри отрезка
+     * клиент ведёт частицу с постоянной скоростью - длинные первые отрезки дают видимые рывки.
+     */
+    static int segmentLength(int index, int keyframeTicks) {
+        int ramp = index < 2 ? 1 : index < 4 ? 2 : keyframeTicks;
+        return Math.max(1, Math.min(keyframeTicks, ramp));
+    }
+
+    /**
+     * Обработать текущий возраст. Клиент показывает частицу с задержкой ровно в один тик: на тике
+     * {@code age} отправляется цель для момента {@code age - 1 + L}, куда клиент придёт за L тиков.
+     * Без этого сдвига первый кадр (он не может прийти в тик появления) догонял бы лишний тик пути.
+     */
     void update(int keyframeTicks, ParticleSim.Solid solid) {
         if (age >= nextPosition) sendPosition(keyframeTicks, solid);
         if (age >= nextTransform) sendTransform(keyframeTicks);
     }
 
+    /**
+     * Позиция: отрезок, запланированный на прошлом кадре (его длина уже задана сущности как
+     * {@code teleportDuration}), уходит клиенту, и сразу планируется следующий - его длительность
+     * отправляется заранее: метаданные уходят после пакета движения и действуют со следующего телепорта.
+     */
     private void sendPosition(int keyframeTicks, ParticleSim.Solid solid) {
-        ParticleEffect.Motion motion = emission.effect.motion();
-        // догнать текущий возраст (первый кадр идёт через тик после появления)
-        while (simAge < age) { ParticleSim.step(body, motion, solid); simAge++; }
+        ParticleSim.Segment segment = planned != null ? planned : ParticleSim.planSegment(body, emission.effect.motion(), solid, keyframeTicks);
         boolean wasResting = body.resting;
         double px = body.x, py = body.y, pz = body.z;
-        // всегда полный отрезок, даже за концом жизни: длительность интерполяции у клиента - keyframeTicks
-        for (int i = 0; i < keyframeTicks; i++) ParticleSim.step(body, motion, solid);
-        simAge = age + keyframeTicks;
-        nextPosition = simAge;
+        body = segment.end();
+        nextPosition = age + segment.length();
         if (!wasResting && (body.x != px || body.y != py || body.z != pz)) {
             entity.teleport(new Location(world, body.x, body.y, body.z, 0, 0));
         }
+        planned = ParticleSim.planSegment(body, emission.effect.motion(), solid, keyframeTicks);
+        if (planned.length() != segment.length()) entity.setTeleportDuration(planned.length());
     }
 
     private void sendTransform(int keyframeTicks) {
         ParticleEffect.Animation animation = emission.effect.animation();
-        int steps = Math.min(keyframeTicks, life - age);
+        int visual = age - 1;
+        int steps = Math.min(segmentLength(transformSegment++, keyframeTicks), life - visual);
         if (spin != 0) {
             // поворот за кадр (от последней отправленной трансформации) - меньше 180°,
             // иначе клиент повернёт кратчайшим путём, в обратную сторону
             int maxSpan = Math.max(1, (int) (170 / Math.abs(spin)));
-            steps = Math.min(steps, Math.max(1, maxSpan - (age - sentAge)));
+            steps = Math.min(steps, Math.max(1, maxSpan - (visual - sentAge)));
         }
         if (steps <= 0) {
             nextTransform = Integer.MAX_VALUE;
             return;
         }
-        int target = age + steps;
-        nextTransform = target;
+        int target = visual + steps;
+        nextTransform = age + steps;
         double s = ParticleSim.scaleAt(animation, startScale, target, life);
         double r = ParticleSim.rotationAt(startRotation, spin, target);
         boolean transformChanged = s != sentScale || r != sentRotation;
@@ -153,7 +178,7 @@ final class LiveParticle {
         boolean colorChanged = c != sentColor;
         if (transformChanged || colorChanged) {
             entity.setInterpolationDelay(0);
-            entity.setInterpolationDuration(target - age);
+            entity.setInterpolationDuration(steps);
             if (transformChanged) {
                 entity.setTransformation(transformation(pixel, new float[]{centerX, centerY, centerZ}, s, r));
                 sentScale = s;

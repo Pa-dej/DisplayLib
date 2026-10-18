@@ -171,7 +171,7 @@ public final class ParticleManager implements Listener {
                 p.age++;
                 if (!p.entity.isValid()) {
                     p.kill(); // чанк выгрузился, сущность убрали
-                } else if (p.age >= p.life) {
+                } else if (p.age > p.life) { // клиент отстаёт на тик: даём дойти до конца жизни
                     p.kill();
                 } else {
                     if (collide && solidWorld != p.world) { solidWorld = p.world; solid = solidIn(p.world); }
@@ -272,6 +272,9 @@ public final class ParticleManager implements Listener {
         }
 
         int life = Math.max(1, (int) Math.round(effect.motion().lifetime().sample(r)));
+        // первый отрезок движения - до появления: его длина нужна сущности как teleportDuration
+        ParticleSim.Segment first = ParticleSim.planSegment(body, effect.motion(),
+                effect.motion().collide() ? solidIn(world) : null, effect.keyframeTicks());
         double scale = effect.animation().scale().sample(r);
         double rotation = effect.animation().rotation().sample(r);
         double spin = effect.animation().spin().sample(r);
@@ -287,7 +290,7 @@ public final class ParticleManager implements Listener {
             d.setPersistent(false);
             d.setBillboard(render.billboard());
             if (render.brightness() != null) d.setBrightness(new Display.Brightness(render.brightness(), render.brightness()));
-            d.setTeleportDuration(effect.keyframeTicks());
+            d.setTeleportDuration(first.length());
             d.setInterpolationDuration(0);
             if (owner != null) d.setVisibleByDefault(false);
         };
@@ -353,8 +356,10 @@ public final class ParticleManager implements Listener {
             }
         }
         if (owner != null) owner.showEntity(plugin, entity);
-        return new LiveParticle(e, entity, world, body, life, scale, rotation, spin, center, now,
+        LiveParticle particle = new LiveParticle(e, entity, world, body, life, scale, rotation, spin, center, now,
                 render.type() == ParticleEffect.RenderType.PIXEL, baseText, startColor);
+        particle.planned = first;
+        return particle;
     }
 
     /** Вид в момент появления (с fadeIn - нулевой размер). */

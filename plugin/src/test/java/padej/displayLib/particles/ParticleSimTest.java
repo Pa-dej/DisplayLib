@@ -157,4 +157,45 @@ class ParticleSimTest {
             assertEquals(0, p.length(), 1e-5, "deg=" + deg);
         }
     }
+
+    /** Сильное сопротивление на старте - короткие отрезки; ровный полёт - длинные; скорость клиента без скачков. */
+    @Test
+    void segmentsFollowSpeedChanges() {
+        ParticleEffect.Motion drag = parse("dyn motion = { drag: 0.12 };").motion();
+        ParticleSim.Body b = new ParticleSim.Body(0, 0, 0, 0.14, 0, 0);
+        int first = ParticleSim.planSegment(b, drag, null, 6).length();
+        ParticleEffect.Motion free = parse("dyn motion = { };").motion();
+        assertEquals(6, ParticleSim.planSegment(new ParticleSim.Body(0, 0, 0, 0.14, 0, 0), free, null, 6).length(), "без сил - максимальный");
+        assertTrue(first < 6, "с сильным торможением - короче: " + first);
+
+        // скорость клиента на соседних отрезках не прыгает больше чем на ~2 допуска
+        double prevSpeed = -1;
+        for (int i = 0; i < 12; i++) {
+            ParticleSim.Segment seg = ParticleSim.planSegment(b, drag, null, 6);
+            double dx = seg.end().x - b.x;
+            double speed = dx / seg.length();
+            if (prevSpeed > 0) assertTrue(speed / prevSpeed > 0.7 || prevSpeed - speed < 0.008, "скачок скорости " + prevSpeed + " -> " + speed);
+            prevSpeed = speed;
+            b = seg.end();
+        }
+    }
+
+    @Test
+    void segmentShortensAroundBounce() {
+        ParticleEffect.Motion m = parse("dyn motion = { gravity: 0.03, collide: true, bounce: 0.5 };").motion();
+        ParticleSim.Body falling = new ParticleSim.Body(0.5, 0.6, 0.5, 0, -0.2, 0);
+        assertTrue(ParticleSim.planSegment(falling, m, FLOOR, 6).length() <= 3, "удар внутри отрезка - отрезок короче");
+        ParticleSim.Body resting = new ParticleSim.Body(0.5, 0, 0.5, 0, 0, 0);
+        resting.resting = true;
+        assertEquals(6, ParticleSim.planSegment(resting, m, FLOOR, 6).length(), "лежащая - максимальный");
+    }
+
+    @Test
+    void planningDoesNotTouchTheBody() {
+        ParticleEffect.Motion m = parse("dyn motion = { gravity: 0.03 };").motion();
+        ParticleSim.Body b = new ParticleSim.Body(1, 2, 3, 0.1, 0, 0);
+        ParticleSim.planSegment(b, m, null, 4);
+        assertEquals(1, b.x);
+        assertEquals(0, b.vy);
+    }
 }
