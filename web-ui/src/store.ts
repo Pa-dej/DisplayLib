@@ -8,6 +8,7 @@ import { screenToJmc } from './jmc/writer';
 import { scanScript, scaffoldScript } from './jmp/scan';
 import { lintScreen, type Issue } from './lint';
 import * as fs from './fs';
+import { particleMode } from './mode';
 
 export interface ScreenDoc {
   /** путь внутри screens/, напр. "main_menu.jmc" или "shop/items.jmc" */
@@ -106,6 +107,7 @@ function screenJson(s: Screen): string { return JSON.stringify(s); }
 
 /** Запомнить состояние перед правкой (один шаг undo). */
 export function snapshot(): void {
+  const pm = particleMode(); if (pm) return pm.snapshot();
   const d = currentDoc.value; if (!d) return;
   const json = screenJson(d.screen);
   lastSnapJson = json;
@@ -120,12 +122,14 @@ export function snapshot(): void {
  * в течение `ms` мс не создают новых шагов - вся серия отменяется одним Ctrl+Z.
  */
 export function snapshotCoalesced(key: string, ms = 600): void {
+  const pm = particleMode(); if (pm) return pm.snapshot();
   const now = Date.now();
   if (coalesceKey === key && now < coalesceUntil) { coalesceUntil = now + ms; return; }
   snapshot();
   coalesceKey = key; coalesceUntil = now + ms;
 }
 export function touch(): void {
+  const pm = particleMode(); if (pm) return pm.touch();
   state.revision++;
   const d = currentDoc.value; if (!d) return;
   d.dirty = true;
@@ -149,8 +153,8 @@ function restore(from: HistoryEntry[], to: HistoryEntry[]): boolean {
     return true;
   }
 }
-export function undo(): boolean { return restore(state.undo, state.redo); }
-export function redo(): boolean { return restore(state.redo, state.undo); }
+export function undo(): boolean { const pm = particleMode(); return pm ? pm.undo() : restore(state.undo, state.redo); }
+export function redo(): boolean { const pm = particleMode(); return pm ? pm.redo() : restore(state.redo, state.undo); }
 export const canUndo = computed(() => state.undo.length > 0);
 export const canRedo = computed(() => state.redo.length > 0);
 

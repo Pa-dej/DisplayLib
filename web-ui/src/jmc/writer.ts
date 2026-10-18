@@ -3,6 +3,7 @@
 import {
   type HoverAnimation, type RichText, type Screen, type Widget, type Vec3, WIDGET_DEFAULTS, anchorPresetName, defaultHoverAnimation,
 } from '../model/screen';
+import { richToJmc as richText, atlasFor, spriteFor } from './rich';
 
 function jstr(s: string): string {
   return '"' + s.replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/\n/g, '\\n').replace(/\r/g, '\\r').replace(/\t/g, '\\t') + '"';
@@ -15,30 +16,8 @@ function jnum(n: number): string {
 }
 function arr(a: readonly number[]): string { return '[' + a.map(jnum).join(', ') + ']'; }
 function same(a: readonly number[], b: readonly number[]): boolean { return a.length === b.length && a.every((v, i) => Math.abs(v - b[i]) < 1e-9); }
-function richText(t: RichText): string {
-  if (typeof t === 'string') return jstr(t);
-  return '[ ' + t.map((s) => s.player !== undefined
-    ? '{ player: ' + jstr(s.player) + (s.hat === false ? ', hat: false' : '') + (s.color ? ', color: ' + jstr(s.color) : '') + ' }'
-    : s.sprite !== undefined
-    ? '{ ' + (atlasFor(s.atlas, s.sprite) ? 'atlas: ' + jstr(atlasFor(s.atlas, s.sprite)!) + ', ' : '') + 'sprite: ' + jstr(spriteFor(s.atlas, s.sprite)) + (s.color ? ', color: ' + jstr(s.color) : '') + ' }'
-    : '{ text: ' + jstr(s.text) + (s.color ? ', color: ' + jstr(s.color) : '') + ' }').join(', ') + ' ]';
-}
 
-/** Атлас для записи: заданный, иначе выведенный из имени (item/… → items, block/… → blocks); null - не писать. */
-function atlasFor(atlas: string | null | undefined, sprite: string): string | null {
-  if (atlas && atlas.trim()) return atlas.trim() === 'minecraft:mob_effects' || atlas.trim() === 'mob_effects' ? 'minecraft:gui' : atlas.trim();
-  const k = sprite.trim().replace(/^minecraft:/, '');
-  if (k.startsWith('item/')) return 'minecraft:items';
-  if (k.startsWith('block/')) return 'minecraft:blocks';
-  return null;
-}
 
-/** Имя спрайта для записи: для бывшего атласа mob_effects добавляем префикс mob_effect/. */
-function spriteFor(atlas: string | null | undefined, sprite: string): string {
-  const a = (atlas ?? '').trim();
-  if ((a === 'minecraft:mob_effects' || a === 'mob_effects') && !sprite.startsWith('mob_effect/')) return 'mob_effect/' + sprite.replace(/^minecraft:/, '');
-  return sprite;
-}
 
 const IDENT = /^[A-Za-z_][A-Za-z0-9_]*$/;
 function key(k: string): string { return IDENT.test(k) ? k : jstr(k); }

@@ -129,6 +129,16 @@ export class BitmapFont {
         const gy = y + (7 - g.ascent); // строка высотой 10: базовая линия на 7 px (ascent 7 у ascii)
         if (shadow) drawTinted(ctx, g.canvas, (cx + 1) * S, (gy + 1) * S, g.w * S, g.h * S, shadowOf(color));
         drawTinted(ctx, g.canvas, cx * S, gy * S, g.w * S, g.h * S, color);
+      } else if (g === this.missing && ch.trim()) {
+        // символа нет в растровых шрифтах (в игре он из unifont: ✦, ✧, ♪, …) - рисуем системным шрифтом,
+        // чтобы он хотя бы был виден; ширина остаётся как у недостающего глифа
+        ctx.save();
+        ctx.font = `${9 * S}px "Segoe UI Symbol", "Noto Sans Symbols 2", "DejaVu Sans", sans-serif`;
+        ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
+        if (shadow) { ctx.fillStyle = shadowOf(color); ctx.fillText(ch, (cx + 3.5) * S, (y + 8) * S, g.w * S); }
+        ctx.fillStyle = color;
+        ctx.fillText(ch, (cx + 2.5) * S, (y + 7) * S, g.w * S);
+        ctx.restore();
       }
       cx += g.advance;
     }

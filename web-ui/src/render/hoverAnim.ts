@@ -65,7 +65,7 @@ export function easingOf(a: HoverAnimation | null | undefined): (t: number) => n
   return EASINGS[a.easing] ?? ((t) => t);
 }
 
-const EASINGS: Record<Easing, (t: number) => number> = {
+export const EASINGS: Record<Easing, (t: number) => number> = {
   LINEAR: (t) => t,
   EASE_IN: (t) => t * t,
   EASE_OUT: (t) => 1 - (1 - t) * (1 - t),

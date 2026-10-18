@@ -2,6 +2,7 @@
 //   dyn widgets = [ { ... }, { ... } ];
 // Такой текст можно вставить и в другой экран, и в другую вкладку редактора, и прямо в файл экрана.
 import { state, currentScreen, selectedWidgets, selectMany, snapshot, touch, notify, fail } from './store';
+import { editorMode } from './mode';
 import { widgetToJmc } from './jmc/writer';
 import { parseJmc } from './jmc/parser';
 import { tableToWidget } from './jmc/toModel';
@@ -77,18 +78,18 @@ function inEditable(e: Event): boolean {
 
 /** Повесить copy/cut/paste на окно: вне полей ввода они работают с виджетами. */
 export function installClipboard(): void {
-  window.addEventListener('copy', (e) => { if (!inEditable(e)) copySelected(e); });
-  window.addEventListener('cut', (e) => { if (!inEditable(e)) cutSelected(e); });
+  window.addEventListener('copy', (e) => { if (!inEditable(e) && editorMode.value === 'screens') copySelected(e); });
+  window.addEventListener('cut', (e) => { if (!inEditable(e) && editorMode.value === 'screens') cutSelected(e); });
   let lastPaste = 0;
   window.addEventListener('paste', (e) => {
-    if (inEditable(e)) return;
+    if (inEditable(e) || editorMode.value !== 'screens') return;
     lastPaste = Date.now();
     const text = e.clipboardData?.getData('text/plain') ?? '';
     if (pasteWidgets(text)) e.preventDefault();
   });
   // если событие paste не пришло (бывает в некоторых окружениях) - читаем буфер через API
   window.addEventListener('keydown', (e) => {
-    if (!(e.ctrlKey || e.metaKey) || e.code !== 'KeyV' || inEditable(e)) return;
+    if (!(e.ctrlKey || e.metaKey) || e.code !== 'KeyV' || inEditable(e) || editorMode.value !== 'screens') return;
     const at = Date.now();
     setTimeout(() => {
       if (lastPaste >= at) return;

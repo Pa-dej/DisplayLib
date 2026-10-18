@@ -1,5 +1,6 @@
 // JmcTable -> Screen: та же логика и те же синонимы ключей, что в ScreenLoader плагина.
 import type { JmcTable, JmcValue } from './parser';
+import { richFromJmc as rich, atlasOrNull } from './rich';
 import {
   type Alignment, type ClickAction, type HoverAnimation, type RGB, type RichText, type Screen, type Segment,
   type Vec2, type Vec3, type Widget, ANCHOR_PRESETS, defaultBackground, defaultHoverAnimation, defaultWidget, defaultScreen,
@@ -24,24 +25,6 @@ function nums(t: JmcTable | null, n: number, ...keys: string[]): number[] | null
 function enumValue<T extends string>(allowed: readonly T[], v: string | null): T | null {
   if (v == null) return null; const u = v.trim().toUpperCase(); return (allowed as readonly string[]).includes(u) ? (u as T) : null;
 }
-function rich(v: JmcValue): RichText | null {
-  if (v == null) return null;
-  if (typeof v === 'string') return v;
-  if (Array.isArray(v)) {
-    const segs: Segment[] = [];
-    for (const p of v) {
-      if (typeof p === 'string') segs.push({ text: p });
-      else if (p && typeof p === 'object') {
-        const pt = p as JmcTable;
-        if (pt.player != null) segs.push({ text: '', player: String(pt.player), hat: pt.hat === false ? false : undefined, color: pt.color == null ? undefined : String(pt.color) });
-        else if (pt.sprite != null) segs.push({ text: '', sprite: String(pt.sprite), atlas: atlasOrNull(pt.atlas == null ? undefined : String(pt.atlas), String(pt.sprite)), color: pt.color == null ? undefined : String(pt.color) });
-        else segs.push({ text: pt.text == null ? '' : String(pt.text), color: pt.color == null ? undefined : String(pt.color) });
-      }
-    }
-    return segs;
-  }
-  return String(v);
-}
 
 function soundOf(v: JmcValue): import('../model/screen').SoundSpec | 'none' | null {
   if (v == null) return null;
@@ -55,17 +38,6 @@ function soundOf(v: JmcValue): import('../model/screen').SoundSpec | 'none' | nu
   return null;
 }
 
-/** Атлас, который плагин/клиент и так подставили бы по имени: item/… → items, block/… → blocks; такой не храним. */
-function inferredAtlas(sprite: string): string | null {
-  const k = sprite.trim().replace(/^minecraft:/, '');
-  return k.startsWith('item/') ? 'minecraft:items' : k.startsWith('block/') ? 'minecraft:blocks' : null;
-}
-function atlasOrNull(atlas: string | null | undefined, sprite: string): string | undefined {
-  if (atlas == null) return undefined;
-  const a = atlas.trim(); if (!a) return undefined;
-  const full = a.includes(':') ? a : 'minecraft:' + a;
-  return full === inferredAtlas(sprite) ? undefined : a;
-}
 
 export interface ToModelResult { screen: Screen; warnings: string[] }
 
