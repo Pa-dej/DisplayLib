@@ -5,8 +5,10 @@ import { computed, onBeforeUnmount, ref } from 'vue';
 import Icon from '../Icon.vue';
 import type { LoadReport } from '../../load/load';
 import { loadAssumptions, loadColor, loadLabel } from '../../load/settings';
+import { impactList, applyImpact, particleLoadState } from '../../load/particleState';
 
-const props = defineProps<{ report: LoadReport | null; kind: 'particles' | 'screen'; busy?: boolean }>();
+const props = defineProps<{ report: LoadReport | null; kind: 'particles' | 'screen'; busy?: boolean; withImpacts?: boolean }>();
+const impacts = computed(() => (props.withImpacts ? impactList() : []));
 const open = ref(false);
 const root = ref<HTMLElement | null>(null);
 
@@ -61,6 +63,16 @@ function num(ev: Event, key: 'players' | 'launches', max: number) {
           <span class="fl">{{ f.label }}</span>
           <span class="fb"><span :style="{ width: Math.max(2, f.share * 100) + '%' }"></span></span>
           <span class="fp">{{ Math.round(f.share * 100) }}%</span>
+        </div>
+      </div>
+      <div v-if="withImpacts && (impacts.length || particleLoadState.scanning)" class="load-sec">
+        <div class="t">Что нагружает сильнее всего{{ particleLoadState.scanning ? ' (считаю…)' : '' }}</div>
+        <div class="load-impacts">
+          <div v-for="i in impacts.slice(0, 6)" :key="i.key" class="load-impact" :title="(i.detail ? i.detail + '. ' : '') + (i.changesLook ? 'Эффект будет выглядеть иначе.' : 'Внешне почти незаметно.')">
+            <span class="s">{{ i.suggestion }} <small>{{ i.scoreFrom }} → {{ i.scoreTo }}</small></span>
+            <span class="load-mark" :class="i.drop >= 0.35 ? 'l2' : 'l1'" :style="{ '--mc': loadColor(i.drop >= 0.35 ? 0.95 : 0.6) }"><span class="dot"></span>−{{ Math.round(i.drop * 100) }}%</span>
+            <button class="btn sm" @click="applyImpact(i.key)">Применить</button>
+          </div>
         </div>
       </div>
       <div v-if="report.tips.length || report.factors.some((f) => f.tip && f.share > 0.25)" class="load-sec">

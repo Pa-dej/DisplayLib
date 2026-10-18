@@ -127,8 +127,7 @@ export function particleLoad(e: ParticleEffect, a: LoadAssumptions): LoadReport 
   const packetsPerSec = best.packets * 20 * L;
 
   const tips: string[] = [];
-  if (e.animation.easing !== 'LINEAR' && e.animation.endScale !== 1) tips.push('Кривая размера «Своя» дробит размер на кадры - «Линейная» идёт одним пакетом.');
-  if (e.keyframeTicks <= 2) tips.push(`keyframeTicks ${e.keyframeTicks}: кадры позиции очень частые - 4-6 обычно незаметно глазу.`);
+  // какие именно опции нагружают - считает particleState (маркеры у полей), здесь - только общее
   if (collide) tips.push('Коллизии считаются на сервере для каждой частицы каждый тик.');
   if (peakAlive * L > 600) tips.push('Сотни сущностей одновременно тяжелы и для клиента (FPS), не только для сервера.');
   if (burstCount(e.emitter) > 80) tips.push(`Всплеск из ${burstCount(e.emitter)} частиц создаёт их в один тик - возможен скачок.`);

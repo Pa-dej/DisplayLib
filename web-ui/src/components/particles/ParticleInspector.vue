@@ -13,6 +13,7 @@ import MaterialInput from '../fields/MaterialInput.vue';
 import VecInput from '../fields/VecInput.vue';
 import ColorInput from '../fields/ColorInput.vue';
 import ColorPicker from '../fields/ColorPicker.vue';
+import LoadMark from '../load/LoadMark.vue';
 import { compile, transformPlan } from '../../particles/sim';
 import { parseColor } from '../../particles/colors';
 import { cloneEffect } from '../../particles/model';
@@ -138,7 +139,7 @@ const blockNames = ITEM_NAMES;
             <button :class="{ on: e.viewers === 'ALL' }" @click="edit(() => (e.viewers = 'ALL'))">Все рядом</button>
             <button :class="{ on: e.viewers === 'OWNER' }" @click="edit(() => (e.viewers = 'OWNER'))" title="Только игрок, для которого запущен эффект">Владелец</button>
           </div></div>
-        <div class="field"><label title="Максимум тиков между пакетами движения (1-59). Меньше - точнее путь, больше - меньше трафика. На прямых участках плагин сам растягивает кадр до этого значения">keyframeTicks</label>
+        <div class="field"><label title="Максимум тиков между пакетами движения (1-59). Меньше - точнее путь, больше - меньше трафика. На прямых участках плагин сам растягивает кадр до этого значения">keyframeTicks<LoadMark k="keyframeTicks" /></label>
           <NumInput v-model="e.keyframeTicks" :int="true" :step="1" :min="1" :max="59" /></div>
       </div>
 
@@ -170,7 +171,7 @@ const blockNames = ITEM_NAMES;
           </ListInput>
           <datalist id="pblock-names"><option v-for="n in blockNames" :key="n" :value="'minecraft:' + n" /></datalist></div>
         <template v-if="textual">
-          <div class="field"><label title="Постоянный - цвет на всю жизнь (из списка - случайный на частицу); по жизни - градиент от рождения к смерти">Цвет</label>
+          <div class="field"><label title="Постоянный - цвет на всю жизнь (из списка - случайный на частицу); по жизни - градиент от рождения к смерти">Цвет<LoadMark k="color" /></label>
             <div class="seg">
               <button :class="{ on: !gradientMode }" @click="setColorMode(false)">Постоянный</button>
               <button :class="{ on: gradientMode }" @click="setColorMode(true)">По жизни</button>
@@ -217,17 +218,17 @@ const blockNames = ITEM_NAMES;
             <button :class="{ on: mode === 'ticks' }" @click="setMode('ticks')" title="Испускать rate частиц за тик в течение duration тиков">N тиков</button>
             <button :class="{ on: mode === 'forever' }" @click="setMode('forever')" title="duration: -1 - пока не остановят (stop / handle.stop())">Бесконечно</button>
           </div></div>
-        <div class="field"><label :title="mode === 'burst' ? 'Частиц во всплеске' : 'Частиц сразу в начале (кроме потока)'">count</label>
+        <div class="field"><label :title="mode === 'burst' ? 'Частиц во всплеске' : 'Частиц сразу в начале (кроме потока)'">count<LoadMark k="count" /></label>
           <NumInput v-model="em.count" :int="true" :step="1" :min="0" nullable :placeholder="String(burstCount({ ...em, count: null }))" /></div>
         <template v-if="mode !== 'burst'">
           <div v-if="mode === 'ticks'" class="field"><label title="Тиков испускания (20 = 1 с)">duration</label><NumInput v-model="em.duration" :int="true" :step="1" :min="1" /></div>
-          <div class="field"><label title="Частиц за тик; дробное - в среднем (0.25 - одна в 4 тика)">rate</label><NumInput v-model="em.rate" :step="0.05" :min="0" /></div>
+          <div class="field"><label title="Частиц за тик; дробное - в среднем (0.25 - одна в 4 тика)">rate<LoadMark k="rate" /></label><NumInput v-model="em.rate" :step="0.05" :min="0" /></div>
         </template>
       </div>
 
       <div class="section">
         <h3>Движение <span class="hint">motion</span></h3>
-        <div class="field"><label title="Время жизни частицы, тиков">lifetime</label><RangeInput v-model="mo.lifetime" :int="true" :step="1" :min="1" unit="тик" /></div>
+        <div class="field"><label title="Время жизни частицы, тиков">lifetime<LoadMark k="lifetime" /></label><RangeInput v-model="mo.lifetime" :int="true" :step="1" :min="1" unit="тик" /></div>
         <div class="field"><label title="Начальная скорость, блоков за тик (0.1 = 2 блока/с)">speed</label><RangeInput v-model="mo.speed" :step="0.01" :min="0" unit="бл/т" /></div>
         <div class="field"><label title="Ось разлёта или от центра формы (OUTWARD)">direction</label>
           <div class="row">
@@ -239,10 +240,10 @@ const blockNames = ITEM_NAMES;
           <div class="row"><input type="range" min="0" max="180" step="1" :value="mo.spread" @pointerdown="snapshot()" @focus="snapshot()" @input="mo.spread = Number(($event.target as HTMLInputElement).value); touch()" class="grow" /><NumInput v-model="mo.spread" :step="1" :min="0" :max="180" style="width:64px" /></div></div>
         <div class="field"><label title="Ускорение вниз, блоков/тик² (0.04 - как у предметов; минус - всплывает)">gravity</label><NumInput v-model="mo.gravity" :step="0.005" /></div>
         <div class="field"><label title="Сопротивление воздуха: доля скорости, теряемая за тик (0-1)">drag</label><NumInput v-model="mo.drag" :step="0.01" :min="0" :max="1" /></div>
-        <div class="field"><label title="Притяжение к точке запуска (минус - отталкивание)">attract</label><NumInput v-model="mo.attract" :step="0.005" /></div>
+        <div class="field"><label title="Притяжение к точке запуска (минус - отталкивание)">attract<LoadMark k="attract" /></label><NumInput v-model="mo.attract" :step="0.005" /></div>
         <div v-if="mo.attract !== 0" class="field"><label title="Тянуть к вертикальной оси через точку запуска, а не к точке">attractAxis</label><input type="checkbox" :checked="mo.attractAxis" @change="edit(() => (mo.attractAxis = !mo.attractAxis))" /></div>
-        <div class="field"><label title="Плавное случайное блуждание, блоков/тик²">wander</label><NumInput v-model="mo.wander" :step="0.002" :min="0" /></div>
-        <div class="field"><label title="Сталкиваться с блоками (сервер проверяет блоки на пути - дороже)">collide</label><input type="checkbox" :checked="mo.collide" @change="edit(() => (mo.collide = !mo.collide))" /></div>
+        <div class="field"><label title="Плавное случайное блуждание, блоков/тик²">wander<LoadMark k="wander" /></label><NumInput v-model="mo.wander" :step="0.002" :min="0" /></div>
+        <div class="field"><label title="Сталкиваться с блоками (сервер проверяет блоки на пути - дороже)">collide<LoadMark k="collide" /></label><input type="checkbox" :checked="mo.collide" @change="edit(() => (mo.collide = !mo.collide))" /></div>
         <template v-if="mo.collide">
           <div class="field"><label title="Упругость отскока 0-1">bounce</label><NumInput v-model="mo.bounce" :step="0.05" :min="0" :max="1" /></div>
           <div class="field"><label title="Трение при скольжении по блоку 0-1">friction</label><NumInput v-model="mo.friction" :step="0.05" :min="0" :max="1" /></div>
@@ -254,7 +255,7 @@ const blockNames = ITEM_NAMES;
         <div class="field"><label title="Начальный размер, блоков">scale</label><RangeInput v-model="an.scale" :step="0.01" :min="0" /></div>
         <div class="field"><label title="Размер к концу жизни - множитель начального (0 - исчезает, 1 - не меняется)">endScale</label><NumInput v-model="an.endScale" :step="0.05" :min="0" /></div>
         <template v-if="an.endScale !== 1">
-          <div class="field"><label title="Как размер идёт к endScale">Кривая размера</label>
+          <div class="field"><label title="Как размер идёт к endScale">Кривая размера<LoadMark k="easing" /></label>
             <div class="seg">
               <button :class="{ on: an.easing === 'LINEAR' }" @click="edit(() => (an.easing = 'LINEAR'))" title="Размер меняется по прямой - клиент ведёт его сам, один пакет на всю жизнь">Линейная</button>
               <button :class="{ on: an.easing !== 'LINEAR' }" @click="an.easing === 'LINEAR' && edit(() => (an.easing = 'EASE_IN'))" title="Своя кривая (easing): плавнее, но сервер шлёт кадры чаще">Своя</button>
@@ -266,11 +267,11 @@ const blockNames = ITEM_NAMES;
               ≈{{ load.eased }} пакет(а) вида на частицу вместо {{ load.linear }}. Для сотен частиц это заметно — оставьте «Линейная», если разница не видна.</div>
           </template>
         </template>
-        <div class="field"><label title="Тиков на рост от 0 до размера в начале жизни">fadeIn</label><NumInput v-model="an.fadeIn" :int="true" :step="1" :min="0" /></div>
+        <div class="field"><label title="Тиков на рост от 0 до размера в начале жизни">fadeIn<LoadMark k="fadeIn" /></label><NumInput v-model="an.fadeIn" :int="true" :step="1" :min="0" /></div>
         <div class="field"><label title="Начальный поворот в плоскости частицы, градусов">rotation</label><RangeInput v-model="an.rotation" :step="5" unit="°" /></div>
-        <div class="field"><label title="Вращение, градусов за тик">spin</label><RangeInput v-model="an.spin" :step="1" unit="°/т" /></div>
+        <div class="field"><label title="Вращение, градусов за тик">spin<LoadMark k="spin" /></label><RangeInput v-model="an.spin" :step="1" unit="°/т" /></div>
         <template v-if="textual">
-          <div class="field stack"><label title="Множитель непрозрачности по доле жизни">opacity</label>
+          <div class="field stack"><label title="Множитель непрозрачности по доле жизни">opacity<LoadMark k="opacity" /></label>
             <StopsEditor v-model="an.opacity as any" kind="number" :defaults="OPACITY_DEFAULT" :max="1" /></div>
         </template>
         <p v-else class="hint">Цвет и прозрачность по жизни есть только у PIXEL и TEXT.</p>
