@@ -6,6 +6,7 @@
 ## Unreleased
 
 ### Плагин
+- Частицы: тип `PIXEL` (цветной квадрат с прозрачностью), цвет и непрозрачность во времени (`animation.color` в OkLab, `animation.opacity`; клиент интерполирует их вместе с трансформацией), силы `attract` / `attractAxis` и `wander`, `emitter.duration: -1`; примеры `flame`, `water_splash`, `fireflies` по мотивам text-display-experiments (Heledron).
 - Частицы из Display-сущностей: эффекты `particles/*.jmc` (текст/спрайты, предметы, блоки; формы испускания, разлёт, гравитация, сопротивление, опциональные коллизии с отскоком, размер и вращение во времени, `viewers: "owner"`), запуск `/displaylib particle` и Java API `Particles`. Движение ведёт клиент по ключевым кадрам (`keyframeTicks`) - сервер не телепортирует частицы каждый тик. Лимит `particles.maxAlive`. Примеры: `sparkle`, `confetti`, `poison`, `coin_fountain`, `embers`.
 - `onClose(reason)` вызывается при любом закрытии экрана - переключение, выход, смерть, смена мира, телепорт, инвентарь, дистанция, выключение сервера; причина приходит аргументом (`"close"`, `"switch"`, `"quit"`, ...), Java-енум `CloseReason`. Закрытие/переключение из `onClose` игнорируются.
 - `storage` сохраняется на диск (`data/storage/*.jmc`): данные игрока переживают выход и перезапуск, у публичного экрана - общее хранилище на экран; `dyn storage = { persist, autosaveSeconds }` в `config.jmc`.

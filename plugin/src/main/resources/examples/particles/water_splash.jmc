@@ -1,0 +1,29 @@
+// water_splash: брызги фонтана - бело-голубые капли (PIXEL) летят вверх и в стороны, падают, отскакивают от блоков
+// и тают (opacity). По мотивам text-display-experiments (Heledron).
+String id = "water_splash";
+String viewers = "all";
+int keyframeTicks = 2;
+
+dyn render = {
+    type: "PIXEL",
+    colors: ["#ffffff", "#ffffff", "#f2f7fb", "#d3e3f1", "#a9c7e2", "#699cc9"],   // чаще белые
+};
+
+dyn emitter = { shape: "BOX", size: [1.5, 0, 1.5], count: 0, duration: 100, rate: 5 };
+
+dyn motion = {
+    lifetime: [15, 25],
+    speed: [0.15, 0.35],
+    direction: [0, 1, 0],
+    spread: 70,
+    gravity: 0.08,
+    drag: 0.06,
+    collide: true,
+    bounce: 0.5,
+};
+
+dyn animation = {
+    scale: [0.09, 0.16],
+    spin: [-11, 11],
+    opacity: [1, 0],             // множитель прозрачности от рождения к смерти
+};

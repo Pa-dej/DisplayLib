@@ -36,7 +36,7 @@ plugins/DisplayLib/
     demo_public.jmc   # публичный экран (openpublic)
     morph_menu.jmc  morph_shop.jmc  morph_settings.jmc   # morph-переходы
   scripts/            # скрипты (.jmp) - по одному на экран, плюс lib/util.jmp (import)
-  particles/          # эффекты частиц: sparkle, confetti, poison, coin_fountain, embers
+  particles/          # эффекты частиц: sparkle, confetti, poison, coin_fountain, embers, flame, water_splash, fireflies
   data/               # пишет плагин: storage скриптов, сохранённые публичные экраны
 ```
 

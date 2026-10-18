@@ -14,7 +14,8 @@ DisplayLib - плагин для Paper (1.21.x), который рисует и�
 - 👥 **Приватные и публичные экраны** - для одного игрока или для всех поблизости
 - 🔄 **Hot Reload** - изменённый экран перечитывается сам, скрипт - при следующем открытии
 - 💾 **Хранилище и таймеры** - данные на игрока (сохраняются на диск), отложенные и повторяющиеся действия
-- ✨ **Частицы из дисплеев** (`particles/*.jmc`) - текст, спрайты, предметы и блоки; разлёт, гравитация, коллизии;
+- ✨ **Частицы из дисплеев** (`particles/*.jmc`) - цветные квадраты, текст, спрайты, предметы и блоки; разлёт, гравитация,
+  коллизии, притяжение и блуждание, цвет и прозрачность во времени;
   движение интерполирует клиент, поэтому сотни частиц почти бесплатны
 - 🧰 **Поддержка редакторов** - `META-INF/jumper/host.jmc` описывает глобалы и хуки для плагинов Jumper
   (IntelliJ IDEA, VS Code, Neovim)
@@ -45,7 +46,7 @@ plugins/DisplayLib/
     demo_public.jmc   # публичный экран (openpublic)
     morph_menu.jmc  morph_shop.jmc  morph_settings.jmc   # morph-переходы
   scripts/            # скрипты (.jmp) - по одному на экран, плюс lib/util.jmp (import)
-  particles/          # эффекты частиц: sparkle, confetti, poison, coin_fountain, embers
+  particles/          # эффекты частиц: sparkle, confetti, poison, coin_fountain, embers, flame, water_splash, fireflies
   data/               # пишет плагин: storage скриптов, сохранённые публичные экраны
 ```
 
@@ -299,10 +300,11 @@ Policy.maxTableSize(100000);
 String id = "sparkle";
 String viewers = "all";              // "owner" - только игрок, для которого запущен
 int keyframeTicks = 4;
-dyn render = { type: "TEXT", variants: ["★", "✦"], colors: ["#ffe066", "#ffffff"], brightness: 15 };   // TEXT, ITEM, BLOCK
+dyn render = { type: "TEXT", variants: ["★", "✦"], colors: ["#ffe066", "#ffffff"], brightness: 15 };   // TEXT, PIXEL, ITEM, BLOCK
 dyn emitter = { shape: "SPHERE", radius: 0.15, count: 16 };                                          // POINT, SPHERE, CIRCLE, BOX
 dyn motion = { lifetime: [16, 26], speed: [0.06, 0.14], direction: "OUTWARD", drag: 0.12 };          // + gravity, collide, bounce
 dyn animation = { scale: [0.5, 0.9], endScale: 0, easing: "EASE_IN", fadeIn: 3, rotation: [0, 360], spin: [-12, 12] };
+// + color: [[0, "#ffffff"], [0.4, "#ff8800"], [1, "#00000000"]], opacity: [1, 0]; motion: attract, attractAxis, wander
 ```
 
 `/displaylib particle <effect> [x y z] [player] [count]`, из Java - `Particles.play("sparkle", location[, player])`.

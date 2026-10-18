@@ -26,7 +26,8 @@ public final class ParticleEmission {
         this.effect = effect;
         this.center = center.clone();
         this.owner = owner;
-        this.ticksLeft = effect.emitter().duration();
+        int d = effect.emitter().duration();
+        this.ticksLeft = d == ParticleEffect.Emitter.FOREVER ? Integer.MAX_VALUE : d;
     }
 
     public ParticleEffect getEffect() {

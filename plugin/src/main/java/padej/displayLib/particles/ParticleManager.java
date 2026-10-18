@@ -188,7 +188,7 @@ public final class ParticleManager implements Listener {
 
         // испускание в течение duration - после обхода: новые частицы получают первый кадр на следующем тике
         if (e.ticksLeft > 0 && !e.stopped) {
-            e.ticksLeft--;
+            if (e.ticksLeft != Integer.MAX_VALUE) e.ticksLeft--; // duration: -1 - пока не остановят
             e.carry += e.effect.emitter().rate();
             int n = (int) e.carry;
             e.carry -= n;
@@ -264,6 +264,12 @@ public final class ParticleManager implements Listener {
         if (effect.motion().collide() && solidIn(world).at((int) Math.floor(body.x), (int) Math.floor(body.y), (int) Math.floor(body.z))) {
             body.ghost = true;
         }
+        body.cx = e.center.getX(); body.cy = e.center.getY(); body.cz = e.center.getZ();
+        if (effect.motion().wander() > 0) {
+            double[] w = ParticleSim.randomUnit(r);
+            body.wx = w[0]; body.wy = w[1]; body.wz = w[2];
+            body.random = r;
+        }
 
         int life = Math.max(1, (int) Math.round(effect.motion().lifetime().sample(r)));
         double scale = effect.animation().scale().sample(r);
@@ -271,8 +277,12 @@ public final class ParticleManager implements Listener {
         double spin = effect.animation().spin().sample(r);
 
         ParticleEffect.Render render = effect.render();
+        ParticleEffect.Animation anim = effect.animation();
         Location at = new Location(world, body.x, body.y, body.z, 0, 0);
         float[] center = {0, 0, 0};
+        int startColor = render.colors().isEmpty() ? 0xffffffff : pick(render.colors(), r);
+        int color0 = ParticleSim.colorAt(anim, startColor, 0, life);
+        Component baseText = null;
         Consumer<Display> common = d -> {
             d.setPersistent(false);
             d.setBillboard(render.billboard());
@@ -285,11 +295,12 @@ public final class ParticleManager implements Listener {
         Display entity;
         switch (render.type()) {
             case TEXT -> {
-                Component text = pick(render.texts(), r);
-                if (!render.colors().isEmpty()) {
-                    TextColor c = pick(render.colors(), r);
-                    text = text.color(c);
-                }
+                baseText = pick(render.texts(), r);
+                Component text = baseText;
+                // цвет: случайный из render.colors или кривая animation.color; без них - как в самом тексте
+                boolean recolor = !render.colors().isEmpty() || anim.color() != null;
+                if (recolor) text = text.color(TextColor.color(color0 & 0xffffff));
+                else baseText = null;
                 boolean objectOnly = TextDisplayButtonWidget.isObjectOnly(text);
                 // якорь TextDisplay - низ текста по центру; центр картинки: 1 px правее и на полстроки выше
                 center[0] = TEXT_PIXEL;
@@ -300,7 +311,16 @@ public final class ParticleManager implements Listener {
                     d.text(finalText);
                     d.setBackgroundColor(Color.fromARGB(render.backgroundArgb()));
                     d.setShadowed(render.shadow());
+                    if (ParticleColors.alpha(color0) < 255) d.setTextOpacity(LiveParticle.textOpacity(color0));
                     d.setTransformation(initial(effect, scale, rotation, center));
+                });
+            }
+            case PIXEL -> {
+                entity = world.spawn(at, TextDisplay.class, d -> {
+                    common.accept(d);
+                    d.text(Component.text(" "));
+                    d.setBackgroundColor(Color.fromARGB(color0));
+                    d.setTransformation(LiveParticle.pixelTransformation(ParticleSim.scaleAt(anim, scale, 0, 1), rotation));
                 });
             }
             case ITEM -> {
@@ -333,7 +353,8 @@ public final class ParticleManager implements Listener {
             }
         }
         if (owner != null) owner.showEntity(plugin, entity);
-        return new LiveParticle(e, entity, world, body, life, scale, rotation, spin, center, now);
+        return new LiveParticle(e, entity, world, body, life, scale, rotation, spin, center, now,
+                render.type() == ParticleEffect.RenderType.PIXEL, baseText, startColor);
     }
 
     /** Вид в момент появления (с fadeIn - нулевой размер). */

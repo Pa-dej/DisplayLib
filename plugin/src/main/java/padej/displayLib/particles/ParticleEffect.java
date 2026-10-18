@@ -2,7 +2,6 @@ package padej.displayLib.particles;
 
 import me.padej.jumper.runtime.JTable;
 import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.format.TextColor;
 import org.bukkit.Material;
 import org.bukkit.entity.Display;
 import padej.displayLib.config.HoverAnimation;
@@ -32,11 +31,16 @@ import java.util.Locale;
  */
 public final class ParticleEffect {
     public enum Viewers { ALL, OWNER }
-    public enum RenderType { TEXT, ITEM, BLOCK }
+    /** PIXEL - цветной квадрат (фон пустого TextDisplay): любой цвет и прозрачность, плавная смена цвета. */
+    public enum RenderType { TEXT, PIXEL, ITEM, BLOCK }
     public enum Shape { POINT, SPHERE, BOX, CIRCLE }
 
-    /** Что рисует частица. */
-    public record Render(RenderType type, List<Component> texts, List<TextColor> colors, List<String> items,
+    /**
+     * Что рисует частица.
+     *
+     * @param colors цвета ARGB: случайный на частицу (цвет текста у TEXT, цвет квадрата у PIXEL)
+     */
+    public record Render(RenderType type, List<Component> texts, List<Integer> colors, List<String> items,
                          List<String> blocks, Display.Billboard billboard, Integer brightness, boolean shadow,
                          int backgroundArgb, boolean glow) {}
 
@@ -46,9 +50,12 @@ public final class ParticleEffect {
      * @param size     полуразмеры коробки (BOX)
      * @param surface  только по поверхности (SPHERE) / контуру (CIRCLE, BOX)
      * @param duration 0 - один всплеск из {@code count} частиц; больше 0 - сколько тиков испускать
-     *                 {@code rate} частиц за тик (дробное значение копится)
+     *                 {@code rate} частиц за тик (дробное значение копится); {@link #FOREVER} - пока
+     *                 запуск не остановят ({@code stop()}, {@code /displaylib particle stop})
      */
-    public record Emitter(Shape shape, double radius, double[] size, boolean surface, int count, int duration, double rate) {}
+    public record Emitter(Shape shape, double radius, double[] size, boolean surface, int count, int duration, double rate) {
+        public static final int FOREVER = -1;
+    }
 
     /**
      * Движение.
@@ -58,9 +65,12 @@ public final class ParticleEffect {
      * @param drag      доля скорости, теряемая за тик (0..1)
      * @param bounce    доля скорости после удара о блок (0 - частица останавливается)
      * @param friction  доля скорости вдоль поверхности, остающаяся при ударе
+     * @param attract   притяжение к точке рождения эмиттера, блоков/тик² (отрицательное - отталкивание)
+     * @param attractAxis притягивать к вертикальной оси через центр (как пламя к фитилю), а не к точке
+     * @param wander    случайное блуждание, блоков/тик²: направление толчка плавно поворачивается (светлячки)
      */
     public record Motion(Range lifetime, Range speed, double[] direction, double spread, double gravity, double drag,
-                         boolean collide, double bounce, double friction) {}
+                         boolean collide, double bounce, double friction, double attract, boolean attractAxis, double wander) {}
 
     /**
      * Вид во времени.
@@ -70,9 +80,16 @@ public final class ParticleEffect {
      * @param fadeIn   за сколько тиков частица вырастает из 0 до начального размера
      * @param rotation начальный угол в плоскости частицы
      * @param spin     скорость вращения, градусы за тик
+     * @param color    цвет по доле жизни (вместо {@code render.colors}) или {@code null}
+     * @param opacity  множитель непрозрачности по доле жизни (TEXT, PIXEL)
      */
     public record Animation(Range scale, double endScale, HoverAnimation.EasingType easing, int fadeIn,
-                            Range rotation, Range spin) {}
+                            Range rotation, Range spin, ParticleColors.Gradient color, ParticleColors.Curve opacity) {
+        /** Меняется ли цвет или прозрачность во времени. */
+        public boolean animatesColor() {
+            return color != null && color.colors().length > 1 || !opacity.isConstantOne() && opacity.values().length > 1;
+        }
+    }
 
     private final String id;
     private final Viewers viewers;
@@ -151,6 +168,7 @@ public final class ParticleEffect {
                 if (variants != null) for (Object v : variants) texts.add(ScreenSupport.parseFormattedText(JmcValues.toJava(v)));
                 if (texts.isEmpty()) throw new IllegalArgumentException("render: TEXT needs text: \"★\" or variants: [\"★\", \"✦\"]");
             }
+            case PIXEL -> { /* только цвет: colors или animation.color */ }
             case ITEM -> {
                 // имена проверяются на сервере: ParticleRegistry при загрузке, ParticleManager при запуске
                 items.addAll(strings(t, "item", "items"));
@@ -163,15 +181,19 @@ public final class ParticleEffect {
             }
         }
 
-        List<TextColor> colors = new ArrayList<>();
+        List<Integer> colors = new ArrayList<>();
         List<?> colorList = JmcValues.list(t, "colors");
         Object single = JmcValues.get(t, "color");
-        if (single != null) colors.add(color(single));
+        if (single != null) colors.add(ParticleColors.parse(single, "render.color"));
         if (colorList != null) {
-            // [r, g, b] - один цвет; ["#..", [r, g, b]] - список
-            if (colorList.size() == 3 && colorList.stream().allMatch(Number.class::isInstance)) colors.add(color(colorList));
-            else for (Object c : colorList) colors.add(color(c));
+            // [r, g, b(, a)] - один цвет; ["#..", [r, g, b]] - список
+            if ((colorList.size() == 3 || colorList.size() == 4) && colorList.stream().allMatch(Number.class::isInstance)) {
+                colors.add(ParticleColors.parse(colorList, "render.colors"));
+            } else {
+                for (Object c : colorList) colors.add(ParticleColors.parse(c, "render.colors"));
+            }
         }
+        if (type == RenderType.PIXEL && colors.isEmpty()) colors.add(0xffffffff);
 
         Display.Billboard billboard = enumOf(Display.Billboard.class, JmcValues.str(t, "billboard"),
                 type == RenderType.BLOCK ? Display.Billboard.FIXED : Display.Billboard.CENTER, "render.billboard");
@@ -196,11 +218,11 @@ public final class ParticleEffect {
         Integer count = JmcValues.integer(t, "count");
         Integer duration = JmcValues.integer(t, "duration");
         Double rate = JmcValues.number(t, "rate");
-        int d = duration != null ? Math.max(0, duration) : 0;
-        if (d > 0 && (rate == null || rate <= 0)) throw new IllegalArgumentException("emitter: duration > 0 needs rate > 0 (particles per tick)");
+        int d = duration == null ? 0 : duration < 0 ? Emitter.FOREVER : duration;
+        if (d != 0 && (rate == null || rate <= 0)) throw new IllegalArgumentException("emitter: duration needs rate > 0 (particles per tick)");
         return new Emitter(shape, radius != null ? Math.abs(radius) : 0.25,
                 size != null ? new double[]{Math.abs(size[0]) / 2, Math.abs(size[1]) / 2, Math.abs(size[2]) / 2} : new double[]{0.25, 0.25, 0.25},
-                surface != null && surface, count != null ? Math.max(0, count) : (d > 0 ? 0 : 1), d, rate != null ? rate : 0);
+                surface != null && surface, count != null ? Math.max(0, count) : (d != 0 ? 0 : 1), d, rate != null ? rate : 0);
     }
 
     private static Motion parseMotion(JTable t) {
@@ -225,7 +247,10 @@ public final class ParticleEffect {
                 clamp(num(t, "drag", 0), 0, 1),
                 bool(t, "collide", false),
                 clamp(num(t, "bounce", 0), 0, 1),
-                clamp(num(t, "friction", 0.6), 0, 1));
+                clamp(num(t, "friction", 0.6), 0, 1),
+                num(t, "attract", 0),
+                "Y".equalsIgnoreCase(t != null ? JmcValues.str(t, "attractAxis") : null) || bool(t, "attractAxis", false),
+                Math.max(0, num(t, "wander", 0)));
     }
 
     private static Animation parseAnimation(JTable t) {
@@ -235,7 +260,9 @@ public final class ParticleEffect {
         return new Animation(scale, Math.max(0, num(t, "endScale", 1)), easing,
                 (int) Math.max(0, num(t, "fadeIn", 0)),
                 Range.parse(JmcValues.get(t, "rotation"), Range.ZERO, "animation.rotation"),
-                Range.parse(JmcValues.get(t, "spin"), Range.ZERO, "animation.spin"));
+                Range.parse(JmcValues.get(t, "spin"), Range.ZERO, "animation.spin"),
+                ParticleColors.Gradient.parse(t != null ? JmcValues.get(t, "color", "colors") : null, "animation.color"),
+                ParticleColors.Curve.parse(t != null ? JmcValues.get(t, "opacity") : null, "animation.opacity"));
     }
 
     /** Предмет по имени ("GOLD_NUGGET", "minecraft:emerald") или {@code null}, если такого нет. Нужен сервер. */
@@ -271,16 +298,6 @@ public final class ParticleEffect {
         List<?> list = JmcValues.list(t, many);
         if (list != null) for (Object o : list) if (o != null) out.add(o.toString());
         return out;
-    }
-
-    private static TextColor color(Object v) {
-        if (v instanceof List<?> rgb && rgb.size() >= 3 && rgb.get(0) instanceof Number r
-                && rgb.get(1) instanceof Number g && rgb.get(2) instanceof Number b) {
-            return TextColor.color(clamp255(r.intValue()), clamp255(g.intValue()), clamp255(b.intValue()));
-        }
-        TextColor c = v != null ? ScreenSupport.parseColorPublic(v.toString()) : null;
-        if (c == null) throw new IllegalArgumentException("render.colors: unknown color " + v + " (\"#rrggbb\", name or [r, g, b])");
-        return c;
     }
 
     private static <E extends Enum<E>> E enumOf(Class<E> type, String name, E fallback, String field) {

@@ -1,0 +1,23 @@
+// fireflies: светлячки - тёплые светящиеся точки плавно блуждают (wander) вокруг места запуска (attract),
+// появляются и гаснут (opacity по долям жизни). По мотивам text-display-experiments (Heledron).
+String id = "fireflies";
+String viewers = "all";
+int keyframeTicks = 3;
+
+dyn render = { type: "PIXEL", colors: ["#ffff80", "#fff59a", "#e8ff7a"], brightness: 15 };
+
+dyn emitter = { shape: "SPHERE", radius: 1.5, count: 6, duration: 300, rate: 0.05 };
+
+dyn motion = {
+    lifetime: [100, 160],
+    speed: 0.02,
+    spread: 180,
+    drag: 0.1,
+    wander: 0.02,                // толчок вдоль плавно поворачивающегося направления
+    attract: 0.004,              // не улетать далеко от точки запуска
+};
+
+dyn animation = {
+    scale: 0.1,
+    opacity: [[0, 0], [0.15, 1], [0.85, 1], [1, 0]],
+};

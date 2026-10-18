@@ -29,6 +29,12 @@ public final class ParticleSim {
         public boolean resting;
         /** Появилась внутри блока: коллизии для неё выключены, иначе она застряла бы */
         public boolean ghost;
+        /** Точка притяжения ({@code motion.attract}) - центр эмиттера в момент рождения */
+        public double cx, cy, cz;
+        /** Направление блуждания ({@code motion.wander}), единичный вектор; поворачивается понемногу каждый тик */
+        public double wx, wy = 1, wz;
+        /** Случайность блуждания; {@code null} - блуждания нет */
+        public RandomGenerator random;
 
         public Body(double x, double y, double z, double vx, double vy, double vz) {
             this.x = x; this.y = y; this.z = z;
@@ -124,6 +130,30 @@ public final class ParticleSim {
     // Движение
     // -------------------------------------------------------------------------
 
+    /**
+     * Притяжение и блуждание. Притяжение - постоянной силы к точке (или оси) рождения, ослабевает
+     * в последней четверти блока, чтобы частица не дрожала в центре. Блуждание - толчок вдоль
+     * направления, которое каждый тик немного поворачивается: путь получается плавным, а не дёрганым.
+     */
+    static void applyForces(Body b, ParticleEffect.Motion m) {
+        if (m.attract() != 0) {
+            double dx = b.cx - b.x, dy = m.attractAxis() ? 0 : b.cy - b.y, dz = b.cz - b.z;
+            double d = Math.sqrt(dx * dx + dy * dy + dz * dz);
+            if (d > 1e-6) {
+                double k = m.attract() * Math.min(1, d / 0.25) / d;
+                b.vx += dx * k; b.vy += dy * k; b.vz += dz * k;
+            }
+        }
+        if (m.wander() > 0 && b.random != null) {
+            double[] j = randomUnit(b.random);
+            double wx = b.wx + j[0] * 0.6, wy = b.wy + j[1] * 0.6, wz = b.wz + j[2] * 0.6;
+            double len = Math.sqrt(wx * wx + wy * wy + wz * wz);
+            if (len > 1e-9) { b.wx = wx / len; b.wy = wy / len; b.wz = wz / len; }
+            double push = m.wander() * b.random.nextDouble();
+            b.vx += b.wx * push; b.vy += b.wy * push; b.vz += b.wz * push;
+        }
+    }
+
     /** Отступ от грани блока, к которой прижимается частица при ударе. */
     static final double SKIN = 1e-3;
 
@@ -140,6 +170,7 @@ public final class ParticleSim {
     public static boolean step(Body b, ParticleEffect.Motion m, Solid solid) {
         if (b.resting) return false;
         b.vy -= m.gravity();
+        applyForces(b, m);
         double keep = 1 - m.drag();
         b.vx *= keep; b.vy *= keep; b.vz *= keep;
 
@@ -209,6 +240,13 @@ public final class ParticleSim {
         double s = start * (1 + (a.endScale() - 1) * k);
         if (a.fadeIn() > 0 && age < a.fadeIn()) s *= (double) age / a.fadeIn();
         return Math.max(0, s);
+    }
+
+    /** Цвет (ARGB) в возрасте {@code age}: кривая {@code animation.color} (или стартовый цвет) с множителем {@code opacity}. */
+    public static int colorAt(ParticleEffect.Animation a, int startColor, int age, int life) {
+        double t = life <= 0 ? 1 : Math.max(0, Math.min(1, (double) age / life));
+        int c = a.color() != null ? a.color().sample(t) : startColor;
+        return ParticleColors.withOpacity(c, a.opacity().sample(t));
     }
 
     /** Угол в плоскости частицы, градусы. */

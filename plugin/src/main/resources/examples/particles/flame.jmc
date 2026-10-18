@@ -1,0 +1,34 @@
+// flame: пламя из цветных квадратов (PIXEL). Частицы всплывают и стягиваются к оси, цвет идёт по палитре
+// белый → жёлтый → оранжевый → красный → чёрный → прозрачный (смешивание в OkLab; клиент интерполирует цвет сам).
+// По мотивам text-display-experiments (Heledron). Горит 10 секунд; dyn emitter.duration = -1 - пока не остановят.
+String id = "flame";
+String viewers = "all";
+int keyframeTicks = 2;           // короткая жизнь и изогнутый путь - кадры почаще
+
+dyn render = { type: "PIXEL", billboard: "CENTER", brightness: 15 };
+
+dyn emitter = { shape: "POINT", count: 0, duration: 200, rate: 3 };
+
+dyn motion = {
+    lifetime: 15,
+    speed: 0.1,
+    spread: 180,                 // во все стороны
+    gravity: -0.03,              // всплывает
+    drag: 0.1,
+    attract: 0.02,               // стягивается...
+    attractAxis: "Y",            // ...к вертикальной оси через точку запуска
+};
+
+dyn animation = {
+    scale: 0.1,
+    spin: [-11, 11],
+    color: [
+        [0.00, "#ffffff"],
+        [0.05, "#ffffff"],
+        [0.20, "#fcd303"],
+        [0.40, "#ff8800"],
+        [0.70, "#de400b"],
+        [0.80, "#000000"],
+        [1.00, "#00000000"],     // #rrggbbaa: прозрачный
+    ],
+};
