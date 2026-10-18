@@ -1,7 +1,7 @@
 <script setup lang="ts">
 // Свойства эффекта частиц: общее, вид (render), испускание (emitter), движение (motion), анимация.
 // Подписи - имена полей в файле, чтобы правку в редакторе было легко найти в .jmc и наоборот.
-import { computed, reactive } from 'vue';
+import { computed } from 'vue';
 import Icon from '../Icon.vue';
 import NumInput from './NumInput.vue';
 import RangeInput from './RangeInput.vue';
@@ -14,7 +14,7 @@ import VecInput from '../fields/VecInput.vue';
 import ColorInput from '../fields/ColorInput.vue';
 import ColorPicker from '../fields/ColorPicker.vue';
 import LoadMark from '../load/LoadMark.vue';
-import FrameStrip from './FrameStrip.vue';
+import FramesEditor from '../fields/FramesEditor.vue';
 import { useReorder, moveItem } from '../../reorder';
 import { compile, transformPlan } from '../../particles/sim';
 import { parseColor } from '../../particles/colors';
@@ -89,21 +89,18 @@ function toggleFrames(i: number) {
     const a = [...variants.value]; const v = a[i];
     a[i] = isFrames(v) ? (v.frames[0] ?? '') : framesOf([v, copy(v)]);
     storeVariants(a);
-    frameSel[i] = isFrames(a[i]) ? 1 : 0;
   });
 }
 // кадры варианта i
-const frameSel = reactive<Record<number, number>>({});
-const selOf = (i: number) => { const v = variants.value[i]; return isFrames(v) ? Math.min(frameSel[i] ?? 0, Math.max(0, v.frames.length - 1)) : 0; };
 function framesEdit(i: number, fn: (f: FramesText) => void, history = true) {
   const run = () => { const a = [...variants.value]; const v = a[i]; if (!isFrames(v)) return; const f = copy(v); fn(f); a[i] = f; storeVariants(a); };
   history ? edit(run) : (run(), touch());
 }
 function setFrame(i: number, k: number, t: RichText | null) { framesEdit(i, (f) => { f.frames[k] = t ?? ''; }, false); }
-function addFrame(i: number) { framesEdit(i, (f) => { f.frames.push(copy(f.frames[f.frames.length - 1] ?? '')); frameSel[i] = f.frames.length - 1; }); }
-function dupFrame(i: number, k: number) { framesEdit(i, (f) => { f.frames.splice(k + 1, 0, copy(f.frames[k])); frameSel[i] = k + 1; }); }
-function delFrame(i: number, k: number) { framesEdit(i, (f) => { if (f.frames.length > 1) f.frames.splice(k, 1); frameSel[i] = Math.max(0, k - 1); }); }
-function moveFrame(i: number, from: number, to: number) { framesEdit(i, (f) => { moveItem(f.frames, from, to); frameSel[i] = to; }); }
+function addFrame(i: number) { framesEdit(i, (f) => { f.frames.push(copy(f.frames[f.frames.length - 1] ?? '')); }); }
+function dupFrame(i: number, k: number) { framesEdit(i, (f) => { f.frames.splice(k + 1, 0, copy(f.frames[k])); }); }
+function delFrame(i: number, k: number) { framesEdit(i, (f) => { if (f.frames.length > 1) f.frames.splice(k, 1); }); }
+function moveFrame(i: number, from: number, to: number) { framesEdit(i, (f) => { moveItem(f.frames, from, to); }); }
 const frameTint = computed(() => { if (!currentEffect.value) return null; const c = r.value.colors[0] ?? an.value.color?.[0]?.value ?? null; return c && c.startsWith('#') ? c.slice(0, 7) : c; });
 
 // ---- фон текста
@@ -192,9 +189,8 @@ const blockNames = ITEM_NAMES;
                   <button class="btn sm icon" title="Убрать вариант" :disabled="variants.length <= 1" @click="delVariant(i)"><Icon name="trash" :size="12" /></button>
                 </div>
                 <template v-if="isFrames(v)">
-                  <FrameStrip :items="v.frames" :selected="selOf(i)" :interval="v.frameInterval" :over-life="v.framesOverLife" :tint="frameTint"
-                    @select="frameSel[i] = $event" @add="addFrame(i)" @dup="dupFrame(i, $event)" @del="delFrame(i, $event)" @move="(f, t) => moveFrame(i, f, t)" />
-                  <div class="fs-editor"><RichTextInput compact :model-value="v.frames[selOf(i)]" placeholder="Кадр" @update:model-value="setFrame(i, selOf(i), $event)" /></div>
+                  <FramesEditor :frames="v.frames" :interval="v.frameInterval" :over-life="v.framesOverLife" :tint="frameTint"
+                    @set="(k, t) => setFrame(i, k, t)" @add="addFrame(i)" @dup="(k) => dupFrame(i, k)" @del="(k) => delFrame(i, k)" @move="(f, t) => moveFrame(i, f, t)" />
                   <div class="frames-opts">
                     <div class="seg">
                       <button :class="{ on: !v.framesOverLife }" title="Кадры сменяются по кругу каждые frameInterval тиков" @click="framesEdit(i, (f) => (f.framesOverLife = false))">По кругу</button>

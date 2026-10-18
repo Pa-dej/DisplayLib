@@ -551,3 +551,5 @@ html.theme-anim, html.theme-anim *, html.theme-anim *::before, html.theme-anim *
 .frames-opts .seg > button { height: 24px; }
 .variant-card .frame-strip { margin-top: 2px; }
 .variant-card .fs-editor { margin-top: 6px; }
+.field > label.with-toggle { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.frames-editor { display: flex; flex-direction: column; }
