@@ -410,15 +410,16 @@ public final class ScreenSupport {
     }
 
     /**
-     * Спрайт с тинтом: клиент умножает текстуру на цвет стиля, как у букв. {@code color == null} - белый
-     * (без тинта; явный белый нужен, чтобы цвет соседнего сегмента не протекал).
+     * Спрайт с тинтом: клиент умножает текстуру на цвет стиля, как у букв. {@code color == null} - без своего
+     * цвета: наследует цвет родителя (у текста сегментами корень - явный белый, так что соседние сегменты не
+     * протекают), и тогда его, как и буквы, красит цвет всего текста - например, цвет частицы.
      */
     public static Component spriteComponent(String atlas, String sprite, TextColor color) {
         if (sprite == null || sprite.isBlank()) return Component.empty();
         String[] resolved = resolveSprite(atlas, sprite);
         try {
-            return Component.object(ObjectContents.sprite(Key.key(resolved[0]), Key.key(resolved[1])))
-                    .color(color != null ? color : NamedTextColor.WHITE);
+            Component c = Component.object(ObjectContents.sprite(Key.key(resolved[0]), Key.key(resolved[1])));
+            return color != null ? c.color(color) : c;
         } catch (InvalidKeyException e) {
             return Component.text("[" + sprite + "]");
         }
@@ -430,8 +431,8 @@ public final class ScreenSupport {
      */
     public static Component headComponent(String player, boolean hat, TextColor color) {
         if (player == null || player.isBlank()) return Component.empty();
-        return Component.object(ObjectContents.playerHead().name(player.trim()).hat(hat).build())
-                .color(color != null ? color : NamedTextColor.WHITE);
+        Component c = Component.object(ObjectContents.playerHead().name(player.trim()).hat(hat).build());
+        return color != null ? c.color(color) : c;
     }
 
     /** {atlas, sprite} с подставленными атласом и папкой (см. {@link #spriteComponent}). */

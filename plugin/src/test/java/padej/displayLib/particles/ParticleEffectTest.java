@@ -100,4 +100,21 @@ class ParticleEffectTest {
         assertEquals(5, shorthand.render().texts().get(0).frameInterval());
         assertThrows(IllegalArgumentException.class, () -> ParticleEffect.parse((JTable) Config.parse("dyn render = { type: \"TEXT\", variants: [{ frames: [\"a\", \"b\"], frameStart: \"middle\" }] };"), "t"));
     }
+
+    /**
+     * Цвет частицы красит и спрайты без своего цвета (как в редакторе): спрайт-сегмент не должен получать явный
+     * белый - иначе text.color(цвет частицы) на корне до него не доходит. Свой цвет сегмента сохраняется.
+     */
+    @Test
+    void particleColorTintsSpritesWithoutOwnColor() {
+        ParticleEffect e = ParticleEffect.parse((JTable) Config.parse("dyn render = { type: \"TEXT\", variants: [[{ atlas: \"minecraft:particles\", sprite: \"spark_0\" }], [{ atlas: \"minecraft:particles\", sprite: \"spark_1\", color: \"#00ff00\" }], [{ player: \"Steve\" }]] };"), "t");
+        var plain = e.render().texts().get(0).first();
+        var own = e.render().texts().get(1).first();
+        var head = e.render().texts().get(2).first();
+        net.kyori.adventure.text.format.TextColor red = net.kyori.adventure.text.format.TextColor.color(0xff5555);
+        assertNull(plain.children().get(0).color(), "спрайт без цвета наследует");
+        assertNull(head.children().get(0).color(), "голова без цвета наследует");
+        assertEquals(red, plain.color(red).color(), "цвет частицы - на корне, спрайт его наследует");
+        assertEquals(net.kyori.adventure.text.format.TextColor.color(0x00ff00), own.color(red).children().get(0).color(), "свой цвет сегмента остаётся");
+    }
 }
