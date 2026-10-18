@@ -13,6 +13,12 @@ import org.bukkit.entity.Display;
 import org.bukkit.entity.ItemDisplay;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.TextDisplay;
+import org.bukkit.event.EventHandler;
+import org.bukkit.event.EventPriority;
+import org.bukkit.event.HandlerList;
+import org.bukkit.event.Listener;
+import org.bukkit.event.player.PlayerJoinEvent;
+import org.bukkit.event.world.WorldUnloadEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.scheduler.BukkitTask;
@@ -34,7 +40,7 @@ import java.util.random.RandomGenerator;
  * Живые частицы и запуски эффектов. Одна задача планировщика на все частицы, работает,
  * только пока есть что обновлять. Все методы - из основного потока.
  */
-public final class ParticleManager {
+public final class ParticleManager implements Listener {
     /** Пиксель текста в блоках (клиент рисует шрифт с масштабом 1/40). */
     private static final float TEXT_PIXEL = 1f / 40f;
 
@@ -45,6 +51,7 @@ public final class ParticleManager {
     private final List<ParticleEmission> emissions = new ArrayList<>();
     private int alive;
     private BukkitTask task;
+    private boolean ticking;
 
     /** Предупреждения, которые уже были (не засорять консоль каждый запуск) */
     private final Set<String> warned = new HashSet<>();
@@ -58,6 +65,7 @@ public final class ParticleManager {
         this.plugin = plugin;
         this.log = plugin.getLogger();
         this.maxAlive = Math.max(1, maxAlive);
+        Bukkit.getPluginManager().registerEvents(this, plugin);
     }
 
     /** Сколько частиц сейчас живо. */
@@ -79,7 +87,7 @@ public final class ParticleManager {
     public ParticleEmission play(ParticleEffect effect, Location center, Player owner) {
         if (center.getWorld() == null) throw new IllegalArgumentException("location has no world");
         ParticleEmission emission = new ParticleEmission(effect, center, owner != null ? owner.getUniqueId() : null);
-        emit(emission, effect.emitter().count());
+        emitSafely(emission, effect.emitter().count());
         if (!emission.isDone()) {
             emissions.add(emission);
             ensureTask();
@@ -89,7 +97,10 @@ public final class ParticleManager {
 
     /** Убрать все частицы и остановить все запуски. */
     public void stopAll() {
-        for (ParticleEmission e : emissions) e.cancel();
+        for (ParticleEmission e : emissions) {
+            e.cancel();
+            if (!ticking) e.particles.clear(); // во время обхода списки чистит сам tick()
+        }
         emissions.clear();
         alive = 0;
         if (task != null) {
@@ -104,49 +115,84 @@ public final class ParticleManager {
         if (task == null) task = Bukkit.getScheduler().runTaskTimer(plugin, this::tick, 1L, 1L);
     }
 
+    /** Выключение плагина: убрать всё и отписаться от событий. */
+    public void shutdown() {
+        stopAll();
+        HandlerList.unregisterAll(this);
+    }
+
     private void tick() {
-        for (Iterator<ParticleEmission> it = emissions.iterator(); it.hasNext(); ) {
-            ParticleEmission e = it.next();
-
-            // испускание в течение duration
-            if (e.ticksLeft > 0 && !e.stopped) {
-                e.ticksLeft--;
-                e.carry += e.effect.emitter().rate();
-                int n = (int) e.carry;
-                e.carry -= n;
-                emit(e, n);
-            }
-
-            World world = e.center.getWorld();
-            ParticleSim.Solid solid = e.effect.motion().collide() ? solidIn(world) : null;
-            int keyframeTicks = e.effect.keyframeTicks();
-            for (Iterator<LiveParticle> pi = e.particles.iterator(); pi.hasNext(); ) {
-                LiveParticle p = pi.next();
-                if (!p.dead) {
-                    p.age++;
-                    if (!p.entity.isValid()) {
-                        p.dead = true; // чанк выгрузился, мир выгружен, сущность убрали
-                    } else if (p.age >= p.life) {
-                        p.kill();
-                    } else if (p.age >= p.nextKeyframe) {
-                        try {
-                            p.keyframe(keyframeTicks, solid);
-                        } catch (RuntimeException ex) {
-                            warnOnce("keyframe:" + e.effect.id(), "Particle effect '" + e.effect.id() + "' failed: " + ex);
-                            p.kill();
-                        }
-                    }
-                }
-                if (p.dead) {
-                    pi.remove();
-                    alive--;
-                }
-            }
-            if (e.isDone()) it.remove();
+        ticking = true;
+        try {
+            tickAll();
+        } finally {
+            ticking = false;
         }
+    }
+
+    private void tickAll() {
+        int now = Bukkit.getCurrentTick();
+        // Обход по снимку: спавн и удаление сущностей вызывают события, и чужой обработчик
+        // может запустить эффект или вызвать stopAll прямо во время обхода
+        for (ParticleEmission e : new ArrayList<>(emissions)) {
+            try {
+                tickEmission(e, now);
+            } catch (RuntimeException ex) {
+                warnOnce("tick:" + e.effect.id(), "Particle effect '" + e.effect.id() + "' failed and was stopped: " + ex);
+                e.cancel();
+            }
+            if (e.isDone()) {
+                e.particles.clear();
+                emissions.remove(e);
+            }
+        }
+        // счётчик - заново: события и отмены во время обхода не дают ему разойтись с реальностью
+        int count = 0;
+        for (ParticleEmission e : emissions) count += e.particles.size();
+        alive = count;
         if (emissions.isEmpty() && task != null) {
             task.cancel();
             task = null;
+        }
+    }
+
+    private void tickEmission(ParticleEmission e, int now) {
+        if (!e.center.isWorldLoaded()) {
+            e.cancel(); // мир выгружен
+            return;
+        }
+        int keyframeTicks = e.effect.keyframeTicks();
+        boolean collide = e.effect.motion().collide();
+        ParticleSim.Solid solid = null;
+        World solidWorld = null;
+        for (Iterator<LiveParticle> pi = e.particles.iterator(); pi.hasNext(); ) {
+            LiveParticle p = pi.next();
+            if (!p.dead && now > p.spawnTick) {
+                p.age++;
+                if (!p.entity.isValid()) {
+                    p.kill(); // чанк выгрузился, сущность убрали
+                } else if (p.age >= p.life) {
+                    p.kill();
+                } else {
+                    if (collide && solidWorld != p.world) { solidWorld = p.world; solid = solidIn(p.world); }
+                    try {
+                        p.update(keyframeTicks, collide ? solid : null);
+                    } catch (RuntimeException ex) {
+                        warnOnce("keyframe:" + e.effect.id(), "Particle effect '" + e.effect.id() + "' failed: " + ex);
+                        p.kill();
+                    }
+                }
+            }
+            if (p.dead) pi.remove();
+        }
+
+        // испускание в течение duration - после обхода: новые частицы получают первый кадр на следующем тике
+        if (e.ticksLeft > 0 && !e.stopped) {
+            e.ticksLeft--;
+            e.carry += e.effect.emitter().rate();
+            int n = (int) e.carry;
+            e.carry -= n;
+            emit(e, n);
         }
     }
 
@@ -155,26 +201,61 @@ public final class ParticleManager {
         return (x, y, z) -> world.isChunkLoaded(x >> 4, z >> 4) && world.getBlockAt(x, y, z).getType().isSolid();
     }
 
+    private void emitSafely(ParticleEmission e, int count) {
+        try {
+            emit(e, count);
+        } catch (RuntimeException ex) {
+            warnOnce("spawn:" + e.effect.id(), "Particle effect '" + e.effect.id() + "' failed to spawn: " + ex);
+            e.cancel();
+        }
+    }
+
     private void emit(ParticleEmission e, int count) {
         if (count <= 0) return;
         World world = e.center.getWorld();
         if (world == null) return;
         Player owner = e.owner != null && e.effect.viewers() == ParticleEffect.Viewers.OWNER ? Bukkit.getPlayer(e.owner) : null;
-        if (e.owner != null && e.effect.viewers() == ParticleEffect.Viewers.OWNER && owner == null) return; // владелец вышел
+        if (e.owner != null && e.effect.viewers() == ParticleEffect.Viewers.OWNER && owner == null) return; // владелец не в сети
         RandomGenerator r = ThreadLocalRandom.current();
+        int now = Bukkit.getCurrentTick();
         for (int i = 0; i < count; i++) {
             if (alive >= maxAlive) {
                 warnOnce("max", "Particle limit reached (" + maxAlive + " alive, particles.maxAlive in config.jmc); extra particles are skipped");
                 return;
             }
-            LiveParticle p = spawn(e, world, owner, r);
+            LiveParticle p = spawn(e, world, owner, r, now);
             if (p == null) return;
             e.particles.add(p);
             alive++;
         }
     }
 
-    private LiveParticle spawn(ParticleEmission e, World world, Player owner, RandomGenerator r) {
+    // -------------------------------------------------------------------------
+    // События
+    // -------------------------------------------------------------------------
+
+    /** Владелец перезашёл: новый объект игрока не видит скрытые от остальных частицы - показать заново. */
+    @EventHandler(priority = EventPriority.MONITOR)
+    public void onJoin(PlayerJoinEvent event) {
+        Player player = event.getPlayer();
+        for (ParticleEmission e : emissions) {
+            if (player.getUniqueId().equals(e.owner) && e.effect.viewers() == ParticleEffect.Viewers.OWNER) {
+                for (LiveParticle p : e.particles) p.showTo(player, plugin);
+            }
+        }
+    }
+
+    /** Мир выгружается: его частицы убираются сразу. */
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onWorldUnload(WorldUnloadEvent event) {
+        World world = event.getWorld();
+        for (ParticleEmission e : emissions) {
+            if (e.center.isWorldLoaded() && e.center.getWorld() == world) e.cancel();
+            else for (LiveParticle p : e.particles) if (p.world == world) p.kill();
+        }
+    }
+
+    private LiveParticle spawn(ParticleEmission e, World world, Player owner, RandomGenerator r, int now) {
         ParticleEffect effect = e.effect;
         double[] off = ParticleSim.spawnOffset(effect.emitter(), r);
         double[] vel = ParticleSim.spawnVelocity(effect.motion(), off, r);
@@ -252,7 +333,7 @@ public final class ParticleManager {
             }
         }
         if (owner != null) owner.showEntity(plugin, entity);
-        return new LiveParticle(e, entity, body, life, scale, rotation, spin, center);
+        return new LiveParticle(e, entity, world, body, life, scale, rotation, spin, center, now);
     }
 
     /** Вид в момент появления (с fadeIn - нулевой размер). */

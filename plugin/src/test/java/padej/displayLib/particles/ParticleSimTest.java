@@ -66,13 +66,35 @@ class ParticleSimTest {
     }
 
     @Test
-    void advanceStopsRightAfterHit() {
+    void hitSnapsToTheBlockFace() {
         ParticleEffect.Motion m = parse("dyn motion = { collide: true, bounce: 0.5 };").motion();
-        ParticleSim.Body b = new ParticleSim.Body(0.5, 0.95, 0.5, 0, -0.3, 0);
-        // удар на 4-м тике: 0.95 → 0.65 → 0.35 → 0.05 → (−0.25 в камне)
-        assertEquals(4, ParticleSim.advance(b, m, FLOOR, 10));
-        ParticleSim.Body free = new ParticleSim.Body(0.5, 50, 0.5, 0, 0, 0);
-        assertEquals(10, ParticleSim.advance(free, m, FLOOR, 10));
+        ParticleSim.Body b = new ParticleSim.Body(0.5, 0.2, 0.5, 0, -0.5, 0);
+        assertTrue(ParticleSim.step(b, m, FLOOR));
+        assertEquals(0, b.y, 0.01, "прижата к полу, а не висит над ним");
+        ParticleSim.Solid wall = (x, y, z) -> x >= 3;
+        ParticleSim.Body w = new ParticleSim.Body(2.8, 5, 0.5, 0.5, 0, 0);
+        assertTrue(ParticleSim.step(w, m, wall));
+        assertEquals(3, w.x, 0.01, "прижата к стене");
+        assertTrue(w.vx < 0, "отскочила");
+    }
+
+    /** Пример coin_fountain: монеты должны лечь, а не подпрыгивать на полу каждый тик. */
+    @Test
+    void coinFountainSettles() throws Exception {
+        ParticleRegistry registry = new ParticleRegistry(java.nio.file.Path.of("src/main/resources/examples/particles"), java.util.logging.Logger.getLogger("t"));
+        registry.loadAll();
+        ParticleEffect e = registry.get("coin_fountain");
+        RandomGenerator r = new SplittableRandom(7);
+        int settled = 0, n = 500;
+        for (int i = 0; i < n; i++) {
+            double[] v = ParticleSim.spawnVelocity(e.motion(), new double[]{0, 0, 0}, r);
+            ParticleSim.Body b = new ParticleSim.Body(0.5, 0.01, 0.5, v[0], v[1], v[2]);
+            int life = (int) e.motion().lifetime().min();
+            for (int t = 0; t < life && !b.resting; t++) ParticleSim.step(b, e.motion(), FLOOR);
+            if (b.resting) settled++;
+            assertTrue(b.y >= 0, "не провалилась");
+        }
+        assertTrue(settled > n * 0.95, "легли " + settled + " из " + n);
     }
 
     @RepeatedTest(5)

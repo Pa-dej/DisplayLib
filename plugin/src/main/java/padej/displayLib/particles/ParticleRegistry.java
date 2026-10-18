@@ -60,6 +60,9 @@ public final class ParticleRegistry {
                         }
                     }
                 }
+                if (effect.id().equalsIgnoreCase("list") || effect.id().equalsIgnoreCase("stop")) {
+                    log.warning("particles/" + relative(file) + ": id '" + effect.id() + "' is reserved by /displaylib particle " + effect.id() + "; rename it");
+                }
                 Path previous = origin.putIfAbsent(effect.id(), file);
                 if (previous != null) {
                     log.warning("Particle effect id '" + effect.id() + "' in " + relative(file) + " is already defined in " + relative(previous) + "; skipped");

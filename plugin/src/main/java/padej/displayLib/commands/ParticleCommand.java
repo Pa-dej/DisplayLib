@@ -69,7 +69,14 @@ final class ParticleCommand {
         Location origin = origin(sender);
         int i = 2;
         Location at;
-        if (args.length >= 5 && isCoord(args[2]) && isCoord(args[3]) && isCoord(args[4])) {
+        // координаты - три подряд; одиночное целое без них - игрок или число частиц
+        boolean hasCoords = args.length >= 5 && isCoord(args[2]) && isCoord(args[3]) && isCoord(args[4]);
+        boolean looksLikeCoord = args.length >= 3 && (args[2].startsWith("~") || isNumber(args[2]) && !isInteger(args[2]));
+        if (looksLikeCoord && !hasCoords) {
+            sender.sendMessage("§cНужны все три координаты: x y z");
+            return;
+        }
+        if (hasCoords) {
             if (origin == null && (args[2].startsWith("~") || args[3].startsWith("~") || args[4].startsWith("~"))) {
                 sender.sendMessage("§c~ из консоли: укажите абсолютные координаты");
                 return;
@@ -92,21 +99,28 @@ final class ParticleCommand {
         }
 
         Player owner = sender instanceof Player p ? p : null;
-        if (args.length > i && !isNumber(args[i])) {
-            owner = Bukkit.getPlayerExact(args[i]);
-            if (owner == null) {
+        if (args.length > i) {
+            // сначала игрок в сети (имя может состоять из цифр), иначе - число частиц
+            Player named = Bukkit.getPlayerExact(args[i]);
+            if (named != null) {
+                owner = named;
+                i++;
+            } else if (!isInteger(args[i])) {
                 sender.sendMessage("§cИгрок '" + args[i] + "' не в сети");
                 return;
             }
-            i++;
         }
         if (args.length > i) {
-            try {
-                effect = effect.withCount(Integer.parseInt(args[i]));
-            } catch (NumberFormatException ex) {
+            if (!isInteger(args[i])) {
                 sender.sendMessage("§cЧисло частиц - целое: " + args[i]);
                 return;
             }
+            effect = effect.withCount(Integer.parseInt(args[i]));
+            i++;
+        }
+        if (args.length > i) {
+            sender.sendMessage(USAGE);
+            return;
         }
 
         ParticleEmission emission = Particles.play(effect, at, owner);
@@ -121,10 +135,10 @@ final class ParticleCommand {
             options.addAll(Particles.ids());
             options.add("list");
             options.add("stop");
-        } else if (args.length >= 3 && args.length <= 5 && Particles.effect(args[1]) != null) {
-            options.add("~");
-        } else if (args.length == 6 && Particles.effect(args[1]) != null) {
-            Bukkit.getOnlinePlayers().forEach(p -> options.add(p.getName()));
+        } else if (Particles.effect(args[1]) != null) {
+            boolean afterCoords = args.length == 6 && isCoord(args[2]) && isCoord(args[3]) && isCoord(args[4]);
+            if (args.length >= 3 && args.length <= 5 && (args.length == 3 || isCoord(args[2]))) options.add("~");
+            if (args.length == 3 || afterCoords) Bukkit.getOnlinePlayers().forEach(p -> options.add(p.getName()));
         }
         String prefix = args[args.length - 1].toLowerCase();
         return options.stream().filter(o -> o.toLowerCase().startsWith(prefix)).toList();
@@ -143,7 +157,15 @@ final class ParticleCommand {
 
     private static boolean isNumber(String s) {
         try {
-            Double.parseDouble(s);
+            return Double.isFinite(Double.parseDouble(s)) && !s.contains("N") && !s.contains("I");
+        } catch (NumberFormatException e) {
+            return false;
+        }
+    }
+
+    private static boolean isInteger(String s) {
+        try {
+            Integer.parseInt(s);
             return true;
         } catch (NumberFormatException e) {
             return false;

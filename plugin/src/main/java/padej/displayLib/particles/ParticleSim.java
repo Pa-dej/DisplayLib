@@ -124,10 +124,15 @@ public final class ParticleSim {
     // Движение
     // -------------------------------------------------------------------------
 
+    /** Отступ от грани блока, к которой прижимается частица при ударе. */
+    static final double SKIN = 1e-3;
+
     /**
      * Один тик: гравитация, сопротивление, перемещение. С коллизиями движение идёт по осям
-     * (сначала Y, затем X и Z): ось, на которой частица вошла бы в блок, отражается с потерей
-     * ({@code bounce}), остальные гасятся трением; медленная после удара частица ложится.
+     * (сначала Y, затем X и Z): на оси, где частица вошла бы в блок, она прижимается к его грани,
+     * скорость по оси отражается с потерей ({@code bounce}), остальные гасятся трением ({@code friction}).
+     * На полу медленный удар (меньше двух шагов гравитации) не отскакивает: частица скользит
+     * и ложится, когда почти остановилась.
      *
      * @param solid {@code null} - без коллизий
      * @return true, если частица ударилась о блок на этом тике
@@ -143,20 +148,29 @@ public final class ParticleSim {
             return false;
         }
 
-        boolean hit = false;
+        boolean hit = false, floorContact = false;
         // Y
         double ny = b.y + b.vy;
-        if (solid.at(floor(b.x), floor(ny), floor(b.z))) {
+        if (b.vy != 0 && solid.at(floor(b.x), floor(ny), floor(b.z))) {
             hit = true;
-            b.vy = -b.vy * m.bounce();
+            boolean falling = b.vy < 0;
+            b.y = falling ? Math.floor(ny) + 1 + SKIN : Math.floor(ny) - SKIN;
+            double impact = Math.abs(b.vy);
+            if (falling && impact < 2 * Math.max(m.gravity(), 0) + REST_SPEED) {
+                b.vy = 0; // мягкое касание: не прыгать на месте
+            } else {
+                b.vy = -b.vy * m.bounce();
+            }
+            floorContact = falling;
             b.vx *= m.friction(); b.vz *= m.friction();
         } else {
             b.y = ny;
         }
         // X
         double nx = b.x + b.vx;
-        if (solid.at(floor(nx), floor(b.y), floor(b.z))) {
+        if (b.vx != 0 && solid.at(floor(nx), floor(b.y), floor(b.z))) {
             hit = true;
+            b.x = b.vx < 0 ? Math.floor(nx) + 1 + SKIN : Math.floor(nx) - SKIN;
             b.vx = -b.vx * m.bounce();
             b.vy *= m.friction(); b.vz *= m.friction();
         } else {
@@ -164,33 +178,20 @@ public final class ParticleSim {
         }
         // Z
         double nz = b.z + b.vz;
-        if (solid.at(floor(b.x), floor(b.y), floor(nz))) {
+        if (b.vz != 0 && solid.at(floor(b.x), floor(b.y), floor(nz))) {
             hit = true;
+            b.z = b.vz < 0 ? Math.floor(nz) + 1 + SKIN : Math.floor(nz) - SKIN;
             b.vz = -b.vz * m.bounce();
             b.vx *= m.friction(); b.vy *= m.friction();
         } else {
             b.z = nz;
         }
 
-        if (hit && b.speedSq() < REST_SPEED * REST_SPEED
-                && (m.gravity() <= 0 || solid.at(floor(b.x), floor(b.y - 0.05), floor(b.z)))) {
+        if (hit && b.speedSq() < REST_SPEED * REST_SPEED && (m.gravity() <= 0 || floorContact)) {
             b.vx = b.vy = b.vz = 0;
             b.resting = true;
         }
         return hit;
-    }
-
-    /**
-     * Продвинуть частицу до {@code maxSteps} тиков; останавливается сразу после удара, чтобы
-     * ключевой кадр пришёлся на точку удара.
-     *
-     * @return сколько тиков прошло (от 1 до maxSteps)
-     */
-    public static int advance(Body b, ParticleEffect.Motion m, Solid solid, int maxSteps) {
-        for (int i = 1; i <= maxSteps; i++) {
-            if (step(b, m, solid) && i < maxSteps) return i;
-        }
-        return maxSteps;
     }
 
     private static int floor(double v) {

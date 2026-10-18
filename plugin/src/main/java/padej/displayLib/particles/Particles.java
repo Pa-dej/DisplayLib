@@ -27,7 +27,7 @@ public final class Particles {
 
     /** Включение и выключение плагина. */
     public static void install(ParticleRegistry registry, ParticleManager manager) {
-        if (Particles.manager != null && Particles.manager != manager) Particles.manager.stopAll();
+        if (Particles.manager != null && Particles.manager != manager) Particles.manager.shutdown();
         Particles.registry = registry;
         Particles.manager = manager;
     }

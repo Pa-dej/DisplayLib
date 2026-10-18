@@ -132,7 +132,7 @@ public final class DisplayLib extends JavaPlugin {
         }
 
         if (particleManager != null) {
-            particleManager.stopAll();
+            particleManager.shutdown();
             Particles.install(null, null);
             particleManager = null;
         }
