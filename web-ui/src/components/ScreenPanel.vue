@@ -95,7 +95,7 @@ const idBad = computed(() => !/^[A-Za-z0-9_\-]+$/.test(s.value.id));
         <button class="btn sm" @click="showScript()">Открыть скрипт</button>
         <span class="hint" v-if="currentDoc">scripts/{{ scriptNameOf(currentDoc) }} · {{ { saved: 'Экспортирован', dirty: 'Есть правки', 'template-needed': 'Шаблон, уйдёт в экспорт', template: 'Шаблон, не нужен (нет вызовов функций)' }[scriptStatus(currentDoc)] }}</span>
       </div>
-      <div class="hint">У каждого экрана есть скрипт <code>scripts/&lt;id&gt;.jmp</code> - как и разметка. Пока его не правили, это живой шаблон по кнопкам экрана: хуки <code>onOpen()</code>/<code>onClose()</code> И обработчик <code>void &lt;имя&gt;(dyn widget, dyn player)</code> На каждый onClick. Код правится во вкладке скрипта под предпросмотром; скачивается вместе с экраном («Скачать» / Ctrl+S) или через «Экспорт», если на экране есть вызовы функций или текст правили.</div>
+      <div class="hint">У каждого экрана есть скрипт <code>scripts/&lt;id&gt;.jmp</code> - как и разметка. Пока его не правили, это живой шаблон по кнопкам экрана: хуки <code>onOpen()</code>/<code>onClose(reason)</code> И обработчик <code>void &lt;имя&gt;(dyn widget, dyn player)</code> На каждый onClick. Код правится во вкладке скрипта под предпросмотром; скачивается вместе с экраном («Скачать» / Ctrl+S) или через «Экспорт», если на экране есть вызовы функций или текст правили.</div>
     </div>
 
     <div class="section">

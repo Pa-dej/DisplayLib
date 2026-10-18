@@ -3,6 +3,8 @@ package padej.displayLib;
 import padej.displayLib.commands.DisplayLibCommand;
 import padej.displayLib.config.PluginConfig;
 import padej.displayLib.config.ScreenRegistry;
+import padej.displayLib.data.PublicScreenStore;
+import padej.displayLib.data.StorageStore;
 import padej.displayLib.render.shapes.Highlight;
 import padej.displayLib.script.JumperEngine;
 import padej.displayLib.ui.UIManager;
@@ -33,6 +35,9 @@ import java.util.logging.Level;
  * plugins/DisplayLib/
  * ├── config.jmc        # Настройки плагина (hotReload, scriptTimeoutMs)
  * ├── scripts.jma       # Политика доступа скриптов к Java
+ * ├── data/             # Пишет плагин: storage скриптов, расстановка публичных экранов
+ * │   ├── storage/players/&lt;uuid&gt;.jmc, storage/public/&lt;screen&gt;.jmc
+ * │   └── public_screens.jmc
  * ├── screens/          # Экраны
  * │   ├── main_menu.jmc
  * │   └── settings.jmc
@@ -64,6 +69,8 @@ public final class DisplayLib extends JavaPlugin {
     private PluginConfig config;
     private ScreenRegistry screenRegistry;
     private JumperEngine scriptEngine;
+    private StorageStore storage;
+    private org.bukkit.scheduler.BukkitTask autosaveTask;
 
     @Override
     public void onEnable() {
@@ -80,7 +87,20 @@ public final class DisplayLib extends JavaPlugin {
         screenRegistry = new ScreenRegistry(this, config.hotReload());
         screenRegistry.initialize();
 
-        UIManager.getInstance().initialize(screenRegistry, scriptEngine);
+        // storage скриптов: на диск (data/storage) или только в памяти (storage.persist = false)
+        Path dataDir = getDataFolder().toPath().resolve("data");
+        storage = new StorageStore(config.storage().persist() ? dataDir.resolve("storage") : null, getLogger());
+        StorageStore.install(storage);
+        int autosave = config.storage().autosaveSeconds();
+        if (storage.isPersistent() && autosave > 0) {
+            long period = autosave * 20L;
+            autosaveTask = getServer().getScheduler().runTaskTimer(this, storage::saveAll, period, period);
+        }
+
+        UIManager.getInstance().initialize(screenRegistry, scriptEngine,
+                new PublicScreenStore(dataDir.resolve("public_screens.jmc"), getLogger()));
+        // Сохранённые публичные экраны - на первом тике: миры загружены, другие плагины включены
+        getServer().getScheduler().runTask(this, () -> UIManager.getInstance().restorePublicScreens());
 
         DisplayLibCommand commandExecutor = new DisplayLibCommand(this);
         getCommand("displaylib").setExecutor(commandExecutor);
@@ -102,6 +122,17 @@ public final class DisplayLib extends JavaPlugin {
         if (manager.hasActiveScreens()) {
             getLogger().info("Cleaning up active UI screens...");
             manager.cleanup();
+        }
+
+        // После закрытия экранов: onClose("shutdown") ещё мог писать в storage
+        if (autosaveTask != null) {
+            autosaveTask.cancel();
+            autosaveTask = null;
+        }
+        if (storage != null) {
+            storage.shutdown();
+            StorageStore.install(new StorageStore(null, getLogger()));
+            storage = null;
         }
 
         if (scriptEngine != null) {

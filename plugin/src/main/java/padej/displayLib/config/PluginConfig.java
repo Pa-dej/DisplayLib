@@ -20,10 +20,30 @@ import java.util.logging.Level;
  *
  * @param hotReload       следить за папкой экранов
  * @param scriptTimeoutMs предел времени одного вызова скрипта в миллисекундах; {@code <= 0} - без предела
+ * @param storage         сохранение глобала storage на диск
  */
-public record PluginConfig(boolean hotReload, long scriptTimeoutMs, CloseOn closeOn) {
+public record PluginConfig(boolean hotReload, long scriptTimeoutMs, CloseOn closeOn, Storage storage) {
     public static final String FILE = "config.jmc";
-    public static final PluginConfig DEFAULTS = new PluginConfig(true, 1000, CloseOn.DEFAULTS);
+    public static final PluginConfig DEFAULTS = new PluginConfig(true, 1000, CloseOn.DEFAULTS, Storage.DEFAULTS);
+
+    /**
+     * Глобал {@code storage}: {@code dyn storage = { persist: true, autosaveSeconds: 300 };}
+     *
+     * @param persist         сохранять данные на диск ({@code data/storage/}); {@code false} - только в памяти,
+     *                        данные игрока забываются при выходе, публичных экранов - при перезапуске
+     * @param autosaveSeconds период автосохранения изменившихся данных; {@code <= 0} - только при выходе игрока и выключении
+     */
+    public record Storage(boolean persist, int autosaveSeconds) {
+        public static final Storage DEFAULTS = new Storage(true, 300);
+
+        static Storage parse(Object v) {
+            if (!(v instanceof JTable t)) return DEFAULTS;
+            Boolean persist = JmcValues.bool(t, "persist", "save");
+            Double autosave = JmcValues.number(t, "autosaveSeconds", "autosave_seconds", "autosave");
+            return new Storage(persist != null ? persist : DEFAULTS.persist(),
+                    autosave != null ? autosave.intValue() : DEFAULTS.autosaveSeconds());
+        }
+    }
 
     /**
      * Когда закрывать приватный экран автоматически (выход с сервера - всегда).
@@ -69,7 +89,8 @@ public record PluginConfig(boolean hotReload, long scriptTimeoutMs, CloseOn clos
             return new PluginConfig(
                     hotReload != null ? hotReload : DEFAULTS.hotReload(),
                     timeout != null ? timeout.longValue() : DEFAULTS.scriptTimeoutMs(),
-                    CloseOn.parse(JmcValues.get(table, "closeOn", "close_on")));
+                    CloseOn.parse(JmcValues.get(table, "closeOn", "close_on")),
+                    Storage.parse(JmcValues.get(table, "storage")));
         } catch (IOException | RuntimeException e) {
             plugin.getLogger().log(Level.WARNING, FILE + " could not be read, using defaults: " + e.getMessage());
             return DEFAULTS;

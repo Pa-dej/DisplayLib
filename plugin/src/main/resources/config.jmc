@@ -15,3 +15,9 @@ int scriptTimeoutMs = 1000;
 //   teleport    - телепорт дальше N блоков (0 - не закрывать)
 //   inventory   - открытие любого инвентаря (сундук, верстак, GUI другого плагина)
 dyn closeOn = { death: true, worldChange: true, teleport: 8, inventory: false };
+
+// Глобал storage скриптов:
+//   persist         - сохранять на диск (plugins/DisplayLib/data/storage/): данные игрока переживают
+//                     выход и перезапуск, данные публичного экрана - перезапуск. false - только в памяти.
+//   autosaveSeconds - как часто сохранять изменившиеся данные (0 - только при выходе игрока и выключении)
+dyn storage = { persist: true, autosaveSeconds: 300 };

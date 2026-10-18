@@ -4,7 +4,7 @@
 boolean locked = false;
 
 void onOpen() {
-    // storage переживает закрытие экрана - счётчик продолжается
+    // storage переживает закрытие экрана, выход и перезапуск сервера - счётчик продолжается
     int n = storage.get("demo_count", 0);
     screen.widget("counter").text("Счётчик: " + n);
     screen.widget("status").text([ { text: "onOpen: ", color: "gray" }, { text: player.name(), color: "white" }, { text: ", экран " + screen.id(), color: "gray" } ]);
@@ -12,8 +12,9 @@ void onOpen() {
     log.info("demo_script открыт для " + player.name());
 }
 
-void onClose() {
-    log.info("demo_script закрыт, кликов по счётчику за сеанс: " + screen.data("clicks"));
+// reason - почему закрыт: "close", "distance", "switch", "quit", "death", "world", "teleport", "inventory", "shutdown"
+void onClose(String reason) {
+    log.info("demo_script закрыт (" + reason + "), кликов по счётчику за сеанс: " + screen.data("clicks"));
 }
 
 void counter(dyn widget, dyn player) {

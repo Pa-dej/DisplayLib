@@ -6,6 +6,11 @@
 ## Unreleased
 
 ### Плагин
+- `onClose(reason)` вызывается при любом закрытии экрана - переключение, выход, смерть, смена мира, телепорт, инвентарь, дистанция, выключение сервера; причина приходит аргументом (`"close"`, `"switch"`, `"quit"`, ...), Java-енум `CloseReason`. Закрытие/переключение из `onClose` игнорируются.
+- `storage` сохраняется на диск (`data/storage/*.jmc`): данные игрока переживают выход и перезапуск, у публичного экрана - общее хранилище на экран; `dyn storage = { persist, autosaveSeconds }` в `config.jmc`.
+- Публичные экраны, поставленные `/displaylib openpublic`, переживают перезапуск: `data/public_screens.jmc`, восстановление при запуске и при (повторной) загрузке мира; из Java - `openPublicScreen(..., persistent = true)`. `listpublic` показывает и экраны, ждущие своего мира.
+- `DisplayClickEvent` и для публичных экранов, с `getScreenId()`, `getWidgetId()`, `isPublicScreen()`.
+- Зона наведения поворачивается вместе с виджетом (`rotation`).
 - `rotation` у виджета: поворот в плоскости экрана вокруг центра (градусы, `+` против часовой); hover-повороты складываются с ним.
 - Тинт спрайтов: `color` у спрайт-сегмента, `spriteColor`/`hoveredSpriteColor` у `SPRITE_BUTTON`.
 - Звуки: `clickSound` и `hoverSound` (ключ/константа/таблица `{ sound, volume, pitch }`/`false`).

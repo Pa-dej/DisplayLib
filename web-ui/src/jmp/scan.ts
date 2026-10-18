@@ -53,8 +53,9 @@ export function scaffoldScript(screenId: string, handlers: string[], isPublic: b
     L.push('}');
     L.push('');
   }
-  L.push('void onClose() {');
-  L.push(`    log.info("${screenId} закрыт");`);
+  L.push('// reason: "close", "distance", "switch", "quit", "death", "world", "teleport", "inventory", "replaced", "unload", "shutdown"');
+  L.push('void onClose(String reason) {');
+  L.push(`    log.info("${screenId} закрыт: " + reason);`);
   L.push('}');
   L.push('');
   return L.join('\n');

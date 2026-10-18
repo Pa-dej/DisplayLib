@@ -1,16 +1,19 @@
 package padej.displayLib.script.api;
 
+import padej.displayLib.data.StorageStore;
+
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * Хранилище «ключ - значение» на игрока: глобал {@code storage}.
+ * Хранилище «ключ - значение»: глобал {@code storage}.
  *
- * <p>Данные живут в памяти сервера, переживают повторное открытие экрана и
- * очищаются при выходе игрока и при перезапуске сервера. У публичного экрана
- * хранилище своё и пустое на каждый экземпляр экрана.</p>
+ * <p>У приватного экрана - данные игрока, у публичного - общие данные экрана (по его id).
+ * Данные сохраняются на диск ({@code plugins/DisplayLib/data/storage/}) и переживают выход
+ * игрока и перезапуск сервера (см. {@link StorageStore}; отключается {@code storage.persist} в config.jmc).
+ * Сохраняются числа, строки, {@code boolean}, {@code null}, массивы и таблицы; объекты
+ * (игрок, виджет, экземпляры классов скрипта) - нет.</p>
  *
  * <pre>
  * int visits = storage.get("visits", 0) + 1;
@@ -19,15 +22,29 @@ import java.util.concurrent.ConcurrentHashMap;
  * </pre>
  */
 public final class StorageAPI {
-    private static final Map<UUID, Map<String, Object>> PLAYER_STORAGE = new ConcurrentHashMap<>();
-
     private final Map<String, Object> storage;
 
-    /** @param playerId владелец; {@code null} - отдельное хранилище публичного экрана */
+    private StorageAPI(Map<String, Object> storage) {
+        this.storage = storage;
+    }
+
+    /** Хранилище игрока. */
+    public static StorageAPI forPlayer(UUID playerId) {
+        return new StorageAPI(StorageStore.get().player(playerId));
+    }
+
+    /** Общее хранилище публичного экрана. */
+    public static StorageAPI forPublicScreen(String screenId) {
+        return new StorageAPI(StorageStore.get().publicScreen(screenId));
+    }
+
+    /**
+     * @param playerId владелец; {@code null} - отдельное несохраняемое хранилище
+     * @deprecated {@link #forPlayer(UUID)} / {@link #forPublicScreen(String)}
+     */
+    @Deprecated
     public StorageAPI(UUID playerId) {
-        this.storage = playerId != null
-                ? PLAYER_STORAGE.computeIfAbsent(playerId, k -> new HashMap<>())
-                : new HashMap<>();
+        this(playerId != null ? StorageStore.get().player(playerId) : new HashMap<>());
     }
 
     public Object get(String key) {
@@ -65,9 +82,9 @@ public final class StorageAPI {
         return storage.size();
     }
 
-    /** Забыть данные игрока (выход с сервера). */
+    /** Игрок вышел: сохранить его данные на диск и выгрузить из памяти. */
     public static void clearPlayerData(UUID playerId) {
-        PLAYER_STORAGE.remove(playerId);
+        StorageStore.get().releasePlayer(playerId);
     }
 
     @Override

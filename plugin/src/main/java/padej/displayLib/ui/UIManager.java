@@ -4,11 +4,13 @@ import padej.displayLib.DisplayLib;
 import padej.displayLib.api.events.DisplayClickEvent;
 import padej.displayLib.config.ScreenDefinition;
 import padej.displayLib.config.ScreenRegistry;
+import padej.displayLib.data.PublicScreenStore;
 import padej.displayLib.script.JumperEngine;
 import padej.displayLib.script.api.StorageAPI;
 import padej.displayLib.ui.widgets.Widget;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
+import org.bukkit.World;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
@@ -19,13 +21,17 @@ import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.player.PlayerChangedWorldEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
+import org.bukkit.event.world.WorldLoadEvent;
+import org.bukkit.event.world.WorldUnloadEvent;
 import org.bukkit.scheduler.BukkitTask;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CopyOnWriteArrayList;
 
@@ -71,6 +77,19 @@ public class UIManager implements Listener {
     private ScreenRegistry screenRegistry;
     private JumperEngine scriptEngine;
 
+    /** Расстановка публичных экранов на диске (null, пока плагин не включён) */
+    private PublicScreenStore publicStore;
+    /** Сохранённые публичные экраны, чей мир ещё не загружен: ставятся по WorldLoadEvent */
+    private final List<PublicScreenStore.Placement> pendingPublic = new ArrayList<>();
+
+    // Защита от открытия экранов из onClose там, где экран тут же потерялся бы:
+    /** игроки, которые сейчас выходят с сервера (onClose("quit")) */
+    private final Set<UUID> quitting = new HashSet<>();
+    /** id публичных экранов, которые сейчас заменяются (onClose("replaced")) */
+    private final Set<String> replacingPublic = new HashSet<>();
+    /** плагин выключается (onClose("shutdown")) */
+    private boolean shuttingDown = false;
+
     private UIManager() {
         Bukkit.getPluginManager().registerEvents(this, DisplayLib.getInstance());
     }
@@ -84,8 +103,20 @@ public class UIManager implements Listener {
     }
 
     public void initialize(ScreenRegistry screenRegistry, JumperEngine scriptEngine) {
+        initialize(screenRegistry, scriptEngine, null);
+    }
+
+    /**
+     * @param publicStore файл расстановки публичных экранов; {@code null} - экраны не сохраняются
+     */
+    public void initialize(ScreenRegistry screenRegistry, JumperEngine scriptEngine, PublicScreenStore publicStore) {
         this.screenRegistry = screenRegistry;
         this.scriptEngine = scriptEngine;
+        this.publicStore = publicStore;
+        this.shuttingDown = false;
+        // Читаем сразу, при включении: если другой плагин поставит публичный экран раньше первого тика,
+        // запись в файл не затрёт остальные сохранённые экраны
+        if (publicStore != null) publicStore.load();
     }
 
     public ScreenInstance getActiveScreen(Player player) {
@@ -139,6 +170,13 @@ public class UIManager implements Listener {
             return false;
         }
 
+        if (shuttingDown || quitting.contains(player.getUniqueId()) || !player.isOnline()) {
+            // из onClose("quit"/"shutdown"): экран некому показывать, он остался бы висеть
+            DisplayLib.getInstance().getLogger().warning("Screen '" + screenId + "' is not opened for "
+                    + player.getName() + ": the player is leaving or the plugin is shutting down");
+            return false;
+        }
+
         ScreenDefinition definition = screenRegistry.getScreen(screenId);
         if (definition == null) {
             DisplayLib.getInstance().getLogger().warning("Screen not found: " + screenId);
@@ -152,6 +190,10 @@ public class UIManager implements Listener {
             return false;
         }
 
+        // onClose("switch") текущего экрана - до создания нового: его onOpen идёт после.
+        // Скрипт в onClose может сам закрыть экран, поэтому текущий берётся заново.
+        ScreenInstance previous = getActiveScreen(player);
+        if (previous != null) previous.fireClose(CloseReason.SWITCH);
         ScreenInstance current = getActiveScreen(player);
         ScreenInstance instance;
         if (current != null && definition.getMorph().isEnabled()
@@ -163,8 +205,8 @@ public class UIManager implements Listener {
             instance = new ScreenInstance(screenId, definition, player, location, yaw, pitch, scriptEngine, current);
             current.remove();
         } else {
-            // Закрываем старый экран БЕЗ потери позиции (она уже снята выше)
-            forceCloseScreen(player);
+            // Закрываем старый экран (позиция уже снята в switchScreen)
+            if (current != null) closeScreen(current, CloseReason.SWITCH);
             if (yaw != null && pitch != null) {
                 // Создаем с заданной ориентацией (для переключения экранов)
                 instance = new ScreenInstance(screenId, definition, player, location, yaw, pitch, scriptEngine);
@@ -182,29 +224,46 @@ public class UIManager implements Listener {
     }
 
     /**
-     * Закрыть экран игрока (вызывается из кнопки / скрипта).
+     * Закрыть экран игрока (кнопка, скрипт, команда, Java API); onClose получает {@code "close"}.
      */
     public void closeScreen(Player player) {
+        closeScreen(player, CloseReason.CLOSE);
+    }
+
+    /** Закрыть экран игрока с указанной причиной (её получает onClose). */
+    public void closeScreen(Player player, CloseReason reason) {
         ScreenInstance screen = getActiveScreen(player);
         if (screen != null) {
-            // Вызываем tryClose для правильного порядка cleanup
-            screen.tryClose();
+            closeScreen(screen, reason);
         }
     }
 
     /**
-     * Внутреннее закрытие — всегда удаляет entity.
-     * Используется только из tryClose() и для принудительного закрытия.
-     * Если у экрана включён morph, сущности исчезают с анимацией.
+     * Закрыть конкретный экран: {@code onClose(reason)} (ровно один раз), снять с регистрации,
+     * удалить сущности (с анимацией, если у экрана включён morph).
+     *
+     * <p>Работает с экземпляром, а не с «текущим экраном игрока»: если скрипт в onClose
+     * открыл игроку другой экран, тот не будет закрыт по ошибке.</p>
      */
-    public void forceCloseScreen(Player player) {
-        ScreenInstance screen = getActiveScreen(player);
-        if (screen != null) {
-            // Сначала снимаем регистрацию: если удаление сущностей бросит исключение,
-            // в реестре не останется "мёртвый" экран с работающей задачей обновления
-            unregisterScreen(player);
+    public void closeScreen(ScreenInstance screen, CloseReason reason) {
+        Player player = screen.getViewer();
+        try {
+            screen.fireClose(reason);
+        } finally {
+            // Регистрация снимается и при исключении: в реестре не остаётся "мёртвый" экран с задачей обновления
+            if (privateScreens.get(player.getUniqueId()) == screen) {
+                unregisterScreen(player);
+            }
             screen.removeAnimated();
         }
+    }
+
+    /**
+     * То же, что {@link #closeScreen(Player)}. Раньше закрывало без onClose; теперь onClose
+     * вызывается при любом закрытии.
+     */
+    public void forceCloseScreen(Player player) {
+        closeScreen(player, CloseReason.CLOSE);
     }
 
     // -------------------------------------------------------------------------
@@ -219,9 +278,28 @@ public class UIManager implements Listener {
     }
 
     /**
-     * Открыть глобальный экран в указанной позиции с заданной ориентацией
+     * Открыть глобальный экран в указанной позиции с заданной ориентацией - до выключения сервера,
+     * как и раньше. Чтобы экран вставал на место после перезапуска, -
+     * {@link #openPublicScreen(String, Location, float, float, boolean)} с {@code persistent = true}
+     * (так делает {@code /displaylib openpublic}).
      */
     public boolean openPublicScreen(String screenId, Location location, float yaw, float pitch) {
+        return openPublicScreen(screenId, location, yaw, pitch, false);
+    }
+
+    /**
+     * Открыть глобальный экран.
+     *
+     * @param persistent {@code true} - запомнить в {@code data/public_screens.jmc} и ставить заново
+     *                   при каждом запуске сервера, пока экран не закроют явно; {@code false} - только
+     *                   до выключения (для плагинов, которые сами расставляют свои экраны при включении)
+     */
+    public boolean openPublicScreen(String screenId, Location location, float yaw, float pitch, boolean persistent) {
+        if (shuttingDown || replacingPublic.contains(screenId) || location.getWorld() == null) {
+            DisplayLib.getInstance().getLogger().warning("Public screen '" + screenId + "' is not opened"
+                    + (location.getWorld() == null ? ": location has no world" : ": called from onClose of the same screen or during shutdown"));
+            return false;
+        }
         if (screenRegistry == null) {
             DisplayLib.getInstance().getLogger().warning("ScreenRegistry not initialized!");
             return false;
@@ -244,11 +322,26 @@ public class UIManager implements Listener {
         if (existingScreen != null) {
             DisplayLib.getInstance().getLogger().info(
                     "Closing existing public screen '" + screenId + "' to recreate it");
-            closeGlobalScreen(existingScreen);
+            unregisterPublicScreen(existingScreen);
+            replacingPublic.add(screenId);
+            try {
+                existingScreen.remove(CloseReason.REPLACED);
+            } finally {
+                replacingPublic.remove(screenId);
+            }
         }
 
-        GlobalScreenInstance instance = new GlobalScreenInstance(screenId, definition, location, yaw, pitch, scriptEngine);
+        GlobalScreenInstance instance = new GlobalScreenInstance(screenId, definition, location, yaw, pitch, scriptEngine, persistent);
         registerPublicScreen(instance);
+        pendingPublic.removeIf(p -> p.id().equals(screenId));
+        if (publicStore != null) {
+            if (persistent) {
+                publicStore.put(new PublicScreenStore.Placement(screenId, location.getWorld().getName(),
+                        location.getX(), location.getY(), location.getZ(), yaw, pitch));
+            } else {
+                publicStore.remove(screenId); // заменил сохранённый экран несохраняемым
+            }
+        }
 
         DisplayLib.getInstance().getLogger().info(
                 "Opened public screen '" + screenId + "' at " + location);
@@ -256,12 +349,80 @@ public class UIManager implements Listener {
     }
 
     /**
-     * Закрыть публичный экран
+     * Закрыть публичный экран (onClose получает {@code "close"}). Сохранённый экран
+     * забывается: после перезапуска он не появится.
      */
     public void closeGlobalScreen(GlobalScreenInstance screen) {
         if (screen != null) {
             unregisterPublicScreen(screen);
-            screen.remove();
+            if (publicStore != null) publicStore.remove(screen.getScreenId());
+            screen.remove(CloseReason.CLOSE);
+        }
+    }
+
+    /**
+     * Поставить сохранённые публичные экраны (включение плагина). Экраны из ещё не загруженных
+     * миров ставятся, когда мир загрузится; экраны, файла которых нет, пропускаются, но
+     * из сохранения не удаляются - на случай, если файл временно убран или не разобрался.
+     */
+    public void restorePublicScreens() {
+        if (publicStore == null) return;
+        pendingPublic.clear();
+        int restored = 0;
+        for (PublicScreenStore.Placement p : publicStore.all()) {
+            if (findPublicScreenById(p.id()) != null) continue; // уже поставлен (другим плагином при включении)
+            World world = Bukkit.getWorld(p.world());
+            if (world == null) {
+                pendingPublic.add(p);
+                continue;
+            }
+            if (restore(p, world)) restored++;
+        }
+        if (restored > 0 || !pendingPublic.isEmpty()) {
+            DisplayLib.getInstance().getLogger().info("Restored " + restored + " public screen(s)"
+                    + (pendingPublic.isEmpty() ? "" : ", " + pendingPublic.size() + " waiting for their world to load"));
+        }
+    }
+
+    private boolean restore(PublicScreenStore.Placement p, World world) {
+        if (screenRegistry == null || screenRegistry.getScreen(p.id()) == null) {
+            DisplayLib.getInstance().getLogger().warning("Saved public screen '" + p.id()
+                    + "' is not restored: no such screen (kept in data/public_screens.jmc)");
+            return false;
+        }
+        Location location = new Location(world, p.x(), p.y(), p.z());
+        // При запуске чанк экрана обычно не загружен: загружаем, чтобы сущности встали.
+        // Потом при выгрузке чанка они исчезают и возвращаются, когда рядом появятся игроки (ensureSpawned).
+        world.getChunkAt(location);
+        return openPublicScreen(p.id(), location, p.yaw(), p.pitch(), true);
+    }
+
+    /**
+     * Мир выгружается (Multiverse и т.п.): его публичные экраны снимаются (onClose("unload")),
+     * сохранённые ждут, пока мир загрузится снова.
+     */
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onWorldUnload(WorldUnloadEvent event) {
+        World world = event.getWorld();
+        for (GlobalScreenInstance screen : publicScreens) {
+            Location loc = screen.getLocation();
+            if (loc.getWorld() != world) continue;
+            unregisterPublicScreen(screen);
+            screen.remove(CloseReason.WORLD_UNLOAD);
+            PublicScreenStore.Placement saved = publicStore != null ? publicStore.get(screen.getScreenId()) : null;
+            if (screen.isPersistent() && saved != null) pendingPublic.add(saved);
+        }
+    }
+
+    /** Мир загрузился позже плагина (Multiverse и т.п.) или снова: поставить ждущие его экраны. */
+    @EventHandler(priority = EventPriority.MONITOR)
+    public void onWorldLoad(WorldLoadEvent event) {
+        if (pendingPublic.isEmpty()) return;
+        World world = event.getWorld();
+        List<PublicScreenStore.Placement> ready = new ArrayList<>();
+        pendingPublic.removeIf(p -> p.world().equals(world.getName()) && ready.add(p));
+        for (PublicScreenStore.Placement p : ready) {
+            if (findPublicScreenById(p.id()) == null) restore(p, world);
         }
     }
 
@@ -300,7 +461,18 @@ public class UIManager implements Listener {
             closeGlobalScreen(screen);
             return true;
         }
-        return false;
+        // сохранённый экран, чей мир ещё не загружен: убрать из ожидающих и из сохранённых
+        boolean pending = pendingPublic.removeIf(p -> p.id().equals(screenId));
+        if (publicStore != null && publicStore.get(screenId) != null) {
+            publicStore.remove(screenId);
+            return true;
+        }
+        return pending;
+    }
+
+    /** Сохранённые публичные экраны, которые ждут загрузки своего мира. */
+    public List<PublicScreenStore.Placement> getPendingPublicScreens() {
+        return new ArrayList<>(pendingPublic);
     }
 
     // -------------------------------------------------------------------------
@@ -367,7 +539,7 @@ public class UIManager implements Listener {
         if (personal != null && personal.checkPlayerInInteractionRange()) {
             Widget nearest = personal.getNearestHoveredWidget();
             if (nearest != null) {
-                fireClickEvent(player, nearest);
+                fireClickEvent(personal, player, nearest);
                 return true;
             }
         }
@@ -377,15 +549,23 @@ public class UIManager implements Listener {
             if (!global.isNearby(player)) continue;
             
             if (global.getHoveredWidgetFor(player) != null) {
-                global.handleClickBy(player);
+                Widget widget = global.widgetUnder(player);
+                if (widget != null) {
+                    DisplayClickEvent clickEvent = new DisplayClickEvent(player, widget,
+                            global.getScreenId(), global.idOf(widget), true);
+                    Bukkit.getPluginManager().callEvent(clickEvent);
+                    if (!clickEvent.isCancelled()) {
+                        global.handleClickOn(player, widget);
+                    }
+                }
                 return true;
             }
         }
         return false;
     }
 
-    private void fireClickEvent(Player player, Widget widget) {
-        DisplayClickEvent clickEvent = new DisplayClickEvent(player, widget);
+    private void fireClickEvent(ScreenInstance screen, Player player, Widget widget) {
+        DisplayClickEvent clickEvent = new DisplayClickEvent(player, widget, screen.getScreenId(), screen.idOf(widget), false);
         Bukkit.getPluginManager().callEvent(clickEvent);
         if (!clickEvent.isCancelled()) {
             widget.handleClick();
@@ -485,11 +665,16 @@ public class UIManager implements Listener {
     @EventHandler(priority = EventPriority.HIGHEST)
     public void onPlayerQuit(PlayerQuitEvent event) {
         Player player = event.getPlayer();
-        
-        // Очищаем storage данные игрока
+
+        // Сначала onClose("quit") - он ещё может писать в storage, - потом сохранение и выгрузка данных.
+        // Пока идёт onClose, новые экраны этому игроку не открываются (они остались бы висеть).
+        quitting.add(player.getUniqueId());
+        try {
+            releasePlayer(player, CloseReason.QUIT);
+        } finally {
+            quitting.remove(player.getUniqueId());
+        }
         StorageAPI.clearPlayerData(player.getUniqueId());
-        
-        releasePlayer(player);
     }
 
     private padej.displayLib.config.PluginConfig.CloseOn closeOn() {
@@ -499,14 +684,14 @@ public class UIManager implements Listener {
 
     @EventHandler(priority = EventPriority.HIGHEST)
     public void onPlayerDeath(PlayerDeathEvent event) {
-        if (closeOn().death()) releasePlayer(event.getEntity());
+        if (closeOn().death()) releasePlayer(event.getEntity(), CloseReason.DEATH);
     }
 
     @EventHandler(priority = EventPriority.MONITOR)
     public void onPlayerChangedWorld(PlayerChangedWorldEvent event) {
         // Экран остался в прежнем мире - игроку он больше недоступен
-        if (closeOn().worldChange()) releasePlayer(event.getPlayer());
-        else { ScreenInstance s = privateScreens.get(event.getPlayer().getUniqueId()); if (s != null) forceCloseScreen(event.getPlayer()); }
+        if (closeOn().worldChange()) releasePlayer(event.getPlayer(), CloseReason.WORLD_CHANGE);
+        else closeScreen(event.getPlayer(), CloseReason.WORLD_CHANGE);
     }
 
     /** Телепорт дальше closeOn.teleport блоков: экран остался на старом месте, закрываем. */
@@ -517,7 +702,7 @@ public class UIManager implements Listener {
         org.bukkit.Location to = event.getTo();
         if (to == null) return;
         if (!to.getWorld().equals(event.getFrom().getWorld()) || to.distanceSquared(event.getFrom()) > limit * limit) {
-            forceCloseScreen(event.getPlayer());
+            closeScreen(event.getPlayer(), CloseReason.TELEPORT);
         }
     }
 
@@ -525,14 +710,14 @@ public class UIManager implements Listener {
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onInventoryOpen(org.bukkit.event.inventory.InventoryOpenEvent event) {
         if (!closeOn().inventory() || !(event.getPlayer() instanceof Player p)) return;
-        if (privateScreens.containsKey(p.getUniqueId())) forceCloseScreen(p);
+        if (privateScreens.containsKey(p.getUniqueId())) closeScreen(p, CloseReason.INVENTORY);
     }
 
     /**
      * Закрыть личный экран игрока и убрать игрока из состояния публичных экранов.
      */
-    private void releasePlayer(Player player) {
-        forceCloseScreen(player);
+    private void releasePlayer(Player player, CloseReason reason) {
+        closeScreen(player, reason);
         
         for (GlobalScreenInstance global : publicScreens) {
             global.removePlayer(player);
@@ -540,8 +725,14 @@ public class UIManager implements Listener {
     }
 
     public void cleanup() {
-        // Cleanup private screens
+        shuttingDown = true; // onClose("shutdown") не может открыть новые экраны
+        // Cleanup private screens: onClose("shutdown"), затем удаление
         for (ScreenInstance screen : new ArrayList<>(privateScreens.values())) {
+            try {
+                screen.fireClose(CloseReason.SHUTDOWN);
+            } catch (Exception e) {
+                DisplayLib.getInstance().getLogger().warning("onClose of screen '" + screen.getScreenId() + "' failed: " + e.getMessage());
+            }
             try {
                 screen.remove();
             } catch (Exception e) {
@@ -551,14 +742,16 @@ public class UIManager implements Listener {
         privateScreens.clear();
         
         // Cleanup public screens
+        // Публичные экраны остаются в data/public_screens.jmc и встанут обратно при запуске
         for (GlobalScreenInstance screen : publicScreens) {
             try {
-                screen.remove();
+                screen.remove(CloseReason.SHUTDOWN);
             } catch (Exception e) {
                 DisplayLib.getInstance().getLogger().warning("Failed to remove public screen '" + screen.getScreenId() + "': " + e.getMessage());
             }
         }
         publicScreens.clear();
+        pendingPublic.clear();
         MorphTransition.cancelAll();
         
         // Останавливаем обновление экранов

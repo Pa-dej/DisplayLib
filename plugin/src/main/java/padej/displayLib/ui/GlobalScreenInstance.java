@@ -77,8 +77,17 @@ public class GlobalScreenInstance implements ScreenAPI.Host {
     
     private boolean removed = false;
 
+    /** Сохраняется ли экран в data/public_screens.jmc и восстанавливается ли после перезапуска */
+    private final boolean persistent;
+
     public GlobalScreenInstance(String screenId, ScreenDefinition definition,
                                Location location, float yaw, float pitch, JumperEngine engine) {
+        this(screenId, definition, location, yaw, pitch, engine, false);
+    }
+
+    public GlobalScreenInstance(String screenId, ScreenDefinition definition,
+                               Location location, float yaw, float pitch, JumperEngine engine, boolean persistent) {
+        this.persistent = persistent;
         this.screenId = screenId;
         this.definition = definition;
         this.location = location.clone();
@@ -139,9 +148,23 @@ public class GlobalScreenInstance implements ScreenAPI.Host {
         for (Widget w : children) if (w instanceof TextDisplayButtonWidget t && t.hasFrames()) animated.add(t);
     }
 
+    /** Удалить экран; onClose получает {@code "close"}. */
     public void remove() {
+        remove(CloseReason.CLOSE);
+    }
+
+    /**
+     * Удалить экран: сначала {@code onClose(reason)} (без игрока; виджеты ещё на месте,
+     * скрипт может их читать и писать в storage), затем сущности и скриптовый контекст.
+     */
+    public void remove(CloseReason reason) {
         if (removed) return;
         removed = true;
+
+        ScriptContext context = scriptContext;
+        if (context != null) {
+            context.callClose(reason.id());
+        }
         
         // Очищаем все tooltips
         for (Player player : nearbyPlayers) {
@@ -161,30 +184,61 @@ public class GlobalScreenInstance implements ScreenAPI.Host {
         widgetById.clear();
         definitionByWidget.clear();
         
-        // onClose без игрока, затем очистка контекста (таймеры, обёртки)
-        ScriptContext context = scriptContext;
+        // очистка контекста (таймеры, обёртки)
         if (context != null) {
-            context.callHook(ScriptContext.HOOK_CLOSE);
             context.cleanup();
             scriptContext = null;
         }
     }
 
     public void handleClickBy(Player player) {
-        // Сначала проверяем hover (для совместимости и точности)
-        Widget clickedWidget = getHoveredWidgetFor(player);
-        
-        if (clickedWidget == null) {
-            // Если наведение ещё не обновилось, проверяем взгляд игрока прямо сейчас
-            clickedWidget = findWidgetUnder(viewRay.set(player));
-        }
-        
+        Widget clickedWidget = widgetUnder(player);
         if (clickedWidget != null) {
-            WidgetDefinition widgetDef = definitionByWidget.get(clickedWidget);
-            if (widgetDef != null && widgetDef.getOnClick() != null) {
-                handleClick(widgetDef, clickedWidget, player);
-            }
+            handleClickOn(player, clickedWidget);
         }
+    }
+
+    /**
+     * Виджет, по которому сейчас кликнет игрок: тот, на который он наведён, а если наведение
+     * ещё не обновилось - тот, на который он смотрит прямо сейчас. {@code null} - мимо.
+     */
+    public Widget widgetUnder(Player player) {
+        if (removed) return null;
+        Widget widget = getHoveredWidgetFor(player);
+        return widget != null ? widget : findWidgetUnder(viewRay.set(player));
+    }
+
+    /** Выполнить действие клика игрока по виджету этого экрана (если у виджета есть onClick). */
+    public void handleClickOn(Player player, Widget widget) {
+        if (removed || widget == null) return;
+        WidgetDefinition widgetDef = definitionByWidget.get(widget);
+        if (widgetDef != null && widgetDef.getOnClick() != null) {
+            handleClick(widgetDef, widget, player);
+        }
+    }
+
+    /** id виджета из файла экрана или {@code null} (фон, виджет без id). */
+    public String idOf(Widget widget) {
+        WidgetDefinition def = definitionByWidget.get(widget);
+        return def != null ? def.getId() : null;
+    }
+
+    /** Сохраняется ли экран между перезапусками сервера. */
+    public boolean isPersistent() {
+        return persistent;
+    }
+
+    /** Удалён ли экран. */
+    public boolean isRemoved() {
+        return removed;
+    }
+
+    public float getYaw() {
+        return screenYaw;
+    }
+
+    public float getPitch() {
+        return screenPitch;
     }
 
     private void handleClick(WidgetDefinition def, Widget widget, Player player) {

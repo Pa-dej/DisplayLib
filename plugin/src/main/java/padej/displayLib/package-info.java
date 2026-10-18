@@ -66,7 +66,7 @@
  *     widget.text("Нажато!");
  * }
  * 
- * void onClose() { log.info("Экран закрыт"); }
+ * void onClose(String reason) { log.info("Экран закрыт: " + reason); } // close, switch, quit, distance, ...
  * }</pre>
  * 
  * <h3>3. Открытие экрана:</h3>

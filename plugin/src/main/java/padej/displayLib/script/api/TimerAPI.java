@@ -45,7 +45,7 @@ public final class TimerAPI {
 
     /** Один раз через {@code ticks} тиков. */
     public int after(double ticks, Runnable fn) {
-        if (closed || fn == null) return -1;
+        if (closed || fn == null || !plugin.isEnabled()) return -1; // в onClose("shutdown") планировщик уже недоступен
         long delay = Math.max(0L, Math.round(ticks));
         int[] id = new int[1];
         BukkitTask task = Bukkit.getScheduler().runTaskLater(plugin, () -> {
@@ -59,7 +59,7 @@ public final class TimerAPI {
 
     /** Повторять каждые {@code ticks} тиков; первый вызов - на следующем тике. */
     public int every(double ticks, Runnable fn) {
-        if (closed || fn == null) return -1;
+        if (closed || fn == null || !plugin.isEnabled()) return -1;
         long period = Math.max(1L, Math.round(ticks));
         BukkitTask task = Bukkit.getScheduler().runTaskTimer(plugin, () -> guard.accept(fn), 0L, period);
         activeTasks.put(task.getTaskId(), task);
@@ -68,7 +68,7 @@ public final class TimerAPI {
 
     /** Вызвать {@code fn(i)} {@code count} раз с периодом {@code period}; {@code i} от 1. */
     public int times(double period, double count, IntConsumer fn) {
-        if (closed || fn == null) return -1;
+        if (closed || fn == null || !plugin.isEnabled()) return -1;
         long periodTicks = Math.max(1L, Math.round(period));
         int maxCount = (int) Math.round(count);
         int[] counter = {0};

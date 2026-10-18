@@ -5,8 +5,8 @@
 | `/displaylib open <screen_id> [player] [x y z] [yaw pitch]` | Открыть приватный экран | - |
 | `/displaylib close` | Закрыть свой экран | - |
 | `/displaylib list` | Список загруженных экранов | - |
-| `/displaylib openpublic <screen_id> <x> <y> <z> [yaw] [pitch]` | Поставить публичный экран в мире | `displaylib.admin` |
-| `/displaylib closepublic <screen_id>` | Убрать публичный экран | `displaylib.admin` |
+| `/displaylib openpublic <screen_id> <x> <y> <z> [yaw] [pitch]` | Поставить публичный экран в мире; сохраняется и встаёт на место после перезапуска | `displaylib.admin` |
+| `/displaylib closepublic <screen_id>` | Убрать публичный экран (и из сохранённых) | `displaylib.admin` |
 | `/displaylib listpublic` | Список публичных экранов | `displaylib.admin` |
 | `/displaylib reload` | Перечитать экраны, политику и сбросить кэш скриптов | `displaylib.admin` |
 | `/displaylib validate` | Перечитать и показать проблемы экранов: дубли id, клики в никуда, нет скрипта/функции, число статичных виджетов | `displaylib.admin` |
@@ -18,7 +18,14 @@
 
 - `UIManager.getInstance()` - `openScreen`, `switchScreen`, `closeScreen`, `openPublicScreen`,
   `closePublicScreenById`, `getActiveScreen`, `getPublicScreens`.
-- `DisplayClickEvent` - отменяемое событие клика по виджету приватного экрана.
+- `DisplayClickEvent` - отменяемое событие клика по виджету приватного или публичного экрана:
+  `getPlayer()`, `getScreenId()`, `getWidgetId()`, `isPublicScreen()`; отмена отменяет действие клика.
+- `CloseReason` - причина закрытия: `closeScreen(player, reason)`, её получает `onClose` скрипта.
+- `openPublicScreen(id, location, yaw, pitch, persistent)` - `persistent = true` (так делает
+  `/displaylib openpublic`) запоминает экран в `data/public_screens.jmc`: после перезапуска он встаёт
+  на то же место (экраны из миров, загруженных позже, - когда мир загрузится). `closePublicScreenById`
+  убирает его и из сохранённых. Без флага (`openPublicScreen(id, location, yaw, pitch)`) экран, как и раньше,
+  живёт до выключения - для плагинов, которые сами расставляют экраны при включении.
 - `ScreenInstance#getScriptContext()` / `GlobalScreenInstance#getScriptContext()` -
   `call("functionName", args...)` вызывает функцию скрипта экрана.
 

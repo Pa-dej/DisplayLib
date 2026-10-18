@@ -259,10 +259,11 @@ public class DisplayLibCommand implements CommandExecutor, TabCompleter {
                     }
                 }
                 
-                boolean success = UIManager.getInstance().openPublicScreen(screenId, location, yaw, pitch);
+                boolean success = UIManager.getInstance().openPublicScreen(screenId, location, yaw, pitch, true);
                 if (success) {
                     sender.sendMessage("§aПубличный экран '" + screenId + "' открыт в позиции " + 
-                                     String.format("%.1f %.1f %.1f", location.getX(), location.getY(), location.getZ()));
+                                     String.format("%.1f %.1f %.1f", location.getX(), location.getY(), location.getZ()) +
+                                     " §7(сохранён: встанет на место после перезапуска, пока не closepublic)");
                 } else {
                     sender.sendMessage("§cНе удалось открыть публичный экран '" + screenId + "'");
                 }
@@ -283,7 +284,7 @@ public class DisplayLibCommand implements CommandExecutor, TabCompleter {
                 boolean success = UIManager.getInstance().closePublicScreenById(screenId);
                 
                 if (success) {
-                    sender.sendMessage("§aПубличный экран '" + screenId + "' закрыт");
+                    sender.sendMessage("§aПубличный экран '" + screenId + "' закрыт и убран из сохранённых");
                 } else {
                     sender.sendMessage("§cПубличный экран '" + screenId + "' не найден");
                 }
@@ -305,8 +306,12 @@ public class DisplayLibCommand implements CommandExecutor, TabCompleter {
                         int nearbyCount = screen.getNearbyPlayers().size();
                         sender.sendMessage("§7- " + screen.getScreenId() + " в " + 
                                          String.format("%.1f %.1f %.1f", loc.getX(), loc.getY(), loc.getZ()) +
-                                         " (игроков поблизости: " + nearbyCount + ")");
+                                         " (игроков поблизости: " + nearbyCount + ")" +
+                                         (screen.isPersistent() ? " §a[сохранён]" : " §8[до перезапуска]"));
                     }
+                }
+                for (var p : UIManager.getInstance().getPendingPublicScreens()) {
+                    sender.sendMessage("§7- " + p.id() + " §8[ждёт загрузки мира " + p.world() + "]");
                 }
             }
             
@@ -382,9 +387,9 @@ public class DisplayLibCommand implements CommandExecutor, TabCompleter {
             player.sendMessage("§c=== Admin Commands ===");
             player.sendMessage("§e/displaylib reload §7- Перезагрузить экраны и скрипты");
             player.sendMessage("§e/displaylib examples §7- Создать примеры экранов");
-            player.sendMessage("§e/displaylib openpublic <id> <x> <y> <z> [yaw] [pitch] §7- Открыть публичный экран");
+            player.sendMessage("§e/displaylib openpublic <id> <x> <y> <z> [yaw] [pitch] §7- Поставить публичный экран (сохраняется между перезапусками)");
             player.sendMessage("§7  (если экран с таким ID уже существует, он будет пересоздан)");
-            player.sendMessage("§e/displaylib closepublic <id> §7- Закрыть публичные экраны");
+            player.sendMessage("§e/displaylib closepublic <id> §7- Убрать публичный экран (и из сохранённых)");
             player.sendMessage("§e/displaylib listpublic §7- Список активных публичных экранов");
         }
     }

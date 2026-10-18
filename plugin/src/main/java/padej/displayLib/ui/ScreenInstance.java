@@ -40,8 +40,11 @@ public class ScreenInstance extends WidgetManager implements ScreenAPI.Host {
     /** Переиспользуемый объект для проверки расстояния до зрителя */
     private final Location viewerScratch = new Location(null, 0, 0, 0);
     
-    /** Флаг предотвращения рекурсии при закрытии */
-    private boolean isClosing = false;
+    /** onClose уже вызван: экран закрывается, повторные закрытия и переключения из скрипта игнорируются */
+    private boolean closeFired = false;
+
+    /** Сущности удалены, контекст очищен */
+    private boolean removed = false;
 
     /** Фон экрана (участвует в morph как отдельная сущность) */
     private TextDisplayButtonWidget backgroundWidget;
@@ -130,6 +133,7 @@ public class ScreenInstance extends WidgetManager implements ScreenAPI.Host {
      * когда он закончится; сам экран (скрипт, реестр) освобождается сразу.
      */
     public void removeAnimated() {
+        if (removed) return;
         ScreenDefinition.Morph settings = definition.getMorph();
         if (settings.isEnabled()) {
             if (morph != null) morph.cancel();
@@ -291,7 +295,7 @@ public class ScreenInstance extends WidgetManager implements ScreenAPI.Host {
                 }
             }
 
-            case CLOSE_SCREEN -> UIManager.getInstance().closeScreen(viewer);
+            case CLOSE_SCREEN -> UIManager.getInstance().closeScreen(this, CloseReason.CLOSE);
 
             // Функция скрипта: name(widget, player)
             case RUN_SCRIPT -> {
@@ -348,16 +352,26 @@ public class ScreenInstance extends WidgetManager implements ScreenAPI.Host {
         return closeDistanceSq <= 0 || distanceSq <= closeDistanceSq;
     }
 
+    /** Игрок отошёл дальше closeDistance (вызывается из цикла обновления). */
     @Override
     protected void tryClose() {
-        if (isClosing) return;
-        isClosing = true;
-        
-        // onClose перед закрытием
-        scriptContext.callHook(ScriptContext.HOOK_CLOSE);
-        
-        // Скриптовый контекст очищается в remove()
-        UIManager.getInstance().forceCloseScreen(viewer);
+        UIManager.getInstance().closeScreen(this, CloseReason.DISTANCE);
+    }
+
+    /**
+     * Вызвать {@code onClose(reason)} - ровно один раз за жизнь экрана, при любом способе закрытия.
+     * Экран в этот момент ещё целиком на месте: скрипт может читать виджеты, писать в storage,
+     * отправлять игроку сообщения. Закрыть или переключить экран из onClose нельзя - он уже закрывается.
+     */
+    public void fireClose(CloseReason reason) {
+        if (closeFired || removed) return;
+        closeFired = true;
+        scriptContext.callClose(reason.id());
+    }
+
+    /** Закрывается ли экран (onClose уже вызван). */
+    public boolean isClosing() {
+        return closeFired;
     }
 
     /**
@@ -370,6 +384,8 @@ public class ScreenInstance extends WidgetManager implements ScreenAPI.Host {
      */
     @Override
     public void remove() {
+        if (removed) return;
+        removed = true;
         scriptContext.cleanup();
         if (morph != null) { morph.cancel(); morph = null; }
         super.remove();
@@ -401,7 +417,8 @@ public class ScreenInstance extends WidgetManager implements ScreenAPI.Host {
 
     @Override
     public void closeFromScript() {
-        UIManager.getInstance().closeScreen(viewer);
+        if (closeFired) return; // вызвано из onClose - экран и так закрывается
+        UIManager.getInstance().closeScreen(this, CloseReason.CLOSE);
     }
 
     @Override
@@ -411,7 +428,25 @@ public class ScreenInstance extends WidgetManager implements ScreenAPI.Host {
 
     @Override
     public void switchFromScript(String targetId) {
+        if (closeFired) {
+            DisplayLib.getInstance().getLogger().warning("Screen '" + screenId + "': screen.switchTo(\"" + targetId
+                    + "\") from onClose is ignored - the screen is already closing");
+            return;
+        }
         UIManager.getInstance().switchScreen(viewer, targetId);
+    }
+
+    /** id виджета из файла экрана или {@code null} (фон, виджет без id). */
+    public String idOf(Widget widget) {
+        for (Map.Entry<String, Widget> e : widgetById.entrySet()) {
+            if (e.getValue() == widget) return e.getKey();
+        }
+        return null;
+    }
+
+    /** Игрок, для которого открыт экран. */
+    public Player getViewer() {
+        return viewer;
     }
 
     public ScreenDefinition getDefinition() {

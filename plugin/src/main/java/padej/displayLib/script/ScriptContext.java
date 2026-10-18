@@ -25,7 +25,8 @@ import java.util.UUID;
  *
  * <p>Контекст создаётся вместе с экраном и очищается в {@code remove()} экрана при любом
  * способе его удаления: закрытие, переключение, выход, смерть или смена мира игрока,
- * выключение плагина. После очистки таймеры отменены и новые не создаются.</p>
+ * выключение плагина. Перед этим вызывается {@code onClose(reason)} (см. {@link padej.displayLib.ui.CloseReason}).
+ * После очистки таймеры отменены и новые не создаются.</p>
  */
 public final class ScriptContext {
     public static final String HOOK_OPEN = "onOpen";
@@ -54,7 +55,8 @@ public final class ScriptContext {
         if (ownerApi != null) playerApis.put(owner.getUniqueId(), ownerApi);
 
         this.screenApi = new ScreenAPI(host);
-        this.storageApi = new StorageAPI(owner != null ? owner.getUniqueId() : null);
+        // приватный экран - хранилище владельца; публичный - общее хранилище этого экрана (по id)
+        this.storageApi = owner != null ? StorageAPI.forPlayer(owner.getUniqueId()) : StorageAPI.forPublicScreen(host.getScreenId());
         this.timerApi = new TimerAPI(plugin, this::guarded);
         this.logApi = new LogAPI(plugin.getLogger(), scriptFile != null ? scriptFile : host.getScreenId());
 
@@ -112,6 +114,15 @@ public final class ScriptContext {
     public void callHook(String name) {
         if (script == null || closed) return;
         script.invoke(name, false);
+    }
+
+    /**
+     * Вызвать необязательный {@code onClose(reason)}. Лишние аргументы Jumper отбрасывает,
+     * так что {@code void onClose()} без параметра тоже вызывается.
+     */
+    public void callClose(String reason) {
+        if (script == null || closed) return;
+        script.invoke(HOOK_CLOSE, false, reason);
     }
 
     /**
