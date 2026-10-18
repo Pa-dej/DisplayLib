@@ -287,6 +287,7 @@ public final class ParticleManager implements Listener {
         int color0 = ParticleSim.colorAt(anim, startColor, 0, life);
         Component baseText = null;
         int frameStart = 0;
+        ParticleEffect.TextVariant textVariant = null;
         boolean textRecolor = false;
         Consumer<Display> common = d -> {
             d.setPersistent(false);
@@ -300,11 +301,12 @@ public final class ParticleManager implements Listener {
         Display entity;
         switch (render.type()) {
             case TEXT -> {
-                if (render.animated()) {
-                    frameStart = render.frameRandomStart() ? r.nextInt(render.frames().size()) : 0;
-                    baseText = render.frames().get(ParticleSim.frameAt(frameStart, render.frames().size(), render.frameInterval(), render.framesOverLife(), 0, life));
+                textVariant = pick(render.texts(), r);
+                if (textVariant.animated()) {
+                    frameStart = textVariant.randomStart() ? r.nextInt(textVariant.frames().size()) : 0;
+                    baseText = textVariant.frames().get(ParticleSim.frameAt(frameStart, textVariant.frames().size(), textVariant.frameInterval(), textVariant.overLife(), 0, life));
                 } else {
-                    baseText = pick(render.texts(), r);
+                    baseText = textVariant.first();
                 }
                 Component text = baseText;
                 // цвет: случайный из render.colors или кривая animation.color; без них - как в самом тексте
@@ -368,7 +370,7 @@ public final class ParticleManager implements Listener {
         if (owner != null) owner.showEntity(plugin, entity);
         LiveParticle particle = new LiveParticle(e, entity, world, body, life, scale, rotation, spin, center, now,
                 render.type() == ParticleEffect.RenderType.PIXEL, baseText, startColor,
-                render.type() == ParticleEffect.RenderType.TEXT && render.animated() ? render.frames() : null, frameStart, textRecolor);
+                textVariant != null && textVariant.animated() ? textVariant : null, frameStart, textRecolor);
         particle.planned = first;
         return particle;
     }

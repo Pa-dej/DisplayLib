@@ -545,3 +545,9 @@ html.theme-anim, html.theme-anim *, html.theme-anim *::before, html.theme-anim *
 .fs-add { background: var(--vp-c-bg-elv); color: var(--vp-c-text-2); border-style: dashed; }
 .fs-actions { display: flex; align-items: center; gap: 4px; }
 .fs-editor { padding: 6px; border-radius: 8px; border: 1px solid var(--vp-c-divider); background: color-mix(in srgb, var(--vp-c-bg-soft) 55%, transparent); }
+.frames-toggle { height: 22px; padding: 0 7px; font-size: 11px; }
+.frames-toggle.on { background: var(--vp-c-brand-soft); border-color: var(--vp-c-brand-1); color: var(--vp-c-brand-1); }
+.frames-opts { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin-top: 6px; }
+.frames-opts .seg > button { height: 24px; }
+.variant-card .frame-strip { margin-top: 2px; }
+.variant-card .fs-editor { margin-top: 6px; }

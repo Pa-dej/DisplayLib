@@ -6,7 +6,7 @@ import { richFromJmc, richToJmc } from '../jmc/rich';
 import type { RichText, Vec3, RGB, Easing } from '../model/screen';
 import {
   type ParticleEffect, type Range, type Stop, type Render, type Emitter, type Motion, type Animation,
-  type RenderType, type Shape, type Billboard, type Viewers,
+  type RenderType, type Shape, type Billboard, type Viewers, type TextVariant, isFrames, framesOf, textVariants,
   RENDER_TYPES, SHAPES, BILLBOARDS, EASINGS, defaultRender, defaultEmitter, defaultMotion, defaultAnimation,
 } from './model';
 import { parseColor } from './colors';
@@ -62,17 +62,12 @@ export function tableToEffect(top: JmcTable, fallbackId: string): ParseResult {
   if (rt) {
     if (type === 'TEXT') {
       const t = get(rt, 'text');
-      render.text = t != null ? richFromJmc(t) : null;
-      render.variants = (list(rt, 'variants') ?? []).map((v) => richFromJmc(v)).filter((x): x is RichText => x != null);
-      render.frames = (list(rt, 'frames') ?? []).map((v) => richFromJmc(v)).filter((x): x is RichText => x != null);
-      // один кадр - просто текст (как в плагине)
-      if (render.frames.length === 1 && render.text == null && !render.variants.length) { render.text = render.frames[0]; render.frames = []; }
-      if (render.text == null && !render.variants.length && !render.frames.length) errors.push('render: для TEXT нужен text: "★", variants: ["★", "✦"] или frames: [...]');
-      const fi = num(rt, 'frameInterval'); if (fi != null) render.frameInterval = Math.max(1, Math.round(fi));
-      render.framesOverLife = bool(rt, 'framesOverLife') ?? false;
-      const fs = str(rt, 'frameStart');
-      if (fs != null && !/^(first|random)$/i.test(fs)) errors.push(`render.frameStart: ожидается "first" или "random", получено '${fs}'`);
-      render.frameRandomStart = fs != null && fs.toLowerCase() === 'random';
+      render.text = t != null ? variantFrom(t, 'render.text', errors) : null;
+      render.variants = (list(rt, 'variants') ?? []).map((v) => variantFrom(v, 'render.variants', errors)).filter((x): x is TextVariant => x != null);
+      // краткая запись одного анимированного варианта: frames рядом с type (как в плагине)
+      if (list(rt, 'frames')) { const v = variantFrom(rt as JmcValue, 'render', errors); if (v) render.variants.push(v); }
+      if (render.text == null && render.variants.length === 1) { render.text = render.variants[0]; render.variants = []; }
+      if (render.text == null && !render.variants.length) errors.push('render: для TEXT нужен text: "★" или variants: ["★", { frames: ["◐", "◓"], frameInterval: 3 }]');
     }
     if (type === 'ITEM') {
       render.items = strings(rt, 'item', 'items');
@@ -162,6 +157,21 @@ export function tableToEffect(top: JmcTable, fallbackId: string): ParseResult {
   };
 }
 
+/** Вариант текста: строка/сегменты или таблица { frames, frameInterval, framesOverLife, frameStart } (как в плагине). */
+function variantFrom(v: JmcValue, field: string, errors: string[]): TextVariant | null {
+  if (v && typeof v === 'object' && !Array.isArray(v) && get(v as JmcTable, 'frames') != null) {
+    const t = v as JmcTable;
+    const fl = list(t, 'frames');
+    if (!fl || !fl.length) { errors.push(`${field}.frames: нужен список текстов`); return null; }
+    const frames = fl.map((x) => richFromJmc(x)).filter((x): x is RichText => x != null);
+    const fi = num(t, 'frameInterval');
+    const fs = str(t, 'frameStart');
+    if (fs != null && !/^(first|random)$/i.test(fs)) errors.push(`${field}.frameStart: ожидается "first" или "random", получено '${fs}'`);
+    return framesOf(frames, { frameInterval: fi == null ? 4 : Math.max(1, Math.round(fi)), framesOverLife: bool(t, 'framesOverLife') ?? false, frameRandomStart: fs != null && fs.toLowerCase() === 'random' });
+  }
+  return richFromJmc(v);
+}
+
 function strings(t: JmcTable, one: string, many: string): string[] {
   const out: string[] = [];
   const s = str(t, one); if (s != null) out.push(s);
@@ -236,7 +246,8 @@ export function validateEffect(e: ParticleEffect): string[] {
   const out: string[] = [];
   if (!e.id.trim()) out.push('id: пустой');
   if (/^(list|stop)$/i.test(e.id)) out.push(`id '${e.id}' занят командой /displaylib particle ${e.id.toLowerCase()}`);
-  if (e.render.type === 'TEXT' && e.render.text == null && !e.render.variants.length && e.render.frames.length < 2) out.push('TEXT: нужен текст, варианты или кадры');
+  if (e.render.type === 'TEXT' && e.render.text == null && !e.render.variants.length) out.push('TEXT: нужен текст или варианты');
+  for (const v of textVariants(e.render)) if (isFrames(v) && !v.frames.length) out.push('TEXT: у анимированного варианта нет кадров');
   if (e.render.type === 'ITEM' && !e.render.items.length) out.push('ITEM: нужен хотя бы один предмет');
   if (e.render.type === 'BLOCK' && !e.render.blocks.length) out.push('BLOCK: нужен хотя бы один блок');
   for (const c of e.render.colors) if (parseColor(c) == null) out.push(`цвет ${c}: не распознан`);
@@ -277,6 +288,19 @@ function tableJ(fields: [string, string][], indent = ''): string {
   return '{\n' + fields.map(([k, v]) => indent + '    ' + k + ': ' + v + ',').join('\n') + '\n' + indent + '}';
 }
 
+/** Вариант текста: статичный - как текст виджета; кадры - { frames: [...], frameInterval, ... }. */
+function variantJ(v: TextVariant, indent: string): string {
+  if (!isFrames(v)) return richToJmc(v);
+  const fields: string[] = [];
+  const items = v.frames.map(richToJmc);
+  const inline = '[' + items.join(', ') + ']';
+  fields.push('frames: ' + (inline.length <= 60 ? inline : '[\n' + items.map((x) => indent + '    ' + x + ',').join('\n') + '\n' + indent + ']'));
+  if (v.framesOverLife) fields.push('framesOverLife: true');
+  if (!v.framesOverLife || v.frameInterval !== 4) fields.push('frameInterval: ' + jnum(v.frameInterval));
+  if (v.frameRandomStart) fields.push('frameStart: "random"');
+  return '{ ' + fields.join(', ') + ' }';
+}
+
 /** Изгиб, неотличимый от прямой, не пишем. */
 const isStraight = (b: [number, number] | null | undefined) => !b || (Math.abs(b[1]) < 1e-9);
 function stopsJ<T>(stops: Stop<T>[], val: (v: T) => string): string {
@@ -296,22 +320,25 @@ function stopsJ<T>(stops: Stop<T>[], val: (v: T) => string): string {
 export function effectToJmc(e: ParticleEffect): string {
   const L: string[] = [];
   L.push(`// ${e.id}: эффект частиц DisplayLib (конфиг Jumper, .jmc) - /displaylib particle ${e.id}`);
+  // возможности, которых нет в старых сборках плагина: старый jar отвергнет файл - пусть это будет видно сразу
+  const fresh: string[] = [];
+  if (e.render.type === 'TEXT' && textVariants(e.render).some((v) => isFrames(v))) fresh.push('кадры текста');
+  if ((e.animation.opacity ?? []).some((st, i) => i > 0 && st.bend && Math.abs(st.bend[1]) > 1e-9)) fresh.push('изгиб кривой opacity');
+  if (e.render.glow && e.render.glowColor && (e.render.type === 'ITEM' || e.render.type === 'BLOCK')) fresh.push('glowColor');
+  if (fresh.length) L.push(`// Нужна сборка DisplayLib от 18.10.2026 и новее (${fresh.join(', ')}): старая не загрузит этот файл.`);
   L.push(`String id = ${jstr(e.id)};`);
   L.push(`String viewers = ${jstr(e.viewers.toLowerCase())};`);
   L.push(`int keyframeTicks = ${e.keyframeTicks};`);
   L.push('');
 
   const r = e.render; const rf: [string, string][] = [['type', jstr(r.type)]];
-  if (r.type === 'TEXT' && r.frames.length > 1) {
-    const items = r.frames.map(richToJmc);
-    const inline = '[' + items.join(', ') + ']';
-    rf.push(['frames', inline.length <= 72 ? inline : '[\n' + items.map((x) => '        ' + x + ',').join('\n') + '\n    ]']);
-    if (r.framesOverLife) rf.push(['framesOverLife', 'true']);
-    if (!r.framesOverLife || r.frameInterval !== 4) rf.push(['frameInterval', jnum(r.frameInterval)]);
-    if (r.frameRandomStart) rf.push(['frameStart', '"random"']);
-  } else if (r.type === 'TEXT') {
-    if (r.text != null) rf.push(['text', richToJmc(r.text)]);
-    if (r.variants.length) rf.push(['variants', '[' + r.variants.map(richToJmc).join(', ') + ']']);
+  if (r.type === 'TEXT') {
+    if (r.text != null) rf.push(['text', variantJ(r.text, '    ')]);
+    if (r.variants.length) {
+      const items = r.variants.map((v) => variantJ(v, '        '));
+      const inline = '[' + items.join(', ') + ']';
+      rf.push(['variants', inline.length <= 80 && !inline.includes('\n') ? inline : '[\n' + items.map((x) => '        ' + x + ',').join('\n') + '\n    ]']);
+    }
   }
   if (r.type === 'ITEM') rf.push(r.items.length === 1 ? ['item', jstr(r.items[0])] : ['items', '[' + r.items.map(jstr).join(', ') + ']']);
   if (r.type === 'BLOCK') rf.push(r.blocks.length === 1 ? ['block', jstr(r.blocks[0])] : ['blocks', '[' + r.blocks.map(jstr).join(', ') + ']']);

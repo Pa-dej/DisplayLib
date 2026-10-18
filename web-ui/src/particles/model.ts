@@ -18,19 +18,30 @@ export type Range = [number, number];
  */
 export interface Stop<T> { at: number | null; value: T; bend?: [number, number] | null }
 
+/**
+ * Анимированный текст частицы - как frames у текстовых кнопок экранов: кадры сменяются каждые frameInterval
+ * тиков по кругу или (framesOverLife) проходят один раз за жизнь; frameRandomStart - со случайного кадра.
+ * В файле: { frames: [...], frameInterval: 3 } на месте текста варианта.
+ */
+export interface FramesText { frames: RichText[]; frameInterval: number; framesOverLife: boolean; frameRandomStart: boolean }
+/** Вариант текста частицы: статичный текст или кадры. */
+export type TextVariant = RichText | FramesText;
+export function isFrames(v: TextVariant | null | undefined): v is FramesText {
+  return !!v && typeof v === 'object' && !Array.isArray(v) && 'frames' in v;
+}
+export function framesOf(frames: RichText[], rest?: Partial<FramesText>): FramesText {
+  return { frames, frameInterval: 4, framesOverLife: false, frameRandomStart: false, ...rest };
+}
+/** Все варианты текста по порядку (text, затем variants). */
+export function textVariants(r: Render): TextVariant[] {
+  return [...(r.text != null ? [r.text] : []), ...r.variants];
+}
+
 export interface Render {
   type: RenderType;
-  /** TEXT: один текст (text) и/или варианты (variants) - на частицу случайный */
-  text: RichText | null;
-  variants: RichText[];
-  /**
-   * TEXT: кадры текста, как frames у кнопок экранов (2+; тогда text/variants не используются). Сменяются каждые
-   * frameInterval тиков по кругу или (framesOverLife) один раз за жизнь; frameRandomStart - со случайного кадра.
-   */
-  frames: RichText[];
-  frameInterval: number;
-  framesOverLife: boolean;
-  frameRandomStart: boolean;
+  /** TEXT: один текст (text) и/или варианты (variants) - на частицу случайный; вариант может быть кадрами */
+  text: TextVariant | null;
+  variants: TextVariant[];
   /** Случайный цвет на частицу: цвет текста (TEXT) или квадрата (PIXEL) */
   colors: string[];
   items: string[];
@@ -104,7 +115,7 @@ export const EASINGS: Easing[] = ['LINEAR', 'EASE_IN', 'EASE_OUT', 'EASE_IN_OUT'
 
 export function defaultRender(type: RenderType = 'PIXEL'): Render {
   return {
-    type, text: type === 'TEXT' ? '★' : null, variants: [], frames: [], frameInterval: 4, framesOverLife: false, frameRandomStart: false, colors: [], items: type === 'ITEM' ? ['GOLD_NUGGET'] : [],
+    type, text: type === 'TEXT' ? '★' : null, variants: [], colors: [], items: type === 'ITEM' ? ['GOLD_NUGGET'] : [],
     blocks: type === 'BLOCK' ? ['minecraft:glowstone'] : [], billboard: type === 'BLOCK' ? 'FIXED' : 'CENTER',
     brightness: null, shadow: false, background: null, backgroundAlpha: null, glow: false, glowColor: null,
   };

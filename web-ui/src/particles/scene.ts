@@ -3,6 +3,7 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import type { ParticleEffect } from './model';
+import { isFrames, textVariants } from './model';
 import { ParticleRuntime, type Particle, type Stats } from './runtime';
 import { alpha, cssHex } from './colors';
 import type { RichText } from '../model/screen';
@@ -272,11 +273,11 @@ export class ParticleScene {
 
   /** Текст частицы: кадр (frame >= 0, если есть кадры) или вариант. */
   private richVariant(e: ParticleEffect, i: number, frame = -1): RichText {
-    if (frame >= 0 && e.render.frames.length > 1) return e.render.frames[frame] ?? e.render.frames[0];
-    const all: RichText[] = [];
-    if (e.render.text != null) all.push(e.render.text);
-    all.push(...e.render.variants);
-    return all[i] ?? all[0] ?? '?';
+    const all = textVariants(e.render);
+    const v = all[i] ?? all[0];
+    if (v == null) return '?';
+    if (isFrames(v)) return v.frames[Math.max(0, frame)] ?? v.frames[0] ?? '?';
+    return v;
   }
 
   /** Текстура текста с цветом (корневой цвет красит сегменты без своего, как text.color() в плагине). */
@@ -376,7 +377,7 @@ export class ParticleScene {
         m.visible = a >= MIN_ALPHA;
       } else if (e.render.type === 'TEXT') {
         const recolor = e.render.colors.length > 0 || e.animation.color != null;
-        const frame = e.render.frames.length > 1 ? (this.opts.asGame ? rt.frameShown(p, t) : rt.frameExact(p, t)) : -1;
+        const frame = p.anim ? (this.opts.asGame ? rt.frameShown(p, t) : rt.frameExact(p, t)) : -1;
         const tt = this.textTexture(e, p.variant, recolor ? s.color & 0xffffff : null, frame);
         if (mat.map !== tt.tex) { mat.map = tt.tex; mat.needsUpdate = true; }
         mat.opacity = a / 255;

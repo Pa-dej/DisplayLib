@@ -73,14 +73,19 @@ class ParticleEffectTest {
         assertEquals(3, e.emitter().count(), "исходный не меняется");
     }
 
-    /** Кадры текста: по кругу, по жизни, со случайного; один кадр - обычный текст. */
+    /** Варианты текста: статичные и с кадрами (как frames у кнопок экранов); краткая запись frames у render. */
     @Test
     void textFrames() {
-        ParticleEffect e = ParticleEffect.parse((JTable) Config.parse("dyn render = { type: \"TEXT\", frames: [\"a\", \"b\", \"c\"], frameInterval: 2, frameStart: \"random\" };"), "t");
-        assertTrue(e.render().animated());
-        assertEquals(3, e.render().frames().size());
-        assertEquals(2, e.render().frameInterval());
-        assertTrue(e.render().frameRandomStart());
+        ParticleEffect e = ParticleEffect.parse((JTable) Config.parse("dyn render = { type: \"TEXT\", variants: [\"★\", { frames: [\"a\", \"b\", \"c\"], frameInterval: 2, frameStart: \"random\" }, { frames: [\"x\", \"y\"], framesOverLife: true }] };"), "t");
+        List<ParticleEffect.TextVariant> v = e.render().texts();
+        assertEquals(3, v.size());
+        assertFalse(v.get(0).animated());
+        assertTrue(v.get(1).animated());
+        assertEquals(3, v.get(1).frames().size());
+        assertEquals(2, v.get(1).frameInterval());
+        assertTrue(v.get(1).randomStart());
+        assertTrue(v.get(2).overLife());
+        assertEquals(4, v.get(2).frameInterval(), "по умолчанию 4");
         assertEquals(0, ParticleSim.frameAt(0, 3, 2, false, 0, 30));
         assertEquals(0, ParticleSim.frameAt(0, 3, 2, false, 1, 30));
         assertEquals(1, ParticleSim.frameAt(0, 3, 2, false, 2, 30));
@@ -89,9 +94,10 @@ class ParticleEffectTest {
         assertEquals(0, ParticleSim.frameAt(0, 4, 1, true, 0, 40));
         assertEquals(1, ParticleSim.frameAt(0, 4, 1, true, 10, 40));
         assertEquals(3, ParticleSim.frameAt(0, 4, 1, true, 40, 40), "по жизни - последний к концу");
-        ParticleEffect one = ParticleEffect.parse((JTable) Config.parse("dyn render = { type: \"TEXT\", frames: [\"a\"] };"), "t");
-        assertFalse(one.render().animated());
-        assertEquals(1, one.render().texts().size());
-        assertThrows(IllegalArgumentException.class, () -> ParticleEffect.parse((JTable) Config.parse("dyn render = { type: \"TEXT\", frames: [\"a\", \"b\"], frameStart: \"middle\" };"), "t"));
+        ParticleEffect text = ParticleEffect.parse((JTable) Config.parse("dyn render = { type: \"TEXT\", text: { frames: [\"a\", \"b\"] } };"), "t");
+        assertTrue(text.render().texts().get(0).animated(), "text тоже может быть кадрами");
+        ParticleEffect shorthand = ParticleEffect.parse((JTable) Config.parse("dyn render = { type: \"TEXT\", frames: [\"a\", \"b\"], frameInterval: 5 };"), "t");
+        assertEquals(5, shorthand.render().texts().get(0).frameInterval());
+        assertThrows(IllegalArgumentException.class, () -> ParticleEffect.parse((JTable) Config.parse("dyn render = { type: \"TEXT\", variants: [{ frames: [\"a\", \"b\"], frameStart: \"middle\" }] };"), "t"));
     }
 }

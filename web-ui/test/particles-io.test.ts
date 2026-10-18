@@ -41,34 +41,41 @@ describe('эффекты частиц: .jmc туда и обратно', () => {
   });
 });
 
-describe('кадры текста', () => {
+describe('кадры текста (вариант с frames, как у кнопок экранов)', () => {
   it('читаются, пишутся и считаются как в плагине', async () => {
     const { frameAt } = await import('../src/particles/sim');
-    const src = 'dyn render = { type: "TEXT", frames: ["a", [{ text: "b", color: "red" }], "c"], frameInterval: 2, frameStart: "random" };';
+    const { isFrames } = await import('../src/particles/model');
+    const src = 'dyn render = { type: "TEXT", variants: ["★", { frames: ["a", [{ text: "b", color: "red" }], "c"], frameInterval: 2, frameStart: "random" }, { frames: ["x", "y"], framesOverLife: true }] };';
     const a = tableToEffect(parseJmc(src) as JmcTable, 't');
     expect(a.errors).toEqual([]);
-    expect(a.effect.render.frames.length).toBe(3);
-    expect(a.effect.render.frameRandomStart).toBe(true);
-    const b = tableToEffect(parseJmc(effectToJmc(a.effect)) as JmcTable, 't');
+    const v = a.effect.render.variants;
+    expect(v.length).toBe(3);
+    expect(isFrames(v[0])).toBe(false);
+    expect(isFrames(v[1]) && v[1].frames.length === 3 && v[1].frameInterval === 2 && v[1].frameRandomStart).toBe(true);
+    expect(isFrames(v[2]) && v[2].framesOverLife && v[2].frameInterval === 4).toBe(true);
+    const text = effectToJmc(a.effect);
+    const b = tableToEffect(parseJmc(text) as JmcTable, 't');
+    expect(b.errors).toEqual([]);
     expect(b.effect.render).toEqual(a.effect.render);
-    const life = tableToEffect(parseJmc('dyn render = { type: "TEXT", frames: ["a", "b"], framesOverLife: true, frameInterval: 3 };') as JmcTable, 't');
-    expect(tableToEffect(parseJmc(effectToJmc(life.effect)) as JmcTable, 't').effect.render).toEqual(life.effect.render);
+    // text тоже может быть кадрами; краткая запись frames у render
+    const one = tableToEffect(parseJmc('dyn render = { type: "TEXT", text: { frames: ["a", "b"] } };') as JmcTable, 't').effect.render;
+    expect(isFrames(one.text)).toBe(true);
+    const sh = tableToEffect(parseJmc('dyn render = { type: "TEXT", frames: ["a", "b"], frameInterval: 5 };') as JmcTable, 't').effect.render;
+    expect(isFrames(sh.text) && sh.text.frameInterval === 5).toBe(true);
+    expect(tableToEffect(parseJmc(effectToJmc({ ...a.effect, render: sh })) as JmcTable, 't').effect.render).toEqual(sh);
     // те же значения, что ParticleEffectTest.textFrames
     expect([frameAt(0, 3, 2, false, 0, 30), frameAt(0, 3, 2, false, 1, 30), frameAt(0, 3, 2, false, 2, 30), frameAt(0, 3, 2, false, 6, 30), frameAt(1, 3, 2, false, 2, 30)]).toEqual([0, 0, 1, 0, 2]);
     expect([frameAt(0, 4, 1, true, 0, 40), frameAt(0, 4, 1, true, 10, 40), frameAt(0, 4, 1, true, 40, 40)]).toEqual([0, 1, 3]);
-    const one = tableToEffect(parseJmc('dyn render = { type: "TEXT", frames: ["a"] };') as JmcTable, 't').effect;
-    expect(one.render.frames).toEqual([]);
-    expect(one.render.text).toBe('a');
   });
   it('смена кадра - пакет, предпросмотр видит кадр', async () => {
     const { ParticleRuntime } = await import('../src/particles/runtime');
-    const mk = (fi: number) => tableToEffect(parseJmc(`dyn render = { type: "TEXT", frames: ["a", "b", "c", "d"], frameInterval: ${fi} }; dyn emitter = { count: 5 }; dyn motion = { lifetime: 40 };`) as JmcTable, 't').effect;
+    const mk = (fi: number) => tableToEffect(parseJmc(`dyn render = { type: "TEXT", text: { frames: ["a", "b", "c", "d"], frameInterval: ${fi} } }; dyn emitter = { count: 5 }; dyn motion = { lifetime: 40 };`) as JmcTable, 't').effect;
     const run = (fi: number) => { const rt = new ParticleRuntime(mk(fi), { center: [0, 0, 0], solid: null, seed: 1 }); while (!rt.done) rt.step(); return rt.packetsTotal; };
     expect(run(2)).toBeGreaterThan(run(8));
     const rt = new ParticleRuntime(mk(2), { center: [0, 0, 0], solid: null, seed: 1 });
     for (let i = 0; i < 6; i++) rt.step();
     const p = rt.particles[0];
-    expect(rt.frameShown(p, rt.tick)).toBe(rt.frameExact(p, rt.tick - 1 + 1) >= 0 ? p.frame : -1);
     expect(p.frame).toBe(2); // видимый возраст 5 -> 5/2 = 2
+    expect(rt.frameShown(p, rt.tick)).toBe(2);
   });
 });

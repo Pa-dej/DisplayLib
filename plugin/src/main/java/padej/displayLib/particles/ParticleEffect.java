@@ -41,19 +41,30 @@ public final class ParticleEffect {
      * @param colors    цвета ARGB: случайный на частицу (цвет текста у TEXT, цвет квадрата у PIXEL)
      * @param glow      контур свечения (клиент рисует его у ITEM и BLOCK; у текста контура нет)
      * @param glowColor цвет контура RGB или {@code null} - белый (цвет команды)
-     * @param frames    кадры текста (TEXT), как {@code frames} у текстовых кнопок экранов: частица сменяет их
-     *                  каждые {@code frameInterval} тиков по кругу или, при {@code framesOverLife}, один раз за
-     *                  жизнь (как частицы Minecraft: дым, искры); {@code frameRandomStart} - с случайного кадра
+     * @param texts     варианты текста (TEXT): на частицу случайный; вариант может быть анимацией кадров
      */
-    public record Render(RenderType type, List<Component> texts, List<Integer> colors, List<String> items,
-                         List<String> blocks, Display.Billboard billboard, Integer brightness, boolean shadow,
-                         int backgroundArgb, boolean glow, Integer glowColor,
-                         List<Component> frames, int frameInterval, boolean framesOverLife, boolean frameRandomStart) {
-        /** Текст анимирован кадрами (TEXT): тогда text/variants не используются. */
+    /**
+     * Текст частицы (вариант TEXT): один кадр - статичный текст; несколько - анимация, как {@code frames}
+     * у текстовых кнопок экранов: кадры сменяются каждые {@code frameInterval} тиков по кругу или (overLife)
+     * проходят один раз за жизнь; {@code randomStart} - каждая частица со случайного кадра.
+     */
+    public record TextVariant(List<Component> frames, int frameInterval, boolean overLife, boolean randomStart) {
+        public static TextVariant of(Component text) {
+            return new TextVariant(List.of(text), 4, false, false);
+        }
+
         public boolean animated() {
-            return frames != null && frames.size() > 1;
+            return frames.size() > 1;
+        }
+
+        public Component first() {
+            return frames.get(0);
         }
     }
+
+    public record Render(RenderType type, List<TextVariant> texts, List<Integer> colors, List<String> items,
+                         List<String> blocks, Display.Billboard billboard, Integer brightness, boolean shadow,
+                         int backgroundArgb, boolean glow, Integer glowColor) {}
 
     /**
      * Откуда и сколько.
@@ -168,19 +179,18 @@ public final class ParticleEffect {
         if (t == null) throw new IllegalArgumentException("render: required, e.g. dyn render = { type: \"TEXT\", text: \"★\" };");
         RenderType type = enumOf(RenderType.class, JmcValues.str(t, "type"), RenderType.TEXT, "render.type");
 
-        List<Component> texts = new ArrayList<>();
-        List<Component> frames = new ArrayList<>();
+        List<TextVariant> texts = new ArrayList<>();
         List<String> items = new ArrayList<>();
         List<String> blocks = new ArrayList<>();
         switch (type) {
             case TEXT -> {
                 Object single = JmcValues.get(t, "text");
-                if (single != null) texts.add(ScreenSupport.parseFormattedText(JmcValues.toJava(single)));
+                if (single != null) texts.add(textVariant(single, "render.text"));
                 List<?> variants = JmcValues.list(t, "variants");
-                if (variants != null) for (Object v : variants) texts.add(ScreenSupport.parseFormattedText(JmcValues.toJava(v)));
-                List<?> frameList = JmcValues.list(t, "frames");
-                if (frameList != null) for (Object v : frameList) frames.add(ScreenSupport.parseFormattedText(JmcValues.toJava(v)));
-                if (texts.isEmpty() && frames.isEmpty()) throw new IllegalArgumentException("render: TEXT needs text: \"★\", variants: [\"★\", \"✦\"] or frames: [...]");
+                if (variants != null) for (Object v : variants) texts.add(textVariant(v, "render.variants"));
+                // краткая запись одного анимированного варианта: frames рядом с type
+                if (JmcValues.list(t, "frames") != null) texts.add(textVariant(t, "render"));
+                if (texts.isEmpty()) throw new IllegalArgumentException("render: TEXT needs text: \"★\" or variants: [\"★\", { frames: [\"◐\", \"◓\"], frameInterval: 3 }]");
             }
             case PIXEL -> { /* только цвет: colors или animation.color */ }
             case ITEM -> {
@@ -221,18 +231,29 @@ public final class ParticleEffect {
         Boolean glow = JmcValues.bool(t, "glow");
         Object glowColorValue = JmcValues.get(t, "glowColor");
         Integer glowColor = glowColorValue == null ? null : ParticleColors.parse(glowColorValue, "render.glowColor") & 0xffffff;
-        Integer frameInterval = JmcValues.integer(t, "frameInterval");
-        Boolean overLife = JmcValues.bool(t, "framesOverLife");
-        String frameStart = JmcValues.str(t, "frameStart");
-        if (frameStart != null && !frameStart.equalsIgnoreCase("first") && !frameStart.equalsIgnoreCase("random")) {
-            throw new IllegalArgumentException("render.frameStart: expected \"first\" or \"random\", got '" + frameStart + "'");
-        }
-        // один кадр - просто текст
-        if (frames.size() == 1 && texts.isEmpty()) texts.add(frames.get(0));
         return new Render(type, List.copyOf(texts), List.copyOf(colors), List.copyOf(items), List.copyOf(blocks),
-                billboard, brightness, shadow != null && shadow, argb, glow != null && glow, glowColor,
-                frames.size() > 1 ? List.copyOf(frames) : List.of(), frameInterval != null ? Math.max(1, frameInterval) : 4,
-                overLife != null && overLife, "random".equalsIgnoreCase(frameStart));
+                billboard, brightness, shadow != null && shadow, argb, glow != null && glow, glowColor);
+    }
+
+    /**
+     * Вариант текста: строка/сегменты - статичный; таблица {@code { frames: [...], frameInterval, framesOverLife,
+     * frameStart }} - анимация кадрами (как frames у кнопок экранов, text = первый кадр).
+     */
+    private static TextVariant textVariant(Object v, String field) {
+        if (v instanceof JTable table && JmcValues.get(table, "frames") != null) {
+            List<?> list = JmcValues.list(table, "frames");
+            if (list == null || list.isEmpty()) throw new IllegalArgumentException(field + ".frames: expected a list of texts");
+            List<Component> frames = new ArrayList<>();
+            for (Object f : list) frames.add(ScreenSupport.parseFormattedText(JmcValues.toJava(f)));
+            Integer interval = JmcValues.integer(table, "frameInterval");
+            Boolean overLife = JmcValues.bool(table, "framesOverLife");
+            String start = JmcValues.str(table, "frameStart");
+            if (start != null && !start.equalsIgnoreCase("first") && !start.equalsIgnoreCase("random")) {
+                throw new IllegalArgumentException(field + ".frameStart: expected \"first\" or \"random\", got '" + start + "'");
+            }
+            return new TextVariant(List.copyOf(frames), interval != null ? Math.max(1, interval) : 4, overLife != null && overLife, "random".equalsIgnoreCase(start));
+        }
+        return TextVariant.of(ScreenSupport.parseFormattedText(JmcValues.toJava(v)));
     }
 
     private static Emitter parseEmitter(JTable t) {

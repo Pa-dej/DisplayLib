@@ -1,7 +1,7 @@
 // Опции эффекта частиц, у которых есть дешёвый вариант, и сравнение нагрузки «было / стало».
 // Без Vue и DOM: используется и в Web Worker (счёт), и в интерфейсе (применить совет).
 import type { ParticleEffect } from '../particles/model';
-import { cloneEffect } from '../particles/model';
+import { cloneEffect, isFrames, textVariants, type FramesText } from '../particles/model';
 import { particleLoad } from './particles';
 import type { LoadReport, LoadAssumptions } from './score';
 
@@ -25,6 +25,10 @@ export interface Impact {
 
 export interface Candidate { key: ImpactKey; when: (e: ParticleEffect) => boolean; suggestion: (e: ParticleEffect) => string; changesLook: boolean; apply: (e: ParticleEffect) => void }
 
+/** Анимированные по кругу варианты текста (их кадры шлются всю жизнь частицы). */
+function loopFrames(e: ParticleEffect): FramesText[] {
+  return textVariants(e.render).filter((v): v is FramesText => isFrames(v) && v.frames.length > 1 && !v.framesOverLife);
+}
 const half = (x: number) => Math.round(x * 50) / 100;
 export const CANDIDATES: Candidate[] = [
   { key: 'collide', when: (e) => e.motion.collide, suggestion: () => 'collide: false', changesLook: true, apply: (e) => { e.motion.collide = false; } },
@@ -34,7 +38,7 @@ export const CANDIDATES: Candidate[] = [
   { key: 'count', when: (e) => (e.emitter.count ?? 0) >= 8, suggestion: (e) => `count: ${Math.ceil((e.emitter.count ?? 0) / 2)} (вдвое меньше)`, changesLook: true, apply: (e) => { e.emitter.count = Math.ceil((e.emitter.count ?? 0) / 2); } },
   { key: 'lifetime', when: (e) => e.motion.lifetime[1] >= 6, suggestion: (e) => { const a = Math.max(1, Math.round(e.motion.lifetime[0] / 2)), b = Math.max(1, Math.round(e.motion.lifetime[1] / 2)); return `lifetime: ${a === b ? a : a + '…' + b} (вдвое короче)`; }, changesLook: true,
     apply: (e) => { e.motion.lifetime = [Math.max(1, Math.round(e.motion.lifetime[0] / 2)), Math.max(1, Math.round(e.motion.lifetime[1] / 2))]; } },
-  { key: 'frameInterval', when: (e) => e.render.type === 'TEXT' && e.render.frames.length > 1 && !e.render.framesOverLife, suggestion: (e) => `frameInterval: ${e.render.frameInterval * 2} (кадры вдвое реже)`, changesLook: true, apply: (e) => { e.render.frameInterval *= 2; } },
+  { key: 'frameInterval', when: (e) => e.render.type === 'TEXT' && loopFrames(e).length > 0, suggestion: () => 'frameInterval вдвое больше (кадры вдвое реже)', changesLook: true, apply: (e) => { for (const v of loopFrames(e)) v.frameInterval *= 2; } },
   { key: 'spin', when: (e) => e.animation.spin[0] !== 0 || e.animation.spin[1] !== 0, suggestion: () => 'spin: 0 (без вращения)', changesLook: true, apply: (e) => { e.animation.spin = [0, 0]; } },
   { key: 'fadeIn', when: (e) => e.animation.fadeIn > 0, suggestion: () => 'fadeIn: 0', changesLook: true, apply: (e) => { e.animation.fadeIn = 0; } },
   { key: 'color', when: (e) => !!e.animation.color && e.animation.color.length > 1, suggestion: () => 'постоянный цвет вместо градиента', changesLook: true,
