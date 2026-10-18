@@ -35,6 +35,9 @@ const ready = ref(false);
 const dark = ref(document.documentElement.classList.contains('dark'));
 
 function toggleTheme() {
+  const root = document.documentElement;
+  root.classList.add('theme-anim');
+  setTimeout(() => root.classList.remove('theme-anim'), 350);
   dark.value = !dark.value;
   document.documentElement.classList.toggle('dark', dark.value);
   localStorage.setItem('displaylib.theme', dark.value ? 'dark' : 'light');
@@ -89,7 +92,7 @@ onMounted(async () => {
         <button class="btn icon" @click="redo()" :disabled="!redoable" title="Вернуть (Ctrl+Y / Ctrl+Shift+Z)"><Icon name="redo" /></button>
       </div>
       <div class="spacer"></div>
-      <span class="status" :class="{ error: !!state.error }">{{ state.error || state.message }}</span>
+      <span class="status" :key="state.error || state.message" :class="{ error: !!state.error }">{{ state.error || state.message }}</span>
       <button class="btn icon" @click="toggleTheme" :title="dark ? 'Светлая тема' : 'Тёмная тема'"><Icon :name="dark ? 'sun' : 'moon'" /></button>
     </header>
     <template v-if="!particles">

@@ -7,4 +7,7 @@ if (window.matchMedia('(prefers-color-scheme: dark)').matches && localStorage.ge
 }
 if (localStorage.getItem('displaylib.theme') === 'dark') document.documentElement.classList.add('dark');
 
+import { installSlide } from './ui/slide';
+
 createApp(App).mount('#app');
+installSlide();

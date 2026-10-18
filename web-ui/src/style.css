@@ -426,3 +426,72 @@ html:not(.dark) .tok-op { color: #0e7490; }
 .load-impact { display: grid; grid-template-columns: 1fr auto auto; gap: 6px; align-items: center; }
 .load-impact .s { overflow: hidden; text-overflow: ellipsis; }
 .load-impact .s small { color: var(--vp-c-text-3); }
+
+/* =====================================================================
+   Плавность интерфейса: переключатели, появление панелей и окон, наведение.
+   ===================================================================== */
+:root { --ease-out: cubic-bezier(.2, .8, .3, 1); --ease-snap: cubic-bezier(.3, .7, .25, 1); }
+@keyframes ui-fade { from { opacity: 0; } }
+@keyframes ui-fade-up { from { opacity: 0; transform: translateY(4px); } }
+@keyframes ui-pop { from { opacity: 0; transform: translateY(-6px) scale(.97); } }
+@keyframes ui-modal { from { opacity: 0; transform: translateY(10px) scale(.97); } }
+@keyframes ui-badge { from { opacity: 0; transform: scale(.6); } }
+
+/* наведение и нажатие */
+.btn { transition: background .16s, border-color .16s, color .16s, box-shadow .16s, transform .1s, opacity .16s; }
+.btn:active:not(:disabled) { transform: scale(.97); }
+.seg > button { transition: color .18s, background .18s; }
+.tab { transition: color .18s, border-color .18s; }
+.nav-item { transition: background .15s, color .15s; }
+input[type=text], input[type=number], select, textarea { transition: border-color .15s, box-shadow .15s, background .15s; }
+.nav-item .btn.flag { transition: opacity .15s, color .15s; }
+
+/* сегменты: подложка едет под выбранную кнопку */
+.seg.slide { position: relative; isolation: isolate; }
+.seg.slide::before { content: ''; position: absolute; z-index: -1; left: var(--sx); top: var(--sy); width: var(--sw); height: var(--sh); background: var(--vp-c-brand-soft); opacity: 0; transition: left .24s var(--ease-snap), width .24s var(--ease-snap), top .24s var(--ease-snap), opacity .15s; pointer-events: none; }
+.seg.slide.slide-on::before { opacity: 1; }
+.seg.slide.slide-on > button.on { background: transparent; }
+.mode-switch.slide::before { border-radius: 6px; }
+/* вкладки: полоска едет под активную */
+.tabs-slide { position: relative; }
+.tabs-slide::after { content: ''; position: absolute; left: var(--sx); top: calc(var(--sy) + var(--sh) - 2px); width: var(--sw); height: 2px; background: var(--vp-c-brand-1); border-radius: 2px; opacity: 0; transition: left .26s var(--ease-snap), width .26s var(--ease-snap), top .26s var(--ease-snap), opacity .15s; pointer-events: none; }
+.tabs-slide.slide-on::after { opacity: 1; }
+.tabs-slide.slide-on > .tab.active { border-bottom-color: transparent; }
+.slide-init::before, .slide-init::after { transition: none !important; }
+
+/* появление: смена режима, панели инспектора, поля по условию, списки */
+.sidebar, .inspector, .main { animation: ui-fade .22s ease-out; }
+.inspector .section, .inspector > .callout { animation: ui-fade-up .22s var(--ease-out) both; }
+.inspector .section:nth-of-type(2) { animation-delay: .02s; }
+.inspector .section:nth-of-type(3) { animation-delay: .04s; }
+.inspector .section:nth-of-type(4) { animation-delay: .06s; }
+.inspector .section:nth-of-type(5) { animation-delay: .08s; }
+.inspector .section .field, .inspector .section .callout, .stop-row, .plist-row { animation: ui-fade-up .18s var(--ease-out); }
+.nav-item { animation: ui-fade-up .18s var(--ease-out); }
+.codebar .code, .codebar .code-edit { animation: ui-fade .16s ease-out; }
+.topbar .status { animation: ui-fade-up .22s var(--ease-out); }
+.load-mark, .nav-item .issue, .nav-item .dot { animation: ui-badge .22s var(--ease-out); }
+.pstats, .perrors { animation: ui-fade .2s ease-out; }
+
+/* окна и всплывающие панели */
+.modal-bg { animation: ui-fade .16s ease-out; }
+.modal { animation: ui-modal .22s var(--ease-out); }
+.cp-pop, .load-pop, .autocomplete .list { animation: ui-pop .16s var(--ease-out); transform-origin: top right; }
+.cp-pop { transform-origin: top left; }
+
+/* редактор градиента и кривой: ручки и точки доезжают плавно, пока их не тянут мышью */
+.grad-edit:not(.dragging) .grad-handle { transition: left .18s var(--ease-out), border-color .15s, box-shadow .15s; }
+.curve-edit:not(.dragging) .line, .curve-edit:not(.dragging) .area { transition: d .18s var(--ease-out); }
+.curve-edit:not(.dragging) circle, .curve-edit:not(.dragging) .node rect { transition: cx .18s var(--ease-out), cy .18s var(--ease-out), x .18s var(--ease-out), y .18s var(--ease-out); }
+
+/* смена темы - мягко */
+html.theme-anim, html.theme-anim *, html.theme-anim *::before, html.theme-anim *::after { transition: background-color .3s ease, color .3s ease, border-color .3s ease, fill .3s ease !important; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}
+/* переключатель режима в шапке не переносится на две строки; подсказка клавиш на основной кнопке читаема */
+.mode-switch { flex: none; flex-wrap: nowrap; }
+.btn.primary kbd { background: rgba(255,255,255,.16); border-color: rgba(255,255,255,.35); color: #fff; }
+@media (max-width: 1420px) { .topbar .brand .badge { display: none; } .topbar .btn kbd { display: none; } }
+@media (max-width: 1220px) { .topbar { gap: 8px; padding: 0 12px; } .mode-switch > button { padding: 0 10px; } }

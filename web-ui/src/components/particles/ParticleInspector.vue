@@ -126,7 +126,7 @@ const blockNames = ITEM_NAMES;
 <template>
   <aside class="inspector pinspector">
     <template v-if="!currentEffect"><div class="empty">Нет открытого эффекта. Создайте новый или откройте пример слева.</div></template>
-    <template v-else>
+    <div v-else :key="currentEffectDoc?.key" class="pinspector-body">
       <div v-if="currentEffectDoc?.warnings.length" class="callout warn"><b>При чтении файла:</b><br />{{ currentEffectDoc.warnings.join('; ') }}</div>
       <div v-if="currentEffectErrors.length" class="callout danger"><b>Плагин не примет:</b><br />{{ currentEffectErrors.join('; ') }}</div>
 
@@ -277,6 +277,6 @@ const blockNames = ITEM_NAMES;
         <p v-else class="hint">Цвет и прозрачность по жизни есть только у PIXEL и TEXT.</p>
         <p class="hint" title="Сколько раз за жизнь частицы сервер шлёт размер/поворот/цвет (для средней частицы). Позиция считается отдельно - см. «пакетов/с» в предпросмотре">Кадров вида на частицу: ≈{{ load.current }}</p>
       </div>
-    </template>
+    </div>
   </aside>
 </template>

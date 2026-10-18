@@ -197,7 +197,7 @@ const gridY = computed(() => [0, 0.25, 0.5, 0.75, 1].map((k) => ({ y: py(k * top
     </template>
     <template v-else>
       <!-- градиент: полоса + ручки -->
-      <div v-if="kind === 'color'" ref="box" class="grad-edit" @dblclick="barDbl" title="Двойной клик - новый цвет; ручки двигаются влево-вправо">
+      <div v-if="kind === 'color'" ref="box" class="grad-edit" :class="{ dragging }" @dblclick="barDbl" title="Двойной клик - новый цвет; ручки двигаются влево-вправо">
         <div class="grad-bar checker"><span :style="{ background: gradientCss }"></span></div>
         <div class="grad-handles">
           <button v-for="(s, i) in stops" :key="i" class="grad-handle" :class="{ on: i === sel }" :style="{ left: `calc(${PAD_X}px + ${times[i]} * (100% - ${2 * PAD_X}px))` }"
@@ -207,7 +207,7 @@ const gridY = computed(() => [0, 0.25, 0.5, 0.75, 1].map((k) => ({ y: py(k * top
         </div>
       </div>
       <!-- кривая -->
-      <div v-else ref="box" class="curve-edit" @dblclick="curveDbl">
+      <div v-else ref="box" class="curve-edit" :class="{ dragging }" @dblclick="curveDbl">
         <svg :width="W" :height="H">
           <g class="grid">
             <line v-for="g in gridY" :key="g.y" :x1="PAD_X" :x2="W - PAD_X" :y1="g.y" :y2="g.y" />
