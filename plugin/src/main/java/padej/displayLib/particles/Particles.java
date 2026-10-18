@@ -14,6 +14,8 @@ import java.util.Set;
  * Particles.play("sparkle", location, player);   // viewers = "owner" - увидит только этот игрок
  * e.stop();                                       // перестать испускать (для эффектов с duration)
  * e.cancel();                                     // убрать всё сразу
+ *
+ * Particles.shatter("слово").at(loc).facing(player).hold(20).play();   // слово рассыпается на буквы
  * </pre>
  *
  * <p>Эффекты описываются файлами {@code plugins/DisplayLib/particles/<id>.jmc} (см. {@link ParticleEffect}).
@@ -52,6 +54,24 @@ public final class Particles {
     public static ParticleEmission play(ParticleEffect effect, Location location, Player owner) {
         if (manager == null) return null;
         return manager.play(effect, location, owner);
+    }
+
+    /**
+     * Запустить эффект с явно заданными частицами: каждая появляется в {@code center + смещение} со своим текстом
+     * (для {@code TEXT}), размером и поворотом, дальше - движение и анимация эффекта. {@code emitter} не используется.
+     */
+    public static ParticleEmission playPieces(ParticleEffect effect, Location center, Player owner, java.util.List<ParticlePiece> pieces) {
+        if (manager == null) return null;
+        return manager.playPieces(effect, center, owner, pieces);
+    }
+
+    /** Текст, который через {@code hold} тиков рассыпается на буквы: {@code Particles.shatter("слово").at(loc).play()}. */
+    public static TextShatter shatter(String text) {
+        return TextShatter.of(text);
+    }
+
+    public static TextShatter shatter(net.kyori.adventure.text.Component text) {
+        return TextShatter.of(text);
     }
 
     /** Эффект по id или {@code null}. */

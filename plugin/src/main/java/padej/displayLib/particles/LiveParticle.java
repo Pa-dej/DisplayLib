@@ -64,6 +64,8 @@ final class LiveParticle {
     int sentAge;
     double sentScale = Double.NaN, sentRotation = Double.NaN;
     boolean dead;
+    /** Поворот сущности (FIXED-текст смотрит в эту сторону); сохраняется при телепортах */
+    float yaw;
 
     LiveParticle(ParticleEmission emission, Display entity, World world, ParticleSim.Body body, int life,
                  double startScale, double startRotation, double spin, float[] center, int spawnTick,
@@ -181,7 +183,7 @@ final class LiveParticle {
         body = segment.end();
         nextPosition = age + segment.length();
         if (!wasResting && (body.x != px || body.y != py || body.z != pz)) {
-            entity.teleport(new Location(world, body.x, body.y, body.z, 0, 0));
+            entity.teleport(new Location(world, body.x, body.y, body.z, yaw, 0));
         }
         planned = ParticleSim.planSegment(body, emission.effect.motion(), solid, keyframeTicks);
         if (planned.length() != segment.length()) entity.setTeleportDuration(planned.length());

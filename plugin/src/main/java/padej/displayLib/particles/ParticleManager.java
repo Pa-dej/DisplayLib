@@ -95,6 +95,47 @@ public final class ParticleManager implements Listener {
         return emission;
     }
 
+    /**
+     * Запустить эффект с явно заданными частицами (без испускания по {@code emitter}): каждая появляется в
+     * {@code center + смещение куска} со своим текстом/размером/поворотом, а дальше живёт по движению и анимации
+     * эффекта. Так сделан {@link TextShatter}.
+     */
+    public ParticleEmission playPieces(ParticleEffect effect, Location center, Player owner, java.util.List<ParticlePiece> pieces) {
+        if (center.getWorld() == null) throw new IllegalArgumentException("location has no world");
+        ParticleEmission emission = new ParticleEmission(effect, center, owner != null ? owner.getUniqueId() : null);
+        emission.ticksLeft = 0; // только эти куски
+        try {
+            emitPieces(emission, pieces);
+        } catch (RuntimeException ex) {
+            warnOnce("spawn:" + effect.id(), "Particle effect '" + effect.id() + "' failed to spawn: " + ex);
+            emission.cancel();
+        }
+        if (!emission.isDone()) {
+            emissions.add(emission);
+            ensureTask();
+        }
+        return emission;
+    }
+
+    private void emitPieces(ParticleEmission e, java.util.List<ParticlePiece> pieces) {
+        World world = e.center.getWorld();
+        if (world == null) return;
+        Player owner = e.owner != null && e.effect.viewers() == ParticleEffect.Viewers.OWNER ? Bukkit.getPlayer(e.owner) : null;
+        if (e.owner != null && e.effect.viewers() == ParticleEffect.Viewers.OWNER && owner == null) return;
+        RandomGenerator r = ThreadLocalRandom.current();
+        int now = Bukkit.getCurrentTick();
+        for (ParticlePiece piece : pieces) {
+            if (alive >= maxAlive) {
+                warnOnce("max", "Particle limit reached (" + maxAlive + " alive, particles.maxAlive in config.jmc); extra particles are skipped");
+                return;
+            }
+            LiveParticle p = spawn(e, world, owner, r, now, piece);
+            if (p == null) continue;
+            e.particles.add(p);
+            alive++;
+        }
+    }
+
     /** Убрать все частицы и остановить все запуски. */
     public void stopAll() {
         for (ParticleEmission e : emissions) {
@@ -223,7 +264,7 @@ public final class ParticleManager implements Listener {
                 warnOnce("max", "Particle limit reached (" + maxAlive + " alive, particles.maxAlive in config.jmc); extra particles are skipped");
                 return;
             }
-            LiveParticle p = spawn(e, world, owner, r, now);
+            LiveParticle p = spawn(e, world, owner, r, now, null);
             if (p == null) return;
             e.particles.add(p);
             alive++;
@@ -255,9 +296,9 @@ public final class ParticleManager implements Listener {
         }
     }
 
-    private LiveParticle spawn(ParticleEmission e, World world, Player owner, RandomGenerator r, int now) {
+    private LiveParticle spawn(ParticleEmission e, World world, Player owner, RandomGenerator r, int now, ParticlePiece piece) {
         ParticleEffect effect = e.effect;
-        double[] off = ParticleSim.spawnOffset(effect.emitter(), r);
+        double[] off = piece != null ? new double[]{piece.dx(), piece.dy(), piece.dz()} : ParticleSim.spawnOffset(effect.emitter(), r);
         double[] vel = ParticleSim.spawnVelocity(effect.motion(), off, r);
         ParticleSim.Body body = new ParticleSim.Body(e.center.getX() + off[0], e.center.getY() + off[1], e.center.getZ() + off[2],
                 vel[0], vel[1], vel[2]);
@@ -275,13 +316,14 @@ public final class ParticleManager implements Listener {
         // первый отрезок движения - до появления: его длина нужна сущности как teleportDuration
         ParticleSim.Segment first = ParticleSim.planSegment(body, effect.motion(),
                 effect.motion().collide() ? solidIn(world) : null, effect.keyframeTicks());
-        double scale = effect.animation().scale().sample(r);
+        double scale = piece != null && piece.scale() != null ? piece.scale() : effect.animation().scale().sample(r);
         double rotation = effect.animation().rotation().sample(r);
         double spin = effect.animation().spin().sample(r);
 
         ParticleEffect.Render render = effect.render();
         ParticleEffect.Animation anim = effect.animation();
-        Location at = new Location(world, body.x, body.y, body.z, 0, 0);
+        float yaw = piece != null ? piece.yaw() : 0;
+        Location at = new Location(world, body.x, body.y, body.z, yaw, 0);
         float[] center = {0, 0, 0};
         int startColor = render.colors().isEmpty() ? 0xffffffff : pick(render.colors(), r);
         int color0 = ParticleSim.colorAt(anim, startColor, 0, life);
@@ -301,7 +343,7 @@ public final class ParticleManager implements Listener {
         Display entity;
         switch (render.type()) {
             case TEXT -> {
-                textVariant = pick(render.texts(), r);
+                textVariant = piece != null && piece.text() != null ? ParticleEffect.TextVariant.of(piece.text()) : pick(render.texts(), r);
                 if (textVariant.animated()) {
                     frameStart = textVariant.randomStart() ? r.nextInt(textVariant.frames().size()) : 0;
                     baseText = textVariant.frames().get(ParticleSim.frameAt(frameStart, textVariant.frames().size(), textVariant.frameInterval(), textVariant.overLife(), 0, life));
@@ -372,6 +414,7 @@ public final class ParticleManager implements Listener {
                 render.type() == ParticleEffect.RenderType.PIXEL, baseText, startColor,
                 textVariant != null && textVariant.animated() ? textVariant : null, frameStart, textRecolor);
         particle.planned = first;
+        particle.yaw = yaw;
         return particle;
     }
 

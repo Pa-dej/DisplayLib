@@ -21,10 +21,11 @@ import java.util.Map;
  *     без координат - перед игроком; {@code player} - для кого (при {@code viewers = "owner"} видит только он)</li>
  * <li>{@code particle list} - эффекты и сколько частиц живо</li>
  * <li>{@code particle stop} - убрать все частицы</li>
+ * <li>{@code particle shatter <текст>} - слово перед игроком рассыпается на буквы (эффект {@code letters})</li>
  * </ul>
  */
 final class ParticleCommand {
-    static final String USAGE = "§cИспользование: /displaylib particle <effect> [x y z] [player] [count] | list | stop";
+    static final String USAGE = "§cИспользование: /displaylib particle <effect> [x y z] [player] [count] | list | stop | shatter <текст>";
 
     private ParticleCommand() {}
 
@@ -54,6 +55,17 @@ final class ParticleCommand {
                 int n = Particles.alive();
                 Particles.stopAll();
                 sender.sendMessage("§aУбрано частиц: " + n);
+                return;
+            }
+            case "shatter" -> {
+                if (!(sender instanceof Player p)) { sender.sendMessage("§cТолько для игрока"); return; }
+                if (args.length < 3) { sender.sendMessage("§cИспользование: /displaylib particle shatter <текст>"); return; }
+                if (Particles.effect("letters") == null) { sender.sendMessage("§cНет эффекта 'letters' - /displaylib examples"); return; }
+                String text = String.join(" ", java.util.Arrays.copyOfRange(args, 2, args.length)).replace('&', '§');
+                Location eye = p.getEyeLocation();
+                Location at = eye.clone().add(eye.getDirection().setY(0).normalize().multiply(3)).subtract(0, 0.3, 0);
+                Particles.shatter(net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer.legacySection().deserialize(text))
+                        .at(at).facing(p).owner(p).hold(20).scale(1.5).play();
                 return;
             }
             default -> { }
@@ -135,6 +147,9 @@ final class ParticleCommand {
             options.addAll(Particles.ids());
             options.add("list");
             options.add("stop");
+            options.add("shatter");
+        } else if (args[1].equalsIgnoreCase("shatter")) {
+            if (args.length == 3) options.add("слово");
         } else if (Particles.effect(args[1]) != null) {
             boolean afterCoords = args.length == 6 && isCoord(args[2]) && isCoord(args[3]) && isCoord(args[4]);
             if (args.length >= 3 && args.length <= 5 && (args.length == 3 || isCoord(args[2]))) options.add("~");

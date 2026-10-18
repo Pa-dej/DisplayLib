@@ -117,4 +117,24 @@ class ParticleEffectTest {
         assertEquals(red, plain.color(red).color(), "цвет частицы - на корне, спрайт его наследует");
         assertEquals(net.kyori.adventure.text.format.TextColor.color(0x00ff00), own.color(red).children().get(0).color(), "свой цвет сегмента остаётся");
     }
+
+    /** Слово на буквы: позиции по ширинам шрифта, стиль сохраняется, пробел - отступ без частицы. */
+    @Test
+    void textShatterLayout() {
+        List<ParticlePiece> p = TextShatter.pieces(net.kyori.adventure.text.Component.text("слово"), 1, 0);
+        assertEquals(5, p.size());
+        double[] xs = p.stream().mapToDouble(ParticlePiece::dx).toArray();
+        assertArrayEquals(new double[]{-12 / 40.0, -6 / 40.0, 0, 6 / 40.0, 12 / 40.0}, xs, 1e-9, "по 6 px, центр слова - 0");
+        assertEquals("с", ((net.kyori.adventure.text.TextComponent) p.get(0).text()).content());
+        List<ParticlePiece> turned = TextShatter.pieces(net.kyori.adventure.text.Component.text("ab"), 2, 90);
+        assertEquals(0, turned.get(0).dx(), 1e-9, "yaw 90 - вдоль Z");
+        assertEquals(-6 * 2 / 40.0 / 2 * 1, turned.get(0).dz(), 1e-9);
+        List<ParticlePiece> spaced = TextShatter.pieces(net.kyori.adventure.text.Component.text("a b"), 1, 0);
+        assertEquals(2, spaced.size(), "пробел - без частицы");
+        assertEquals(-5 / 40.0, spaced.get(0).dx(), 1e-9, "6+4+6=16: центр a на -5");
+        var red = net.kyori.adventure.text.Component.text("Hi", net.kyori.adventure.text.format.NamedTextColor.RED, net.kyori.adventure.text.format.TextDecoration.BOLD);
+        List<ParticlePiece> styled = TextShatter.pieces(red, 1, 0);
+        assertEquals(net.kyori.adventure.text.format.NamedTextColor.RED, styled.get(1).text().color(), "цвет буквы сохраняется");
+        assertEquals(-(7 + 3) / 2.0 / 40.0 + 7 / 2.0 / 40.0 - 0, styled.get(0).dx() + 0, 1e-9);
+    }
 }

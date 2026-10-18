@@ -1,0 +1,29 @@
+// letters: буквы рассыпающегося слова - эффект для TextShatter / Particles.shatter("слово") и
+// /displaylib particle shatter <текст>. Текст каждой частицы задаёт сам запуск (буква слова), здесь - как
+// они летят: от середины слова в стороны (OUTWARD), падают, отскакивают от блоков и тают.
+// Для бесшовного перехода: billboard FIXED (как у слова), rotation 0, без fadeIn и без colors - буквы
+// сохраняют цвет слова.
+String id = "letters";
+String viewers = "all";
+int keyframeTicks = 4;
+
+dyn render = { type: "TEXT", text: "?", billboard: "FIXED" };   // text - запасной, буквы приходят из запуска
+
+dyn emitter = { count: 0 };   // частицы задаёт запуск (по букве)
+
+dyn motion = {
+    lifetime: [30, 45],
+    speed: [0.03, 0.08],
+    direction: "OUTWARD",        // от середины слова
+    spread: 35,
+    gravity: 0.02,
+    drag: 0.04,
+    collide: true,
+    bounce: 0.35,
+    friction: 0.5,
+};
+
+dyn animation = {
+    spin: [-6, 6],
+    opacity: [[0, 1], [0.7, 1], [1, 0]],   // тают в конце
+};
