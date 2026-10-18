@@ -64,7 +64,15 @@ export function tableToEffect(top: JmcTable, fallbackId: string): ParseResult {
       const t = get(rt, 'text');
       render.text = t != null ? richFromJmc(t) : null;
       render.variants = (list(rt, 'variants') ?? []).map((v) => richFromJmc(v)).filter((x): x is RichText => x != null);
-      if (render.text == null && !render.variants.length) errors.push('render: для TEXT нужен text: "★" или variants: ["★", "✦"]');
+      render.frames = (list(rt, 'frames') ?? []).map((v) => richFromJmc(v)).filter((x): x is RichText => x != null);
+      // один кадр - просто текст (как в плагине)
+      if (render.frames.length === 1 && render.text == null && !render.variants.length) { render.text = render.frames[0]; render.frames = []; }
+      if (render.text == null && !render.variants.length && !render.frames.length) errors.push('render: для TEXT нужен text: "★", variants: ["★", "✦"] или frames: [...]');
+      const fi = num(rt, 'frameInterval'); if (fi != null) render.frameInterval = Math.max(1, Math.round(fi));
+      render.framesOverLife = bool(rt, 'framesOverLife') ?? false;
+      const fs = str(rt, 'frameStart');
+      if (fs != null && !/^(first|random)$/i.test(fs)) errors.push(`render.frameStart: ожидается "first" или "random", получено '${fs}'`);
+      render.frameRandomStart = fs != null && fs.toLowerCase() === 'random';
     }
     if (type === 'ITEM') {
       render.items = strings(rt, 'item', 'items');
@@ -228,7 +236,7 @@ export function validateEffect(e: ParticleEffect): string[] {
   const out: string[] = [];
   if (!e.id.trim()) out.push('id: пустой');
   if (/^(list|stop)$/i.test(e.id)) out.push(`id '${e.id}' занят командой /displaylib particle ${e.id.toLowerCase()}`);
-  if (e.render.type === 'TEXT' && e.render.text == null && !e.render.variants.length) out.push('TEXT: нужен текст или варианты');
+  if (e.render.type === 'TEXT' && e.render.text == null && !e.render.variants.length && e.render.frames.length < 2) out.push('TEXT: нужен текст, варианты или кадры');
   if (e.render.type === 'ITEM' && !e.render.items.length) out.push('ITEM: нужен хотя бы один предмет');
   if (e.render.type === 'BLOCK' && !e.render.blocks.length) out.push('BLOCK: нужен хотя бы один блок');
   for (const c of e.render.colors) if (parseColor(c) == null) out.push(`цвет ${c}: не распознан`);
@@ -294,7 +302,14 @@ export function effectToJmc(e: ParticleEffect): string {
   L.push('');
 
   const r = e.render; const rf: [string, string][] = [['type', jstr(r.type)]];
-  if (r.type === 'TEXT') {
+  if (r.type === 'TEXT' && r.frames.length > 1) {
+    const items = r.frames.map(richToJmc);
+    const inline = '[' + items.join(', ') + ']';
+    rf.push(['frames', inline.length <= 72 ? inline : '[\n' + items.map((x) => '        ' + x + ',').join('\n') + '\n    ]']);
+    if (r.framesOverLife) rf.push(['framesOverLife', 'true']);
+    if (!r.framesOverLife || r.frameInterval !== 4) rf.push(['frameInterval', jnum(r.frameInterval)]);
+    if (r.frameRandomStart) rf.push(['frameStart', '"random"']);
+  } else if (r.type === 'TEXT') {
     if (r.text != null) rf.push(['text', richToJmc(r.text)]);
     if (r.variants.length) rf.push(['variants', '[' + r.variants.map(richToJmc).join(', ') + ']']);
   }

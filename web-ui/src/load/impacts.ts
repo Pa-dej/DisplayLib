@@ -7,7 +7,7 @@ import type { LoadReport, LoadAssumptions } from './score';
 
 /** Поле инспектора, у которого стоит маркер. */
 export type ImpactKey = 'viewers' | 'keyframeTicks' | 'color' | 'count' | 'rate' | 'lifetime' | 'collide'
-  | 'wander' | 'attract' | 'easing' | 'fadeIn' | 'spin' | 'opacity';
+  | 'wander' | 'attract' | 'easing' | 'fadeIn' | 'spin' | 'opacity' | 'frameInterval';
 
 export interface Impact {
   key: ImpactKey;
@@ -34,6 +34,7 @@ export const CANDIDATES: Candidate[] = [
   { key: 'count', when: (e) => (e.emitter.count ?? 0) >= 8, suggestion: (e) => `count: ${Math.ceil((e.emitter.count ?? 0) / 2)} (вдвое меньше)`, changesLook: true, apply: (e) => { e.emitter.count = Math.ceil((e.emitter.count ?? 0) / 2); } },
   { key: 'lifetime', when: (e) => e.motion.lifetime[1] >= 6, suggestion: (e) => { const a = Math.max(1, Math.round(e.motion.lifetime[0] / 2)), b = Math.max(1, Math.round(e.motion.lifetime[1] / 2)); return `lifetime: ${a === b ? a : a + '…' + b} (вдвое короче)`; }, changesLook: true,
     apply: (e) => { e.motion.lifetime = [Math.max(1, Math.round(e.motion.lifetime[0] / 2)), Math.max(1, Math.round(e.motion.lifetime[1] / 2))]; } },
+  { key: 'frameInterval', when: (e) => e.render.type === 'TEXT' && e.render.frames.length > 1 && !e.render.framesOverLife, suggestion: (e) => `frameInterval: ${e.render.frameInterval * 2} (кадры вдвое реже)`, changesLook: true, apply: (e) => { e.render.frameInterval *= 2; } },
   { key: 'spin', when: (e) => e.animation.spin[0] !== 0 || e.animation.spin[1] !== 0, suggestion: () => 'spin: 0 (без вращения)', changesLook: true, apply: (e) => { e.animation.spin = [0, 0]; } },
   { key: 'fadeIn', when: (e) => e.animation.fadeIn > 0, suggestion: () => 'fadeIn: 0', changesLook: true, apply: (e) => { e.animation.fadeIn = 0; } },
   { key: 'color', when: (e) => !!e.animation.color && e.animation.color.length > 1, suggestion: () => 'постоянный цвет вместо градиента', changesLook: true,

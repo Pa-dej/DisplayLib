@@ -1,0 +1,34 @@
+// smoke: клубы дыма из кадров настоящих частиц Minecraft (атлас minecraft:particles, generic_7 … generic_0):
+// кадры идут один раз за жизнь (framesOverLife), как у ванильного дыма. Серый тинт - цветом текста.
+String id = "smoke";
+String viewers = "all";
+int keyframeTicks = 5;
+
+dyn render = {
+    type: "TEXT",
+    frames: [
+        [{ sprite: "generic_7", atlas: "minecraft:particles" }],
+        [{ sprite: "generic_6", atlas: "minecraft:particles" }],
+        [{ sprite: "generic_5", atlas: "minecraft:particles" }],
+        [{ sprite: "generic_4", atlas: "minecraft:particles" }],
+        [{ sprite: "generic_3", atlas: "minecraft:particles" }],
+        [{ sprite: "generic_2", atlas: "minecraft:particles" }],
+        [{ sprite: "generic_1", atlas: "minecraft:particles" }],
+        [{ sprite: "generic_0", atlas: "minecraft:particles" }],
+    ],
+    framesOverLife: true,        // кадры растянуты на жизнь частицы; иначе - по кругу каждые frameInterval тиков
+    colors: ["#9a9a9a", "#b5b5b5", "#7d7d7d"],
+};
+
+dyn emitter = { shape: "CIRCLE", radius: 0.3, count: 0, duration: 80, rate: 0.6 };
+
+dyn motion = {
+    lifetime: [30, 45],
+    speed: [0.01, 0.03],
+    spread: 25,
+    gravity: -0.004,             // поднимается
+    drag: 0.04,
+    wander: 0.002,
+};
+
+dyn animation = { scale: [1.2, 1.8], endScale: 1.6, fadeIn: 3, rotation: [0, 360] };

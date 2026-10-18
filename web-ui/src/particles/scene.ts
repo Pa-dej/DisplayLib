@@ -270,7 +270,9 @@ export class ParticleScene {
     v.mask = mask;
   }
 
-  private richVariant(e: ParticleEffect, i: number): RichText {
+  /** Текст частицы: кадр (frame >= 0, если есть кадры) или вариант. */
+  private richVariant(e: ParticleEffect, i: number, frame = -1): RichText {
+    if (frame >= 0 && e.render.frames.length > 1) return e.render.frames[frame] ?? e.render.frames[0];
     const all: RichText[] = [];
     if (e.render.text != null) all.push(e.render.text);
     all.push(...e.render.variants);
@@ -278,16 +280,16 @@ export class ParticleScene {
   }
 
   /** Текстура текста с цветом (корневой цвет красит сегменты без своего, как text.color() в плагине). */
-  private textTexture(e: ParticleEffect, variant: number, rgb: number | null): { tex: THREE.Texture; w: number; h: number } {
+  private textTexture(e: ParticleEffect, variant: number, rgb: number | null, frame = -1): { tex: THREE.Texture; w: number; h: number } {
     // ключ - содержимое варианта и фона, а не номер: правка текста не должна показывать старую картинку
     const rd = e.render;
-    const key = JSON.stringify([this.richVariant(e, variant), rgb, rd.background, rd.backgroundAlpha, rd.shadow, this.spriteRevision]);
+    const key = JSON.stringify([this.richVariant(e, variant, frame), rgb, rd.background, rd.backgroundAlpha, rd.shadow, this.spriteRevision]);
     let t = this.textCache.get(key);
     if (t) return t;
-    let rich = this.richVariant(e, variant);
+    let rich = this.richVariant(e, variant, frame);
     if (rgb != null) {
       const col = cssHex(rgb);
-      rich = typeof rich === 'string' ? [{ text: rich, color: col }] : rich.map((s) => (s.color || s.sprite !== undefined || s.player !== undefined ? s : { ...s, color: col }));
+      rich = typeof rich === 'string' ? [{ text: rich, color: col }] : rich.map((s) => (s.color || s.player !== undefined ? s : { ...s, color: col })) // спрайт без своего цвета тоже красится (тинт), как text.color() в игре;
     }
     const bg = e.render.background ?? [0, 0, 0];
     const bgA = e.render.background ? (e.render.backgroundAlpha ?? 255) : 0;
@@ -374,7 +376,8 @@ export class ParticleScene {
         m.visible = a >= MIN_ALPHA;
       } else if (e.render.type === 'TEXT') {
         const recolor = e.render.colors.length > 0 || e.animation.color != null;
-        const tt = this.textTexture(e, p.variant, recolor ? s.color & 0xffffff : null);
+        const frame = e.render.frames.length > 1 ? (this.opts.asGame ? rt.frameShown(p, t) : rt.frameExact(p, t)) : -1;
+        const tt = this.textTexture(e, p.variant, recolor ? s.color & 0xffffff : null, frame);
         if (mat.map !== tt.tex) { mat.map = tt.tex; mat.needsUpdate = true; }
         mat.opacity = a / 255;
         m.visible = a >= MIN_ALPHA || !(e.animation.opacity || e.animation.color);

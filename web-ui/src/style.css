@@ -526,3 +526,22 @@ html.theme-anim, html.theme-anim *, html.theme-anim *::before, html.theme-anim *
 @container (max-width: 260px) {
   .segment { grid-template-columns: 14px minmax(0, 1fr) 26px; grid-template-areas: "g m x" ". e e" ". e2 e2"; }
 }
+/* лента кадров текста частицы (FrameStrip.vue) */
+.frame-strip { display: flex; flex-direction: column; gap: 6px; }
+.checker-dark { background-color: #2b2c30; background-image: repeating-conic-gradient(#34353a 0 25%, transparent 0 50%); background-size: 12px 12px; }
+.fs-preview { position: relative; height: 84px; border-radius: 8px; border: 1px solid var(--vp-c-divider); display: flex; align-items: center; justify-content: center; overflow: hidden; }
+.fs-preview img { max-height: 70px; max-width: 90%; image-rendering: pixelated; min-height: 32px; object-fit: contain; }
+.fs-play { position: absolute; right: 6px; bottom: 6px; }
+.fs-list { display: flex; flex-wrap: wrap; gap: 5px; }
+.fs-thumb { position: relative; width: 44px; height: 44px; padding: 3px; border-radius: 7px; border: 1px solid var(--vp-c-divider); background-color: #2b2c30; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: border-color .15s, box-shadow .15s, transform .12s; animation: ui-badge .2s var(--ease-out); }
+.fs-thumb img { max-width: 100%; max-height: 100%; image-rendering: pixelated; object-fit: contain; pointer-events: none; }
+.fs-thumb .n { position: absolute; left: 2px; top: 1px; font-size: 9px; font-weight: 700; color: rgba(255,255,255,.7); text-shadow: 0 1px 1px #000; }
+.fs-thumb:hover { border-color: var(--vp-c-brand-1); }
+.fs-thumb.on { border-color: var(--vp-c-brand-1); box-shadow: 0 0 0 2px var(--vp-c-brand-soft); }
+.fs-thumb.now { transform: translateY(-2px); box-shadow: 0 0 0 2px #d9a441; }
+.fs-thumb.dragging { opacity: .4; }
+.fs-thumb.drop-before { box-shadow: -3px 0 0 0 var(--vp-c-brand-1); }
+.fs-thumb.drop-after { box-shadow: 3px 0 0 0 var(--vp-c-brand-1); }
+.fs-add { background: var(--vp-c-bg-elv); color: var(--vp-c-text-2); border-style: dashed; }
+.fs-actions { display: flex; align-items: center; gap: 4px; }
+.fs-editor { padding: 6px; border-radius: 8px; border: 1px solid var(--vp-c-divider); background: color-mix(in srgb, var(--vp-c-bg-soft) 55%, transparent); }

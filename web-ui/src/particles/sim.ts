@@ -268,6 +268,14 @@ export function colorAt(c: Compiled, startColor: number, age: number, life: numb
   return withOpacity(col, sampleCurve(c.opacity, t));
 }
 
+/** Кадр текста в видимом возрасте age (как ParticleSim.frameAt). */
+export function frameAt(start: number, count: number, interval: number, overLife: boolean, age: number, life: number): number {
+  if (count <= 1) return 0;
+  if (overLife) return Math.max(0, Math.min(count - 1, Math.floor((Math.max(0, age) / Math.max(1, life)) * count)));
+  const k = start + Math.floor(Math.max(0, age) / Math.max(1, interval));
+  return ((k % count) + count) % count;
+}
+
 // ---------------------------------------------------------------- кадры вида (как ParticleSim.planTransform)
 
 export const TRANSFORM_SCALE_TOLERANCE = 0.03;

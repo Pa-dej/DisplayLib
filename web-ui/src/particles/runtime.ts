@@ -6,7 +6,7 @@ import type { ParticleEffect } from './model';
 import { burstCount } from './model';
 import {
   type Compiled, type Body, type Solid, type Segment, Rng, compile, body, spawnOffset, spawnVelocity, randomUnit,
-  planSegment, planTransform, lerpArgb, scaleAt, rotationAt, colorAt,
+  planSegment, planTransform, lerpArgb, frameAt, scaleAt, rotationAt, colorAt,
 } from './sim';
 import { alpha } from './colors';
 
@@ -40,6 +40,10 @@ export interface Particle {
   /** Точный путь по тикам «видимого возраста» (для режима «точная траектория») */
   path: [number, number, number][];
   dead: boolean;
+  /** Кадры текста: с какого начали, какой отправлен клиенту и с какого тика он виден */
+  frameStart: number;
+  frame: number;
+  frameLog: { tick: number; frame: number }[];
 }
 
 export interface Stats {
@@ -101,6 +105,7 @@ export class ParticleRuntime {
       if (p.age > p.life) { p.dead = true; this.packet(); continue; }
       if (p.age >= p.nextPosition) this.sendPosition(p, K, solid);
       if (p.age >= p.nextTransform) this.sendTransform(p, K);
+      if (this.frames > 1) this.updateFrame(p);
     }
     this.particles = this.particles.filter((p) => !p.dead);
     if (this.ticksLeft > 0 && !this.stopped) {
@@ -121,6 +126,31 @@ export class ParticleRuntime {
       avgSegment: this.segCount ? this.segSum / this.segCount : 0,
       spawned: this.spawned,
     };
+  }
+
+  /** Число кадров текста (TEXT с frames), 0 - без кадров */
+  private get frames(): number { const r = this.c.effect.render; return r.type === 'TEXT' && r.frames.length > 1 ? r.frames.length : 0; }
+
+  /** LiveParticle.updateFrame: смена кадра - один пакет метаданных (текст) */
+  private updateFrame(p: Particle): void {
+    const r = this.c.effect.render;
+    const next = frameAt(p.frameStart, r.frames.length, r.frameInterval, r.framesOverLife, p.age - 1, p.life);
+    if (next === p.frame) return;
+    p.frame = next;
+    p.frameLog.push({ tick: this.tick, frame: next });
+    this.packet();
+  }
+
+  /** Какой кадр текста видит игрок в момент t (текст меняется скачком, без интерполяции). */
+  frameShown(p: Particle, t: number): number {
+    let f = p.frameLog[0]?.frame ?? 0;
+    for (const x of p.frameLog) { if (x.tick <= t) f = x.frame; else break; }
+    return f;
+  }
+  /** Точный кадр (режим «точная траектория»): по видимому возрасту, как позиция. */
+  frameExact(p: Particle, t: number): number {
+    const r = this.c.effect.render;
+    return frameAt(p.frameStart, r.frames.length, r.frameInterval, r.framesOverLife, Math.floor(Math.max(0, t - p.spawnTick - 1)), p.life);
   }
 
   private emit(count: number): void {
@@ -149,7 +179,10 @@ export class ParticleRuntime {
     const spin = r.range(c.animation.spin);
     const nVariants = e.render.type === 'TEXT' ? (e.render.text != null ? 1 : 0) + e.render.variants.length
       : e.render.type === 'ITEM' ? e.render.items.length : e.render.type === 'BLOCK' ? e.render.blocks.length : 1;
-    const variant = nVariants > 1 ? r.nextInt(nVariants) : 0;
+    const animated = e.render.type === 'TEXT' && e.render.frames.length > 1;
+    const variant = !animated && nVariants > 1 ? r.nextInt(nVariants) : 0;
+    const frameStart = animated && e.render.frameRandomStart ? r.nextInt(e.render.frames.length) : 0;
+    const frame0 = animated ? frameAt(frameStart, e.render.frames.length, e.render.frameInterval, e.render.framesOverLife, 0, 1) : 0;
     const startColor = c.colors.length ? (c.colors.length === 1 ? c.colors[0] : c.colors[r.nextInt(c.colors.length)]) : 0xffffffff;
     const color0 = colorAt(c, startColor, 0, life);
     const s0 = scaleAt(c, scale, 0, life);
@@ -163,6 +196,7 @@ export class ParticleRuntime {
       look: { from: { scale: s0, rotation, color: color0 }, to: { scale: s0, rotation, color: color0 }, start: this.tick, dur: 1 },
       path: [[b.x, b.y, b.z]],
       dead: false,
+      frameStart, frame: frame0, frameLog: [{ tick: this.tick, frame: frame0 }],
     };
   }
 

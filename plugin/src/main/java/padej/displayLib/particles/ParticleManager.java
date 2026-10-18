@@ -286,6 +286,8 @@ public final class ParticleManager implements Listener {
         int startColor = render.colors().isEmpty() ? 0xffffffff : pick(render.colors(), r);
         int color0 = ParticleSim.colorAt(anim, startColor, 0, life);
         Component baseText = null;
+        int frameStart = 0;
+        boolean textRecolor = false;
         Consumer<Display> common = d -> {
             d.setPersistent(false);
             d.setBillboard(render.billboard());
@@ -298,12 +300,18 @@ public final class ParticleManager implements Listener {
         Display entity;
         switch (render.type()) {
             case TEXT -> {
-                baseText = pick(render.texts(), r);
+                if (render.animated()) {
+                    frameStart = render.frameRandomStart() ? r.nextInt(render.frames().size()) : 0;
+                    baseText = render.frames().get(ParticleSim.frameAt(frameStart, render.frames().size(), render.frameInterval(), render.framesOverLife(), 0, life));
+                } else {
+                    baseText = pick(render.texts(), r);
+                }
                 Component text = baseText;
                 // цвет: случайный из render.colors или кривая animation.color; без них - как в самом тексте
                 boolean recolor = !render.colors().isEmpty() || anim.color() != null;
                 if (recolor) text = text.color(TextColor.color(color0 & 0xffffff));
                 else baseText = null;
+                textRecolor = recolor;
                 boolean objectOnly = TextDisplayButtonWidget.isObjectOnly(text);
                 // якорь TextDisplay - низ текста по центру; центр картинки: 1 px правее и на полстроки выше
                 center[0] = TEXT_PIXEL;
@@ -359,7 +367,8 @@ public final class ParticleManager implements Listener {
         }
         if (owner != null) owner.showEntity(plugin, entity);
         LiveParticle particle = new LiveParticle(e, entity, world, body, life, scale, rotation, spin, center, now,
-                render.type() == ParticleEffect.RenderType.PIXEL, baseText, startColor);
+                render.type() == ParticleEffect.RenderType.PIXEL, baseText, startColor,
+                render.type() == ParticleEffect.RenderType.TEXT && render.animated() ? render.frames() : null, frameStart, textRecolor);
         particle.planned = first;
         return particle;
     }

@@ -42,7 +42,13 @@ final class LiveParticle {
     /** Квадрат-фон (PIXEL): своя трансформация, цвет - фон сущности */
     final boolean pixel;
     /** Текст без цвета (TEXT): цвет во времени накладывается на него; null у остальных типов */
-    final Component baseText;
+    Component baseText;
+    /** Перекрашивать ли текст (есть colors или градиент); иначе цвет - как в самом тексте */
+    final boolean recolor;
+    /** Кадры текста (TEXT с frames) или null; первый кадр и текущий */
+    final java.util.List<Component> frames;
+    final int frameStart;
+    int frame;
     /** Стартовый цвет ARGB (случайный из render.colors) */
     final int startColor;
     int sentColor;
@@ -62,6 +68,17 @@ final class LiveParticle {
     LiveParticle(ParticleEmission emission, Display entity, World world, ParticleSim.Body body, int life,
                  double startScale, double startRotation, double spin, float[] center, int spawnTick,
                  boolean pixel, Component baseText, int startColor) {
+        this(emission, entity, world, body, life, startScale, startRotation, spin, center, spawnTick, pixel, baseText, startColor, null, 0, baseText != null);
+    }
+
+    LiveParticle(ParticleEmission emission, Display entity, World world, ParticleSim.Body body, int life,
+                 double startScale, double startRotation, double spin, float[] center, int spawnTick,
+                 boolean pixel, Component baseText, int startColor, java.util.List<Component> frames, int frameStart, boolean recolor) {
+        this.frames = frames;
+        this.frameStart = frameStart;
+        this.recolor = recolor;
+        ParticleEffect.Render r = emission.effect.render();
+        this.frame = frames == null ? 0 : ParticleSim.frameAt(frameStart, frames.size(), r.frameInterval(), r.framesOverLife(), 0, life);
         this.pixel = pixel;
         this.baseText = baseText;
         this.startColor = startColor;
@@ -134,6 +151,24 @@ final class LiveParticle {
     void update(int keyframeTicks, ParticleSim.Solid solid) {
         if (age >= nextPosition) sendPosition(keyframeTicks, solid);
         if (age >= nextTransform) sendTransform(keyframeTicks);
+        if (frames != null) updateFrame();
+    }
+
+    /** Кадр текста для видимого возраста (age - 1, как и остальное): смена - один пакет метаданных. */
+    private void updateFrame() {
+        ParticleEffect.Render r = emission.effect.render();
+        int next = ParticleSim.frameAt(frameStart, frames.size(), r.frameInterval(), r.framesOverLife(), age - 1, life);
+        if (next == frame) return;
+        frame = next;
+        Component text = frames.get(next);
+        if (entity instanceof TextDisplay d) {
+            if (recolor) {
+                baseText = text;
+                d.text(text.color(TextColor.color(sentColor & 0xffffff)));
+            } else {
+                d.text(text);
+            }
+        }
     }
 
     /**

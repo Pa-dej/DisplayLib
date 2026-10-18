@@ -72,4 +72,26 @@ class ParticleEffectTest {
         assertEquals(2, m.emitter().radius());
         assertEquals(3, e.emitter().count(), "исходный не меняется");
     }
+
+    /** Кадры текста: по кругу, по жизни, со случайного; один кадр - обычный текст. */
+    @Test
+    void textFrames() {
+        ParticleEffect e = ParticleEffect.parse((JTable) Config.parse("dyn render = { type: \"TEXT\", frames: [\"a\", \"b\", \"c\"], frameInterval: 2, frameStart: \"random\" };"), "t");
+        assertTrue(e.render().animated());
+        assertEquals(3, e.render().frames().size());
+        assertEquals(2, e.render().frameInterval());
+        assertTrue(e.render().frameRandomStart());
+        assertEquals(0, ParticleSim.frameAt(0, 3, 2, false, 0, 30));
+        assertEquals(0, ParticleSim.frameAt(0, 3, 2, false, 1, 30));
+        assertEquals(1, ParticleSim.frameAt(0, 3, 2, false, 2, 30));
+        assertEquals(0, ParticleSim.frameAt(0, 3, 2, false, 6, 30), "по кругу");
+        assertEquals(2, ParticleSim.frameAt(1, 3, 2, false, 2, 30), "со сдвигом");
+        assertEquals(0, ParticleSim.frameAt(0, 4, 1, true, 0, 40));
+        assertEquals(1, ParticleSim.frameAt(0, 4, 1, true, 10, 40));
+        assertEquals(3, ParticleSim.frameAt(0, 4, 1, true, 40, 40), "по жизни - последний к концу");
+        ParticleEffect one = ParticleEffect.parse((JTable) Config.parse("dyn render = { type: \"TEXT\", frames: [\"a\"] };"), "t");
+        assertFalse(one.render().animated());
+        assertEquals(1, one.render().texts().size());
+        assertThrows(IllegalArgumentException.class, () -> ParticleEffect.parse((JTable) Config.parse("dyn render = { type: \"TEXT\", frames: [\"a\", \"b\"], frameStart: \"middle\" };"), "t"));
+    }
 }

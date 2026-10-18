@@ -1,7 +1,7 @@
 <script setup lang="ts">
 // Свойства эффекта частиц: общее, вид (render), испускание (emitter), движение (motion), анимация.
 // Подписи - имена полей в файле, чтобы правку в редакторе было легко найти в .jmc и наоборот.
-import { computed } from 'vue';
+import { computed, ref, watch } from 'vue';
 import Icon from '../Icon.vue';
 import NumInput from './NumInput.vue';
 import RangeInput from './RangeInput.vue';
@@ -14,6 +14,7 @@ import VecInput from '../fields/VecInput.vue';
 import ColorInput from '../fields/ColorInput.vue';
 import ColorPicker from '../fields/ColorPicker.vue';
 import LoadMark from '../load/LoadMark.vue';
+import FrameStrip from './FrameStrip.vue';
 import { useReorder, moveItem } from '../../reorder';
 import { compile, transformPlan } from '../../particles/sim';
 import { parseColor } from '../../particles/colors';
@@ -69,15 +70,47 @@ const DIRS: { label: string; v: Vec3 }[] = [{ label: '↑', v: [0, 1, 0] }, { la
 // ---- текст: основной и варианты
 // В файле есть text (один) и variants (случайный из списка); в редакторе это один список:
 // один вариант пишется как text, несколько - как variants.
-const variants = computed<RichText[]>(() => [...(r.value.text != null ? [r.value.text] : []), ...r.value.variants]);
+// Текст частицы - либо варианты (случайный на частицу), либо кадры анимации (как frames у кнопок экранов).
+// В режиме кадров один кадр пишется ещё и как text, чтобы файл оставался рабочим.
+const framesMode = ref(false);
+watch(() => currentEffectDoc.value?.key, () => { framesMode.value = !!currentEffect.value && currentEffect.value.render.frames.length > 0; }, { immediate: true });
+const textStash = new WeakMap<object, { variants: RichText[]; frames: RichText[] }>();
+const variants = computed<RichText[]>(() => !currentEffect.value ? [] : framesMode.value
+  ? (r.value.frames.length ? r.value.frames : r.value.text != null ? [r.value.text] : [])
+  : [...(r.value.text != null ? [r.value.text] : []), ...r.value.variants]);
 function storeVariants(all: RichText[]) {
+  if (framesMode.value) { r.value.frames = all; r.value.text = all.length === 1 ? all[0] : null; r.value.variants = []; return; }
   if (all.length === 1) { r.value.text = all[0]; r.value.variants = []; }
   else { r.value.text = null; r.value.variants = all; }
 }
-function addVariant() { edit(() => storeVariants([...variants.value, '✦'])); }
+function setTextMode(frames: boolean) {
+  if (frames === framesMode.value) return;
+  edit(() => {
+    const prev = textStash.get(e.value) ?? { variants: [], frames: [] };
+    const cur = variants.value;
+    if (frames) {
+      textStash.set(e.value, { ...prev, variants: cur });
+      framesMode.value = true;
+      // кадры по умолчанию - из текущих вариантов (или пример вращения), чтобы сразу было видно анимацию
+      storeVariants(prev.frames.length ? prev.frames : cur.length > 1 ? cur : ['◐', '◓', '◑', '◒']);
+    } else {
+      textStash.set(e.value, { ...prev, frames: cur });
+      framesMode.value = false;
+      r.value.frames = [];
+      storeVariants(prev.variants.length ? prev.variants : [cur[0] ?? '★']);
+    }
+  });
+}
+function addVariant() { edit(() => storeVariants([...variants.value, framesMode.value ? (variants.value[variants.value.length - 1] ?? '✦') : '✦'])); }
 function delVariant(i: number) { edit(() => storeVariants(variants.value.filter((_, j) => j !== i))); }
 function setVariant(i: number, v: RichText | null) { const a = [...variants.value]; a[i] = v ?? ''; storeVariants(a); }
-const dndVariants = useReorder((from, to) => edit(() => { const a = [...variants.value]; moveItem(a, from, to); storeVariants(a); }));
+const dndVariants = useReorder((from, to) => moveVariant(from, to));
+function moveVariant(from: number, to: number) { edit(() => { const a = [...variants.value]; moveItem(a, from, to); storeVariants(a); }); }
+function dupVariant(i: number) { edit(() => { const a = [...variants.value]; a.splice(i + 1, 0, JSON.parse(JSON.stringify(a[i]))); storeVariants(a); }); }
+// лента кадров: выбранный кадр и тинт миниатюр (первый цвет частицы)
+const frameSel = ref(0);
+watch(() => [currentEffectDoc.value?.key, variants.value.length], () => { if (frameSel.value >= variants.value.length) frameSel.value = Math.max(0, variants.value.length - 1); });
+const frameTint = computed(() => { if (!currentEffect.value) return null; const c = r.value.colors[0] ?? an.value.color?.[0]?.value ?? null; return c && c.startsWith('#') ? c.slice(0, 7) : c; });
 
 // ---- фон текста
 function setBg(on: boolean) { edit(() => { r.value.background = on ? [0, 0, 0] : null; r.value.backgroundAlpha = on ? 64 : null; }); }
@@ -153,20 +186,45 @@ const blockNames = ITEM_NAMES;
         <p class="hint">{{ RENDER_HINT[r.type] }}</p>
 
         <template v-if="r.type === 'TEXT'">
-          <div class="field stack"><label title="Один вариант - у всех частиц он; несколько - на каждую частицу случайный (в файле: text или variants)">Текст частицы <span class="hint">{{ variants.length > 1 ? 'случайный из ' + variants.length : '' }}</span></label>
-            <div class="frames variants">
+          <div class="field"><label title="Варианты - на каждую частицу случайный текст; кадры - текст сменяется во времени, как анимация кнопок экранов">Текст</label>
+            <div class="seg">
+              <button :class="{ on: !framesMode }" @click="setTextMode(false)">Варианты</button>
+              <button :class="{ on: framesMode }" @click="setTextMode(true)">Кадры</button>
+            </div></div>
+          <div class="field stack"><label :title="framesMode ? 'Кадры анимации по порядку (в файле: frames)' : 'Один вариант - у всех частиц он; несколько - на каждую частицу случайный (в файле: text или variants)'">{{ framesMode ? 'Кадры' : 'Текст частицы' }} <span class="hint">{{ framesMode ? (variants.length > 1 ? variants.length + ' кадр(ов)' : 'нужно 2+ кадра') : variants.length > 1 ? 'случайный из ' + variants.length : '' }}</span></label>
+            <template v-if="framesMode">
+              <FrameStrip :items="variants" :selected="frameSel" :interval="r.frameInterval" :over-life="r.framesOverLife" :tint="frameTint"
+                @select="frameSel = $event" @add="addVariant(); frameSel = variants.length - 1" @dup="dupVariant($event); frameSel = $event + 1" @del="delVariant($event); frameSel = Math.max(0, $event - 1)"
+                @move="(f, t) => { moveVariant(f, t); frameSel = t; }" />
+              <div v-if="variants[frameSel] != null" class="fs-editor">
+                <RichTextInput compact :model-value="variants[frameSel]" placeholder="★" @update:model-value="setVariant(frameSel, $event)" />
+              </div>
+            </template>
+            <div v-else class="frames variants">
               <div v-for="(v, i) in variants" :key="i" class="variant-card" :class="dndVariants.rowClass(i)" data-row @dragover="dndVariants.over(i, $event)" @dragleave="dndVariants.leave(i)" @drop="dndVariants.drop(i, $event)">
                 <div class="variant-head">
                   <span class="grip" title="Перетащить, чтобы изменить порядок" draggable="true" @dragstart="dndVariants.start(i, $event)" @dragend="dndVariants.end()"><Icon name="grip-vertical" :size="10" /></span>
                   <span class="kind">{{ i + 1 }}</span>
-                  <span class="hint grow">{{ variants.length > 1 ? 'вариант ' + (i + 1) : 'текст' }}</span>
-                  <button class="btn sm icon" title="Убрать вариант" :disabled="variants.length <= 1" @click="delVariant(i)"><Icon name="trash" :size="12" /></button>
+                  <span class="hint grow">{{ framesMode ? 'кадр ' + (i + 1) : variants.length > 1 ? 'вариант ' + (i + 1) : 'текст' }}</span>
+                  <button class="btn sm icon" :title="framesMode ? 'Дублировать кадр' : 'Дублировать вариант'" @click="edit(() => { const a = [...variants]; a.splice(i + 1, 0, JSON.parse(JSON.stringify(v))); storeVariants(a); })"><Icon name="clone" :size="12" /></button>
+                  <button class="btn sm icon" :title="framesMode ? 'Убрать кадр' : 'Убрать вариант'" :disabled="variants.length <= 1" @click="delVariant(i)"><Icon name="trash" :size="12" /></button>
                 </div>
                 <RichTextInput compact :model-value="v" placeholder="★" @update:model-value="setVariant(i, $event)" />
               </div>
-              <div class="row"><button class="btn sm" @click="addVariant"><Icon name="plus" /> Вариант</button></div>
+              <div class="row"><button class="btn sm" @click="addVariant"><Icon name="plus" /> {{ framesMode ? 'Кадр' : 'Вариант' }}</button></div>
             </div>
           </div>
+          <template v-if="framesMode">
+            <div class="field"><label title="По кругу - кадры сменяются каждые frameInterval тиков; за жизнь - проходят один раз от рождения до смерти (как дым и искры Minecraft)">Смена кадров</label>
+              <div class="seg">
+                <button :class="{ on: !r.framesOverLife }" @click="edit(() => (r.framesOverLife = false))">По кругу</button>
+                <button :class="{ on: r.framesOverLife }" @click="edit(() => (r.framesOverLife = true))">За жизнь</button>
+              </div></div>
+            <div v-if="!r.framesOverLife" class="field"><label title="Тиков на кадр (20 = 1 с). Каждая смена - пакет каждому игроку">frameInterval<LoadMark k="frameInterval" /></label>
+              <div class="row"><NumInput v-model="r.frameInterval" :int="true" :step="1" :min="1" style="width:80px" /><span class="hint">тиков · {{ (20 / Math.max(1, r.frameInterval)).toFixed(r.frameInterval > 20 ? 2 : 1) }} кадр/с</span></div></div>
+            <div class="field"><label title="Каждая частица начинает со случайного кадра - анимации не идут в такт (frameStart: random)">Случайный старт</label>
+              <input type="checkbox" :checked="r.frameRandomStart" @change="edit(() => (r.frameRandomStart = !r.frameRandomStart))" /></div>
+          </template>
         </template>
         <div v-if="r.type === 'ITEM'" class="field stack"><label title="Случайный на каждую частицу">items</label>
           <ListInput v-model="r.items" add="GOLD_NUGGET" :min="1" v-slot="{ value, set }">

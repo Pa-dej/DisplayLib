@@ -394,6 +394,16 @@ public final class ParticleSim {
         return true;
     }
 
+    /**
+     * Номер кадра текста в «видимом» возрасте {@code age}: по кругу каждые {@code interval} тиков, начиная с
+     * {@code start}, или (overLife) по доле жизни - первый кадр при рождении, последний к концу.
+     */
+    public static int frameAt(int start, int count, int interval, boolean overLife, int age, int life) {
+        if (count <= 1) return 0;
+        if (overLife) return Math.max(0, Math.min(count - 1, (int) Math.floor((double) Math.max(0, age) / Math.max(1, life) * count)));
+        return Math.floorMod(start + Math.max(0, age) / Math.max(1, interval), count);
+    }
+
     /** Угол в плоскости частицы, градусы. */
     public static double rotationAt(double start, double spin, int age) {
         return start + spin * age;

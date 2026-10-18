@@ -23,6 +23,14 @@ export interface Render {
   /** TEXT: один текст (text) и/или варианты (variants) - на частицу случайный */
   text: RichText | null;
   variants: RichText[];
+  /**
+   * TEXT: кадры текста, как frames у кнопок экранов (2+; тогда text/variants не используются). Сменяются каждые
+   * frameInterval тиков по кругу или (framesOverLife) один раз за жизнь; frameRandomStart - со случайного кадра.
+   */
+  frames: RichText[];
+  frameInterval: number;
+  framesOverLife: boolean;
+  frameRandomStart: boolean;
   /** Случайный цвет на частицу: цвет текста (TEXT) или квадрата (PIXEL) */
   colors: string[];
   items: string[];
@@ -96,7 +104,7 @@ export const EASINGS: Easing[] = ['LINEAR', 'EASE_IN', 'EASE_OUT', 'EASE_IN_OUT'
 
 export function defaultRender(type: RenderType = 'PIXEL'): Render {
   return {
-    type, text: type === 'TEXT' ? '★' : null, variants: [], colors: [], items: type === 'ITEM' ? ['GOLD_NUGGET'] : [],
+    type, text: type === 'TEXT' ? '★' : null, variants: [], frames: [], frameInterval: 4, framesOverLife: false, frameRandomStart: false, colors: [], items: type === 'ITEM' ? ['GOLD_NUGGET'] : [],
     blocks: type === 'BLOCK' ? ['minecraft:glowstone'] : [], billboard: type === 'BLOCK' ? 'FIXED' : 'CENTER',
     brightness: null, shadow: false, background: null, backgroundAlpha: null, glow: false, glowColor: null,
   };
