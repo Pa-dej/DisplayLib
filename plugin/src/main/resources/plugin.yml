@@ -9,7 +9,7 @@ description: Interactive 3D screens on Display entities, scripted in Jumper
 commands:
   displaylib:
     description: Main DisplayLib command
-    usage: /displaylib <open|close|list|openpublic|closepublic|listpublic|reload|examples>
+    usage: /displaylib <open|close|list|openpublic|closepublic|listpublic|particle|reload|examples>
     aliases: [dlib, dl]
 
 permissions:

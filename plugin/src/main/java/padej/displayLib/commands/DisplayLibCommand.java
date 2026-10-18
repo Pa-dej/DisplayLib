@@ -324,7 +324,8 @@ public class DisplayLibCommand implements CommandExecutor, TabCompleter {
                 // скрипты - раньше экранов: разбор экранов читает скрипты под новой политикой
                 plugin.getScriptEngine().reload();
                 plugin.getScreenRegistry().reloadAll();
-                sender.sendMessage("§aЭкраны, политика и скрипты перезагружены");
+                if (plugin.getParticleRegistry() != null) plugin.getParticleRegistry().loadAll();
+                sender.sendMessage("§aЭкраны, политика, скрипты и эффекты частиц перезагружены");
             }
             
             case "validate" -> {
@@ -337,6 +338,8 @@ public class DisplayLibCommand implements CommandExecutor, TabCompleter {
                 sender.sendMessage("§eПроверка экранов §7(после перезагрузки; ошибки разбора - в консоли):");
                 for (String line : plugin.getScreenRegistry().validate()) sender.sendMessage("§7- " + line);
             }
+
+            case "particle", "particles" -> ParticleCommand.execute(sender, args);
 
             case "list" -> {
                 var screens = plugin.getScreenRegistry().getAllScreens();
@@ -362,7 +365,8 @@ public class DisplayLibCommand implements CommandExecutor, TabCompleter {
                 }
                 plugin.getScriptEngine().reload();
                 plugin.getScreenRegistry().reloadAll();
-                sender.sendMessage("§aВыгружено файлов примеров: " + count + ", экраны перезагружены");
+                if (plugin.getParticleRegistry() != null) plugin.getParticleRegistry().loadAll();
+                sender.sendMessage("§aВыгружено файлов примеров: " + count + ", экраны и частицы перезагружены");
             }
             
             default -> {
@@ -391,6 +395,8 @@ public class DisplayLibCommand implements CommandExecutor, TabCompleter {
             player.sendMessage("§7  (если экран с таким ID уже существует, он будет пересоздан)");
             player.sendMessage("§e/displaylib closepublic <id> §7- Убрать публичный экран (и из сохранённых)");
             player.sendMessage("§e/displaylib listpublic §7- Список активных публичных экранов");
+            player.sendMessage("§e/displaylib particle <effect> [x y z] [player] [count] §7- Запустить эффект частиц");
+            player.sendMessage("§e/displaylib particle list|stop §7- Эффекты / убрать все частицы");
         }
     }
     
@@ -399,13 +405,17 @@ public class DisplayLibCommand implements CommandExecutor, TabCompleter {
         if (args.length == 1) {
             List<String> commands = Arrays.asList("open", "close", "list");
             if (sender.hasPermission("displaylib.admin")) {
-                commands = Arrays.asList("open", "close", "list", "reload", "validate", "examples", "openpublic", "closepublic", "listpublic");
+                commands = Arrays.asList("open", "close", "list", "reload", "validate", "examples", "openpublic", "closepublic", "listpublic", "particle");
             }
             return commands.stream()
                     .filter(cmd -> cmd.toLowerCase().startsWith(args[0].toLowerCase()))
                     .toList();
         }
         
+        if (args.length >= 2 && (args[0].equalsIgnoreCase("particle") || args[0].equalsIgnoreCase("particles"))) {
+            return sender.hasPermission("displaylib.admin") ? ParticleCommand.complete(sender, args) : List.of();
+        }
+
         if (args.length == 2) {
             if (args[0].equalsIgnoreCase("open")) {
                 // Для open показываем список экранов

@@ -1,0 +1,34 @@
+// confetti: разноцветные квадратики вылетают вверх, падают, отскакивают от блоков и ложатся на пол.
+// Коллизии (collide) дороже: сервер проверяет блоки на пути частицы.
+String id = "confetti";
+String viewers = "all";
+int keyframeTicks = 4;
+
+dyn render = {
+    type: "TEXT",
+    variants: ["█", "▌", "▬"],
+    colors: ["#ff595e", "#ffca3a", "#8ac926", "#1982c4", "#6a4c93", "#ff8fab"],
+    billboard: "CENTER",
+};
+
+dyn emitter = { shape: "POINT", count: 40 };
+
+dyn motion = {
+    lifetime: [100, 160],
+    speed: [0.2, 0.38],
+    direction: [0, 1, 0],
+    spread: 45,                   // конус 45° вокруг direction
+    gravity: 0.018,
+    drag: 0.04,
+    collide: true,
+    bounce: 0.35,                 // доля скорости после удара (0 - сразу ложится)
+    friction: 0.5,                // доля скорости вдоль пола при ударе
+};
+
+dyn animation = {
+    scale: [0.25, 0.4],
+    endScale: 0,
+    easing: "EASE_IN",            // держит размер почти до конца, потом быстро исчезает
+    rotation: [0, 360],
+    spin: [-20, 20],
+};

@@ -13,7 +13,9 @@ DisplayLib - плагин для Paper (1.21.x), который рисует и�
 - 🎮 **Виджеты** - текстовые и предметные кнопки, форматированный текст, подсказки, hover-анимации
 - 👥 **Приватные и публичные экраны** - для одного игрока или для всех поблизости
 - 🔄 **Hot Reload** - изменённый экран перечитывается сам, скрипт - при следующем открытии
-- 💾 **Хранилище и таймеры** - данные на игрока, отложенные и повторяющиеся действия
+- 💾 **Хранилище и таймеры** - данные на игрока (сохраняются на диск), отложенные и повторяющиеся действия
+- ✨ **Частицы из дисплеев** (`particles/*.jmc`) - текст, спрайты, предметы и блоки; разлёт, гравитация, коллизии;
+  движение интерполирует клиент, поэтому сотни частиц почти бесплатны
 - 🧰 **Поддержка редакторов** - `META-INF/jumper/host.jmc` описывает глобалы и хуки для плагинов Jumper
   (IntelliJ IDEA, VS Code, Neovim)
 
@@ -43,6 +45,8 @@ plugins/DisplayLib/
     demo_public.jmc   # публичный экран (openpublic)
     morph_menu.jmc  morph_shop.jmc  morph_settings.jmc   # morph-переходы
   scripts/            # скрипты (.jmp) - по одному на экран, плюс lib/util.jmp (import)
+  particles/          # эффекты частиц: sparkle, confetti, poison, coin_fountain, embers
+  data/               # пишет плагин: storage скриптов, сохранённые публичные экраны
 ```
 
 ### 3. Тестирование
@@ -52,6 +56,7 @@ plugins/DisplayLib/
 /displaylib openpublic demo_public <x> <y> <z>   # Публичный экран в мире
 /displaylib list              # Список экранов
 /displaylib close             # Закрыть экран
+/displaylib particle confetti # Эффект частиц перед собой (админ); particle list / stop
 /displaylib reload            # Перечитать экраны, политику и скрипты (админ)
 /displaylib validate          # Перечитать и показать проблемы: дубли id, клики в никуда, нет скрипта/функции (админ)
 ```
@@ -283,6 +288,26 @@ Policy.maxTableSize(100000);
 // Policy.allowPackage("org.bukkit");   // открыть Bukkit через player.handle() - осознанно
 ```
 
+## Частицы (`particles/*.jmc`)
+
+Эффект - конфиг Jumper: что рисуется (`render`), откуда и сколько (`emitter`), как движется (`motion`),
+как меняется размер и поворот (`animation`). Сервер шлёт частице кадр раз в `keyframeTicks` тиков, между
+кадрами её ведёт клиент.
+
+```java
+// particles/sparkle.jmc
+String id = "sparkle";
+String viewers = "all";              // "owner" - только игрок, для которого запущен
+int keyframeTicks = 4;
+dyn render = { type: "TEXT", variants: ["★", "✦"], colors: ["#ffe066", "#ffffff"], brightness: 15 };   // TEXT, ITEM, BLOCK
+dyn emitter = { shape: "SPHERE", radius: 0.15, count: 16 };                                          // POINT, SPHERE, CIRCLE, BOX
+dyn motion = { lifetime: [16, 26], speed: [0.06, 0.14], direction: "OUTWARD", drag: 0.12 };          // + gravity, collide, bounce
+dyn animation = { scale: [0.5, 0.9], endScale: 0, easing: "EASE_IN", fadeIn: 3, rotation: [0, 360], spin: [-12, 12] };
+```
+
+`/displaylib particle <effect> [x y z] [player] [count]`, из Java - `Particles.play("sparkle", location[, player])`.
+Все поля - в справочнике документации (`docs/reference/particles.md`).
+
 ## Настройки (`config.jmc`)
 
 ```java
@@ -292,6 +317,8 @@ int scriptTimeoutMs = 1000;    // сторожевой таймер: вызов 
 dyn closeOn = { death: true, worldChange: true, teleport: 8, inventory: false };
 // storage скриптов: на диск (data/storage/) или только в памяти; автосохранение изменившихся данных, с (0 - только при выходе и выключении)
 dyn storage = { persist: true, autosaveSeconds: 300 };
+// частиц-сущностей одновременно на весь сервер; сверх предела новые не появляются
+dyn particles = { maxAlive: 1500 };
 ```
 
 ## Система координат
@@ -317,6 +344,7 @@ dyn storage = { persist: true, autosaveSeconds: 300 };
 | `/displaylib openpublic <screen_id> <x> <y> <z> [yaw] [pitch]` | Поставить публичный экран в мире; сохраняется и встаёт на место после перезапуска | `displaylib.admin` |
 | `/displaylib closepublic <screen_id>` | Убрать публичный экран (и из сохранённых) | `displaylib.admin` |
 | `/displaylib listpublic` | Список публичных экранов | `displaylib.admin` |
+| `/displaylib particle <effect> [x y z] [player] [count]` | Запустить эффект частиц (`particles/*.jmc`); `particle list`, `particle stop` | `displaylib.admin` |
 | `/displaylib reload` | Перечитать экраны, политику и сбросить кэш скриптов | `displaylib.admin` |
 | `/displaylib examples` | Выгрузить примеры в папку плагина | `displaylib.admin` |
 
@@ -334,6 +362,8 @@ dyn storage = { persist: true, autosaveSeconds: 300 };
   на то же место (экраны из миров, загруженных позже, - когда мир загрузится). `closePublicScreenById`
   убирает его и из сохранённых. Без флага (`openPublicScreen(id, location, yaw, pitch)`) экран, как и раньше,
   живёт до выключения - для плагинов, которые сами расставляют экраны при включении.
+- `Particles` - эффекты частиц: `play(id, location[, owner])` → `ParticleEmission` (`stop()`, `cancel()`, `setCenter()`),
+  `effect(id)`, `ids()`, `stopAll()`. Формат эффектов - справочник «Частицы».
 - `ScreenInstance#getScriptContext()` / `GlobalScreenInstance#getScriptContext()` -
   `call("functionName", args...)` вызывает функцию скрипта экрана.
 

@@ -8,6 +8,7 @@
 | `/displaylib openpublic <screen_id> <x> <y> <z> [yaw] [pitch]` | Поставить публичный экран в мире; сохраняется и встаёт на место после перезапуска | `displaylib.admin` |
 | `/displaylib closepublic <screen_id>` | Убрать публичный экран (и из сохранённых) | `displaylib.admin` |
 | `/displaylib listpublic` | Список публичных экранов | `displaylib.admin` |
+| `/displaylib particle <effect> [x y z] [player] [count]` | Запустить эффект частиц (`particles/*.jmc`); `particle list`, `particle stop` | `displaylib.admin` |
 | `/displaylib reload` | Перечитать экраны, политику и сбросить кэш скриптов | `displaylib.admin` |
 | `/displaylib validate` | Перечитать и показать проблемы экранов: дубли id, клики в никуда, нет скрипта/функции, число статичных виджетов | `displaylib.admin` |
 | `/displaylib examples` | Выгрузить примеры в папку плагина | `displaylib.admin` |
@@ -26,6 +27,8 @@
   на то же место (экраны из миров, загруженных позже, - когда мир загрузится). `closePublicScreenById`
   убирает его и из сохранённых. Без флага (`openPublicScreen(id, location, yaw, pitch)`) экран, как и раньше,
   живёт до выключения - для плагинов, которые сами расставляют экраны при включении.
+- `Particles` - эффекты частиц: `play(id, location[, owner])` → `ParticleEmission` (`stop()`, `cancel()`, `setCenter()`),
+  `effect(id)`, `ids()`, `stopAll()`. Формат эффектов - справочник «Частицы».
 - `ScreenInstance#getScriptContext()` / `GlobalScreenInstance#getScriptContext()` -
   `call("functionName", args...)` вызывает функцию скрипта экрана.
 

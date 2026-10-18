@@ -97,4 +97,6 @@ int scriptTimeoutMs = 1000;    // сторожевой таймер: вызов 
 dyn closeOn = { death: true, worldChange: true, teleport: 8, inventory: false };
 // storage скриптов: на диск (data/storage/) или только в памяти; автосохранение изменившихся данных, с (0 - только при выходе и выключении)
 dyn storage = { persist: true, autosaveSeconds: 300 };
+// частиц-сущностей одновременно на весь сервер; сверх предела новые не появляются
+dyn particles = { maxAlive: 1500 };
 ```

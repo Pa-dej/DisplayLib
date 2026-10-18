@@ -1,0 +1,26 @@
+// coin_fountain: фонтан предметов (ItemDisplay) - монеты и изумруды бьют вверх, падают и отскакивают.
+String id = "coin_fountain";
+String viewers = "all";
+int keyframeTicks = 3;
+
+dyn render = {
+    type: "ITEM",
+    items: ["GOLD_NUGGET", "GOLD_INGOT", "EMERALD"],
+    billboard: "CENTER",
+    brightness: 15,
+};
+
+dyn emitter = { shape: "CIRCLE", radius: 0.2, count: 0, duration: 30, rate: 1.5 };
+
+dyn motion = {
+    lifetime: [60, 90],
+    speed: [0.28, 0.4],
+    direction: [0, 1, 0],
+    spread: 18,
+    gravity: 0.03,
+    drag: 0.01,
+    collide: true,
+    bounce: 0.45,
+};
+
+dyn animation = { scale: [0.35, 0.5], endScale: 0, easing: "EASE_IN", spin: [-25, 25] };

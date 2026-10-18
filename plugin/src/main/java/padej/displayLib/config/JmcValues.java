@@ -21,7 +21,7 @@ public final class JmcValues {
     }
 
     /** Значение по первому найденному ключу или {@code null}. */
-    static Object get(JTable table, String... keys) {
+    public static Object get(JTable table, String... keys) {
         if (table == null) return null;
         for (String key : keys) {
             Object value = table.get(key);
@@ -30,7 +30,7 @@ public final class JmcValues {
         return null;
     }
 
-    static boolean has(JTable table, String... keys) {
+    public static boolean has(JTable table, String... keys) {
         return get(table, keys) != null;
     }
 
@@ -39,12 +39,12 @@ public final class JmcValues {
         return value != null ? String.valueOf(value) : null;
     }
 
-    static String str(JTable table, String defaultValue, String[] keys) {
+    public static String str(JTable table, String defaultValue, String[] keys) {
         String value = str(table, keys);
         return value != null ? value : defaultValue;
     }
 
-    static Integer integer(JTable table, String... keys) {
+    public static Integer integer(JTable table, String... keys) {
         Object value = get(table, keys);
         if (value instanceof Number n) return n.intValue();
         if (value instanceof String s) {
@@ -70,25 +70,25 @@ public final class JmcValues {
         return null;
     }
 
-    static Boolean bool(JTable table, String... keys) {
+    public static Boolean bool(JTable table, String... keys) {
         Object value = get(table, keys);
         if (value instanceof Boolean b) return b;
         if (value instanceof String s) return Boolean.parseBoolean(s.trim());
         return null;
     }
 
-    static JTable table(JTable table, String... keys) {
+    public static JTable table(JTable table, String... keys) {
         Object value = get(table, keys);
         return value instanceof JTable t ? t : null;
     }
 
-    static List<?> list(JTable table, String... keys) {
+    public static List<?> list(JTable table, String... keys) {
         Object value = get(table, keys);
         return value instanceof List<?> l ? l : null;
     }
 
     /** Массив чисел фиксированной длины; недостающие элементы остаются нулями. */
-    static float[] floats(JTable table, int length, String... keys) {
+    public static float[] floats(JTable table, int length, String... keys) {
         List<?> list = list(table, keys);
         if (list == null) return null;
         float[] result = new float[length];
@@ -98,7 +98,7 @@ public final class JmcValues {
         return result;
     }
 
-    static int[] ints(JTable table, int length, String... keys) {
+    public static int[] ints(JTable table, int length, String... keys) {
         List<?> list = list(table, keys);
         if (list == null) return null;
         int[] result = new int[length];
@@ -109,7 +109,7 @@ public final class JmcValues {
     }
 
     /** Константа перечисления по имени без учёта регистра; {@code null}, если нет такой. */
-    static <E extends Enum<E>> E enumValue(Class<E> type, String name) {
+    public static <E extends Enum<E>> E enumValue(Class<E> type, String name) {
         if (name == null) return null;
         try {
             return Enum.valueOf(type, name.trim().toUpperCase(Locale.ROOT));

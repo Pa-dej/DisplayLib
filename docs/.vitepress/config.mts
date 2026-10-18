@@ -24,6 +24,7 @@ export default defineConfig({
       { text: 'Справочник', items: [
         { text: 'Экран (.jmc)', link: '/reference/screen' },
         { text: 'Скрипт (.jmp)', link: '/reference/script' },
+        { text: 'Частицы (.jmc)', link: '/reference/particles' },
       ] },
     ],
     socialLinks: [{ icon: 'github', link: 'https://github.com/Pa-dej/DisplayLib' }],

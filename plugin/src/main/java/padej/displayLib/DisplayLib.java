@@ -5,6 +5,9 @@ import padej.displayLib.config.PluginConfig;
 import padej.displayLib.config.ScreenRegistry;
 import padej.displayLib.data.PublicScreenStore;
 import padej.displayLib.data.StorageStore;
+import padej.displayLib.particles.ParticleManager;
+import padej.displayLib.particles.ParticleRegistry;
+import padej.displayLib.particles.Particles;
 import padej.displayLib.render.shapes.Highlight;
 import padej.displayLib.script.JumperEngine;
 import padej.displayLib.ui.UIManager;
@@ -38,6 +41,8 @@ import java.util.logging.Level;
  * ├── data/             # Пишет плагин: storage скриптов, расстановка публичных экранов
  * │   ├── storage/players/&lt;uuid&gt;.jmc, storage/public/&lt;screen&gt;.jmc
  * │   └── public_screens.jmc
+ * ├── particles/        # Эффекты частиц: /displaylib particle &lt;id&gt;, Particles.play(...)
+ * │   └── confetti.jmc
  * ├── screens/          # Экраны
  * │   ├── main_menu.jmc
  * │   └── settings.jmc
@@ -71,6 +76,8 @@ public final class DisplayLib extends JavaPlugin {
     private JumperEngine scriptEngine;
     private StorageStore storage;
     private org.bukkit.scheduler.BukkitTask autosaveTask;
+    private ParticleRegistry particleRegistry;
+    private ParticleManager particleManager;
 
     @Override
     public void onEnable() {
@@ -97,6 +104,12 @@ public final class DisplayLib extends JavaPlugin {
             autosaveTask = getServer().getScheduler().runTaskTimer(this, storage::saveAll, period, period);
         }
 
+        // Эффекты частиц (particles/*.jmc)
+        particleRegistry = new ParticleRegistry(getDataFolder().toPath().resolve("particles"), getLogger());
+        particleRegistry.loadAll();
+        particleManager = new ParticleManager(this, config.particles().maxAlive());
+        Particles.install(particleRegistry, particleManager);
+
         UIManager.getInstance().initialize(screenRegistry, scriptEngine,
                 new PublicScreenStore(dataDir.resolve("public_screens.jmc"), getLogger()));
         // Сохранённые публичные экраны - на первом тике: миры загружены, другие плагины включены
@@ -116,6 +129,12 @@ public final class DisplayLib extends JavaPlugin {
     public void onDisable() {
         if (screenRegistry != null) {
             screenRegistry.shutdown();
+        }
+
+        if (particleManager != null) {
+            particleManager.stopAll();
+            Particles.install(null, null);
+            particleManager = null;
         }
 
         UIManager manager = UIManager.getInstance();
@@ -156,6 +175,10 @@ public final class DisplayLib extends JavaPlugin {
 
     public JumperEngine getScriptEngine() {
         return scriptEngine;
+    }
+
+    public ParticleRegistry getParticleRegistry() {
+        return particleRegistry;
     }
 
     /**

@@ -315,7 +315,7 @@ public class TextDisplayButtonWidget implements Widget {
     }
 
     /** Текст состоит только из объектов (спрайт/голова) без букв. */
-    static boolean isObjectOnly(Component c) {
+    public static boolean isObjectOnly(Component c) {
         if (c == null) return false;
         boolean[] seen = {false, false}; // [object, text]
         for (Component part : c.iterable(net.kyori.adventure.text.ComponentIteratorType.DEPTH_FIRST)) {

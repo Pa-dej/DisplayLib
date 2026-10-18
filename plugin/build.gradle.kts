@@ -75,7 +75,7 @@ tasks {
 
     register("copyExamples") {
         group = "development"
-        description = "Скопировать примеры экранов и скриптов на локальный сервер (-PserverPlugins=<plugins dir>)"
+        description = "Скопировать примеры экранов, скриптов и частиц на локальный сервер (-PserverPlugins=<plugins dir>)"
         doLast {
             val target = serverPlugins ?: error("Укажите -PserverPlugins=<путь к plugins/ сервера> или DISPLAYLIB_SERVER")
             val dir = file(target).resolve("DisplayLib")
@@ -83,6 +83,7 @@ tasks {
             dir.resolve("scripts").mkdirs()
             copy { from("src/main/resources/examples/screens"); into(dir.resolve("screens")); include("**/*.jmc"); duplicatesStrategy = DuplicatesStrategy.INCLUDE }
             copy { from("src/main/resources/examples/scripts"); into(dir.resolve("scripts")); include("**/*.jmp"); duplicatesStrategy = DuplicatesStrategy.INCLUDE }
+            copy { from("src/main/resources/examples/particles"); into(dir.resolve("particles")); include("**/*.jmc"); duplicatesStrategy = DuplicatesStrategy.INCLUDE }
             println("Примеры скопированы в $dir")
         }
     }

@@ -22,9 +22,24 @@ import java.util.logging.Level;
  * @param scriptTimeoutMs предел времени одного вызова скрипта в миллисекундах; {@code <= 0} - без предела
  * @param storage         сохранение глобала storage на диск
  */
-public record PluginConfig(boolean hotReload, long scriptTimeoutMs, CloseOn closeOn, Storage storage) {
+public record PluginConfig(boolean hotReload, long scriptTimeoutMs, CloseOn closeOn, Storage storage, Particles particles) {
     public static final String FILE = "config.jmc";
-    public static final PluginConfig DEFAULTS = new PluginConfig(true, 1000, CloseOn.DEFAULTS, Storage.DEFAULTS);
+    public static final PluginConfig DEFAULTS = new PluginConfig(true, 1000, CloseOn.DEFAULTS, Storage.DEFAULTS, Particles.DEFAULTS);
+
+    /**
+     * Частицы: {@code dyn particles = { maxAlive: 1500 };}
+     *
+     * @param maxAlive сколько частиц может жить одновременно на всём сервере; новые сверх предела не появляются
+     */
+    public record Particles(int maxAlive) {
+        public static final Particles DEFAULTS = new Particles(1500);
+
+        static Particles parse(Object v) {
+            if (!(v instanceof JTable t)) return DEFAULTS;
+            Integer max = JmcValues.integer(t, "maxAlive", "max_alive", "max");
+            return new Particles(max != null && max > 0 ? max : DEFAULTS.maxAlive());
+        }
+    }
 
     /**
      * Глобал {@code storage}: {@code dyn storage = { persist: true, autosaveSeconds: 300 };}
@@ -90,7 +105,8 @@ public record PluginConfig(boolean hotReload, long scriptTimeoutMs, CloseOn clos
                     hotReload != null ? hotReload : DEFAULTS.hotReload(),
                     timeout != null ? timeout.longValue() : DEFAULTS.scriptTimeoutMs(),
                     CloseOn.parse(JmcValues.get(table, "closeOn", "close_on")),
-                    Storage.parse(JmcValues.get(table, "storage")));
+                    Storage.parse(JmcValues.get(table, "storage")),
+                    Particles.parse(JmcValues.get(table, "particles")));
         } catch (IOException | RuntimeException e) {
             plugin.getLogger().log(Level.WARNING, FILE + " could not be read, using defaults: " + e.getMessage());
             return DEFAULTS;

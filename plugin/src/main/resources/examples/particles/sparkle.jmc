@@ -1,0 +1,31 @@
+// sparkle: звёздочки разлетаются во все стороны, крутятся и тают. /displaylib particle sparkle
+// Скорость - блоков за тик, время - тики (20 = 1 с), углы - градусы. [a, b] - случайное значение от a до b.
+String id = "sparkle";
+String viewers = "all";          // "all" - видят все; "owner" - только игрок, для которого запущен эффект
+int keyframeTicks = 4;           // как часто сервер шлёт кадр (1..59); между кадрами движение плавно ведёт клиент
+
+dyn render = {
+    type: "TEXT",
+    variants: ["★", "✦", "✧", "✶"],
+    colors: ["#ffe066", "#ffd23f", "#fff3b0", "#ffffff"],
+    billboard: "CENTER",          // всегда лицом к игроку
+    brightness: 15,               // светится в темноте
+};
+
+dyn emitter = { shape: "SPHERE", radius: 0.15, count: 16 };
+
+dyn motion = {
+    lifetime: [16, 26],
+    speed: [0.06, 0.14],
+    direction: "OUTWARD",         // от центра формы
+    drag: 0.12,                   // быстро тормозят
+};
+
+dyn animation = {
+    scale: [0.5, 0.9],
+    endScale: 0,                  // к концу жизни - в ноль
+    easing: "EASE_IN",
+    fadeIn: 3,
+    rotation: [0, 360],
+    spin: [-12, 12],              // градусов за тик
+};

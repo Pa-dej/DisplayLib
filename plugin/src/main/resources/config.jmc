@@ -21,3 +21,7 @@ dyn closeOn = { death: true, worldChange: true, teleport: 8, inventory: false };
 //                     выход и перезапуск, данные публичного экрана - перезапуск. false - только в памяти.
 //   autosaveSeconds - как часто сохранять изменившиеся данные (0 - только при выходе игрока и выключении)
 dyn storage = { persist: true, autosaveSeconds: 300 };
+
+// Частицы (particles/*.jmc, /displaylib particle):
+//   maxAlive - сколько частиц-сущностей может жить одновременно на всём сервере; новые сверх предела не появляются
+dyn particles = { maxAlive: 1500 };

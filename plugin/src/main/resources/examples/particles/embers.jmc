@@ -1,0 +1,23 @@
+// embers: светящиеся кубики (BlockDisplay) поднимаются из круга, как угли от костра.
+String id = "embers";
+String viewers = "all";
+int keyframeTicks = 5;
+
+dyn render = {
+    type: "BLOCK",
+    blocks: ["minecraft:orange_concrete", "minecraft:shroomlight", "minecraft:magma_block"],
+    brightness: 15,
+};
+
+dyn emitter = { shape: "CIRCLE", radius: 0.6, count: 0, duration: 60, rate: 0.8 };
+
+dyn motion = {
+    lifetime: [40, 70],
+    speed: [0.02, 0.05],
+    direction: [0, 1, 0],
+    spread: 25,
+    gravity: -0.0015,             // отрицательная гравитация - всплывают, ускоряясь
+    drag: 0.02,
+};
+
+dyn animation = { scale: [0.05, 0.1], endScale: 0, easing: "LINEAR", fadeIn: 5, rotation: [0, 360], spin: [-6, 6] };
