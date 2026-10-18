@@ -161,6 +161,7 @@ input[type=range] { accent-color: var(--vp-c-brand-1); }
 .preview-toolbar { position: absolute; left: 12px; top: 12px; display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
 .preview-toolbar .btn { backdrop-filter: blur(6px); background: color-mix(in srgb, var(--vp-c-bg-elv) 85%, transparent); }
 .preview-toolbar.align-bar { top: 76px; }
+.preview-toolbar.with-meter { right: 190px; }
 .preview-toolbar .btn.static { pointer-events: none; }
 .preview-toolbar .btn.rot svg { transform: rotate(90deg); }
 .marquee { position: absolute; border: 1px dashed var(--vp-c-brand-1); background: color-mix(in srgb, var(--vp-c-brand-1) 12%, transparent); pointer-events: none; z-index: 5; }
@@ -382,3 +383,36 @@ html:not(.dark) .tok-op { color: #0e7490; }
 .cp-swatches.recent { grid-template-columns: repeat(12, 1fr); padding-top: 6px; border-top: 1px solid var(--vp-c-divider); }
 .cp-swatches.recent .cp-sw { height: 16px; border-radius: 4px; }
 .cp-hint { color: var(--vp-c-text-3); font-size: 11px; line-height: 1.35; min-height: 15px; }
+
+/* --- шкала нагрузки (components/load/LoadMeter.vue) */
+.load-meter { position: absolute; right: 12px; top: 12px; z-index: 6; }
+.load-ring { position: relative; display: flex; align-items: center; gap: 8px; padding: 3px 12px 3px 3px; border-radius: 30px; border: 1px solid var(--vp-c-divider); background: color-mix(in srgb, var(--vp-c-bg-elv) 88%, transparent); backdrop-filter: blur(6px); cursor: pointer; color: var(--vp-c-text-1); box-shadow: 0 2px 8px rgba(0,0,0,.18); }
+.load-ring:hover, .load-meter.open .load-ring { border-color: var(--vp-c-brand-1); }
+.load-ring svg { display: block; }
+.load-ring .track { fill: none; stroke: var(--vp-c-divider); stroke-width: 5; }
+.load-ring .arc { fill: none; stroke-width: 5; stroke-linecap: round; transition: stroke-dasharray .4s ease, stroke .4s ease; }
+.load-ring .val { position: absolute; left: 3px; top: 3px; width: 46px; height: 46px; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 13px; font-variant-numeric: tabular-nums; }
+.load-ring .cap { font-size: 12px; font-weight: 600; white-space: nowrap; }
+.load-pop { position: absolute; right: 0; top: 58px; width: 340px; max-height: calc(100vh - 160px); overflow: auto; padding: 12px 14px; border-radius: 12px; background: var(--vp-c-bg-elv); border: 1px solid var(--vp-c-divider); box-shadow: 0 12px 32px rgba(0,0,0,.28); font-size: 12.5px; display: flex; flex-direction: column; gap: 10px; }
+.load-head { display: flex; align-items: center; gap: 8px; }
+.load-head b { font-size: 14px; }
+.load-head .hint { flex: 1; }
+.load-parts { display: flex; flex-direction: column; gap: 7px; }
+.load-part { display: grid; grid-template-columns: 74px 1fr auto; grid-template-rows: auto auto; column-gap: 8px; align-items: center; }
+.load-part .nm { color: var(--vp-c-text-2); display: inline-flex; align-items: center; gap: 5px; }
+.load-part.worst .nm { color: var(--vp-c-text-1); font-weight: 600; }
+.load-part .bar { height: 8px; border-radius: 4px; background: var(--vp-c-divider); overflow: hidden; }
+.load-part .bar > span { display: block; height: 100%; border-radius: 4px; transition: width .4s ease; }
+.load-part .v { font-variant-numeric: tabular-nums; font-weight: 600; text-align: right; min-width: 74px; }
+.load-part .d { grid-column: 2 / 4; font-size: 11px; }
+.load-sec .t { font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: var(--vp-c-text-3); margin-bottom: 5px; }
+.load-sec ul { margin: 0; padding-left: 16px; display: flex; flex-direction: column; gap: 3px; }
+.load-factor { display: grid; grid-template-columns: 1fr 70px 34px; gap: 6px; align-items: center; margin: 2px 0; }
+.load-factor .fl { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.load-factor .fb { height: 6px; border-radius: 3px; background: var(--vp-c-divider); overflow: hidden; }
+.load-factor .fb > span { display: block; height: 100%; background: var(--vp-c-brand-1); }
+.load-factor .fp { text-align: right; font-variant-numeric: tabular-nums; color: var(--vp-c-text-2); }
+.load-sec.assume { display: flex; gap: 12px; padding-top: 8px; border-top: 1px solid var(--vp-c-divider); }
+.load-sec.assume label { display: flex; align-items: center; gap: 6px; color: var(--vp-c-text-2); }
+.load-sec.assume input { width: 64px; height: 26px; }
+.load-pop .note { margin: 0; font-size: 11px; line-height: 1.4; }

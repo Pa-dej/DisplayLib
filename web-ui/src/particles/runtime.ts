@@ -86,7 +86,9 @@ export class ParticleRuntime {
   /** Остановить испускание (выпущенные доживают). */
   stop(): void { this.stopped = true; this.ticksLeft = 0; }
 
-  private packet(n = 1): void { for (let i = 0; i < n; i++) this.packetLog.push(this.tick); }
+  /** Всего пакетов с начала (на одного зрителя). */
+  packetsTotal = 0;
+  private packet(n = 1): void { this.packetsTotal += n; for (let i = 0; i < n; i++) this.packetLog.push(this.tick); }
 
   /** Один серверный тик, как ParticleManager.tickEmission. */
   step(): void {

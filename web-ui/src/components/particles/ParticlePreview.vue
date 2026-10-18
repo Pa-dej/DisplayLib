@@ -8,6 +8,9 @@ import { ParticleScene, type PlayOptions } from '../../particles/scene';
 import type { Stats } from '../../particles/runtime';
 import { pstate, currentEffect, currentEffectText, currentEffectErrors } from '../../particles/store';
 import { cloneEffect } from '../../particles/model';
+import LoadMeter from '../load/LoadMeter.vue';
+import { particleLoad, type LoadReport } from '../../load/load';
+import { loadAssumptions } from '../../load/settings';
 
 const canvas = ref<HTMLCanvasElement | null>(null);
 let scene: ParticleScene | null = null;
@@ -47,6 +50,20 @@ watch([playing, loop, speed, asGame, wall, height, seed], () => {
   try { localStorage.setItem(OPTS_KEY, JSON.stringify({ loop: loop.value, speed: speed.value, asGame: asGame.value, wall: wall.value, height: height.value })); } catch { /* */ }
 });
 
+// оценка нагрузки: прогон эффекта без отрисовки, с задержкой после правок (может занять десятки мс)
+const load = ref<LoadReport | null>(null);
+const loadBusy = ref(false);
+let loadTimer = 0;
+watch(() => [pstate.revision, pstate.current, loadAssumptions.players, loadAssumptions.launches], () => {
+  loadBusy.value = true;
+  clearTimeout(loadTimer);
+  loadTimer = window.setTimeout(() => {
+    const e = currentEffect.value;
+    try { load.value = e ? particleLoad(cloneEffect(e), { ...loadAssumptions }) : null; } catch { load.value = null; }
+    loadBusy.value = false;
+  }, 350);
+}, { immediate: true });
+
 function restart() { scene?.restart(); playing.value = true; }
 function reseed() { seed.value = (seed.value % 100000) + 1 + Math.floor(Math.random() * 1000); }
 function step() { playing.value = false; scene?.stepOnce(); }
@@ -56,7 +73,8 @@ const SPEEDS = [0.1, 0.25, 0.5, 1, 2];
 <template>
   <div class="preview" tabindex="0">
     <canvas ref="canvas"></canvas>
-    <div class="preview-toolbar">
+    <LoadMeter :report="load" kind="particles" :busy="loadBusy" />
+    <div class="preview-toolbar with-meter">
       <span class="btn-group">
         <button class="btn sm icon" :title="playing ? 'Пауза' : 'Играть'" @click="playing = !playing"><Icon :name="playing ? 'pause' : 'play'" /></button>
         <button class="btn sm icon" title="Один тик (1/20 с)" @click="step"><Icon name="step-forward" /></button>

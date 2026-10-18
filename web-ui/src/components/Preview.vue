@@ -8,8 +8,22 @@ import { state, currentDoc, currentScreen, currentText, snapshot, snapshotCoales
 import { calibration } from '../render/metrics';
 import { alignRects, distributeRects, alignToRect, type AlignKind, type DistributeKind } from '../render/align';
 import { spriteState } from '../render/sprites';
+import LoadMeter from './load/LoadMeter.vue';
+import { screenLoad, type LoadReport } from '../load/load';
+import { loadAssumptions } from '../load/settings';
+import { currentScriptInfo, screenIds } from '../store';
 
 const canvas = ref<HTMLCanvasElement | null>(null);
+// оценка нагрузки экрана (дёшево - считается сразу, но не чаще раза в 200 мс)
+const load = ref<LoadReport | null>(null);
+let loadTimer = 0;
+watch(() => [state.revision, state.current, loadAssumptions.players], () => {
+  clearTimeout(loadTimer);
+  loadTimer = window.setTimeout(() => {
+    const s = currentScreen.value, d = currentDoc.value;
+    try { load.value = s && d ? screenLoad(s, currentScriptInfo.value, scriptTextOf(d), screenIds.value, { ...loadAssumptions }) : null; } catch { load.value = null; }
+  }, 200);
+}, { immediate: true });
 let scene: ScreenScene | null = null;
 const tab = ref<'jmc' | 'jmp' | 'none'>('jmc');
 const showHit = ref(true);
@@ -129,7 +143,8 @@ function distributeSel(kind: DistributeKind) { if (scene) applyShifts(distribute
 <template>
   <div class="preview" tabindex="0" @keydown="nudge">
     <canvas ref="canvas"></canvas>
-    <div class="preview-toolbar">
+    <LoadMeter :report="load" kind="screen" />
+    <div class="preview-toolbar with-meter">
       <button class="btn sm" @click="scene?.resetCamera('player')" title="Глаза игрока: экран в 2 блоках, взгляд горизонтально"><Icon name="street-view" /> Как игрок</button>
       <button class="btn sm" @click="scene?.resetCamera('center')" title="Глаза игрока, взгляд в центр экрана"><Icon name="bullseye" /> В центр</button>
       <button class="btn sm" @click="scene?.resetCamera('front')" title="Прямо перед экраном"><Icon name="square" /> Спереди</button>
