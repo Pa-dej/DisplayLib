@@ -247,7 +247,9 @@ public class ItemDisplayButtonWidget implements Widget {
         float tx = translation != null ? translation.x : 0.0f;
         float ty = translation != null ? translation.y : 0.0f;
         float tz = translation != null ? translation.z : 0.0f;
-        hitArea.set(positionScratch, tx, ty, tz, horizontalTolerance, verticalTolerance, FRONT_ONLY);
+        // зона поворачивается вместе с предметом; оси HitArea - локальные оси сущности (yaw+180),
+        // в них поворот обратный - как в baseRotation()
+        hitArea.set(positionScratch, tx, ty, tz, horizontalTolerance, verticalTolerance, FRONT_ONLY, -rotationDeg);
         positionScratch.setWorld(null);
         positionCached = true;
     }
@@ -430,6 +432,7 @@ public class ItemDisplayButtonWidget implements Widget {
     /** Повернуть виджет; плавно за {@code ticks} тиков (0/1 - сразу). Если виджет наведён, применится при уходе курсора. */
     public void setRotation(float degrees, int ticks) {
         this.rotationDeg = degrees;
+        this.positionCached = false; // зона наведения поворачивается вместе с виджетом
         if (display != null && display.isValid() && !isHovered) {
             Animation.applyTransformationWithInterpolation(display, targetTransformation(), Math.max(1, ticks));
         }

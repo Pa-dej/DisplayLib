@@ -47,6 +47,16 @@ public final class HitArea {
      */
     public void set(Location entityLocation, float tx, float ty, float tz,
                     double halfWidth, double halfHeight, boolean frontOnly) {
+        set(entityLocation, tx, ty, tz, halfWidth, halfHeight, frontOnly, 0.0f);
+    }
+
+    /**
+     * То же, но прямоугольник повёрнут в плоскости виджета на {@code rollDeg} (статический поворот виджета
+     * вокруг локальной Z: X -> Y). Центр зоны - по неповёрнутым осям (translation применяется до поворота),
+     * поворачиваются только оси, вдоль которых меряются полуширина и полувысота.
+     */
+    public void set(Location entityLocation, float tx, float ty, float tz,
+                    double halfWidth, double halfHeight, boolean frontOnly, float rollDeg) {
         this.world = entityLocation.getWorld();
         this.halfWidth = halfWidth;
         this.halfHeight = halfHeight;
@@ -72,6 +82,14 @@ public final class HitArea {
         cx = entityLocation.getX() + xx * tx + yx * ty + zx * tz;
         cy = entityLocation.getY() + xy * tx + yy * ty + zy * tz;
         cz = entityLocation.getZ() + xz * tx + yz * ty + zz * tz;
+
+        if (rollDeg != 0.0f) {
+            double r = Math.toRadians(rollDeg), c = Math.cos(r), s = Math.sin(r);
+            double nxx = c * xx + s * yx, nxy = c * xy + s * yy, nxz = c * xz + s * yz;
+            double nyx = -s * xx + c * yx, nyy = -s * xy + c * yy, nyz = -s * xz + c * yz;
+            xx = nxx; xy = nxy; xz = nxz;
+            yx = nyx; yy = nyy; yz = nyz;
+        }
     }
 
     /**

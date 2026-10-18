@@ -277,12 +277,16 @@ public class TextDisplayButtonWidget implements Widget {
     private void cachePosition() {
         display.getLocation(positionScratch);
         // Клиент рисует текст от x = 1 - k/2 до 1 + k/2 (translate(1 - k/2)): центр текста на 1 px правее якоря
-        float tx = (translation != null ? translation.x : 0.0f) + TEXT_PIXEL * scaleX;
+        // При повороте этот 1 px уходит по дуге вокруг центра поворота (translation + (0, hc)).
+        double a = Math.toRadians(rotationDeg);
+        float px = TEXT_PIXEL * scaleX;
+        float tx = (translation != null ? translation.x : 0.0f) + (float) (px * Math.cos(a));
         // Якорь TextDisplay - низ текста по центру; зону поднимаем на половину высоты текста,
         // чтобы tolerance задавал прямоугольник вокруг центра нарисованного текста.
-        float ty = (translation != null ? translation.y : 0.0f) + hitCenterOffsetY();
+        float ty = (translation != null ? translation.y : 0.0f) + hitCenterOffsetY() + (float) (px * Math.sin(a));
         float tz = translation != null ? translation.z : 0.0f;
-        hitArea.set(positionScratch, tx, ty, tz, horizontalTolerance, verticalTolerance, FRONT_ONLY);
+        // зона поворачивается вместе с текстом
+        hitArea.set(positionScratch, tx, ty, tz, horizontalTolerance, verticalTolerance, FRONT_ONLY, rotationDeg);
         positionScratch.setWorld(null);
         positionCached = true;
     }
@@ -571,6 +575,7 @@ public class TextDisplayButtonWidget implements Widget {
     /** Повернуть виджет; плавно за {@code ticks} тиков (0/1 - сразу). Если виджет наведён, применится при уходе курсора. */
     public void setRotation(float degrees, int ticks) {
         this.rotationDeg = degrees;
+        this.positionCached = false; // зона наведения поворачивается вместе с виджетом
         if (display != null && display.isValid() && !isHovered) {
             Animation.applyTransformationWithInterpolation(display, targetTransformation(), Math.max(1, ticks));
         }

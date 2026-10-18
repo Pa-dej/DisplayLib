@@ -554,7 +554,7 @@ export class ScreenScene {
     // зона наведения: плагин поднимает центр на половину высоты фона (TextDisplayButtonWidget.hitCenterOffsetY)
     // как плагин: центр зоны на 1 px правее якоря (клиент рисует текст от 1 - k/2) и на l/2 - 1 px выше
     // (строки текста локально [-1, l-1]); одиночный спрайт/голова - верхние 8 px строки, центр ровно на l/2
-    const hit = tol ? this.hitRect(tol, tr, (bgH / 2 - (objectOnly ? 0 : 1)) * px * scale[1], 1 * px * scale[0]) : null;
+    const hit = tol ? this.hitRect(tol, tr, (bgH / 2 - (objectOnly ? 0 : 1)) * px * scale[1], 1 * px * scale[0], rotationDeg) : null;
     if (hit) group.add(hit);
     // видимые габариты: при невидимом фоне (альфа < 26 клиент фон не рисует) - прямоугольник глифов, иначе фон
     const planeL = centerX - wBlocks / 2;
@@ -587,7 +587,7 @@ export class ScreenScene {
       pivot.add(edge);
     }
     group.position.copy(this.worldPos(w.position, calibration.itemDepthOffset));
-    const hit = this.hitRect(w.tolerance, w.translation);
+    const hit = this.hitRect(w.tolerance, w.translation, 0, 0, w.rotation);
     group.add(hit);
     const n: Node = { uid: w.uid, group, pivot, mesh, hit, visual: { l: -size / 2, r: size / 2, b: -size / 2, t: size / 2 }, base: { tr: [w.translation[0], w.translation[1], w.translation[2]], scale: [w.scale[0], w.scale[1], w.scale[2]], rotDeg: w.rotation, center: [0, 0], item: true },
       dispose: () => { geo.dispose(); mat.dispose(); hit.geometry.dispose(); } };
@@ -595,14 +595,20 @@ export class ScreenScene {
     return n;
   }
 
-  /** Зона наведения: прямоугольник tolerance с центром в позиции + translation (+ половина высоты текста у TextDisplay). */
-  private hitRect(tol: [number, number], tr: [number, number, number], offsetY = 0, offsetX = 0): THREE.LineSegments {
+  /**
+   * Зона наведения: прямоугольник tolerance с центром в позиции + translation (+ половина высоты текста у TextDisplay).
+   * Поворачивается вместе с виджетом, как в плагине (HitArea с roll): вокруг центра поворота
+   * translation + (0, offsetY); смещение offsetX (1 px у текста) уходит по дуге.
+   */
+  private hitRect(tol: [number, number], tr: [number, number, number], offsetY = 0, offsetX = 0, rotDeg = 0): THREE.LineSegments {
     const g = new THREE.BufferGeometry();
     const hw = tol[0], hh = tol[1];
     const v = new Float32Array([-hw, -hh, 0, hw, -hh, 0, hw, -hh, 0, hw, hh, 0, hw, hh, 0, -hw, hh, 0, -hw, hh, 0, -hw, -hh, 0]);
     g.setAttribute('position', new THREE.BufferAttribute(v, 3));
     const l = new THREE.LineSegments(g, new THREE.LineBasicMaterial({ color: 0x00e5ff, transparent: true, opacity: 0.7, depthTest: false }));
-    l.position.set(tr[0] * calibration.translationXSign + offsetX, tr[1] + offsetY, tr[2] + 0.002);
+    const a = THREE.MathUtils.degToRad(rotDeg);
+    l.position.set(tr[0] * calibration.translationXSign + offsetX * Math.cos(a), tr[1] + offsetY + offsetX * Math.sin(a), tr[2] + 0.002);
+    l.rotation.z = a;
     l.visible = this.showHitAreas;
     l.renderOrder = 10;
     return l;
@@ -989,6 +995,22 @@ export function widgetText(w: Widget, hovered = false, tick = editorTick()): Ric
   if (fi >= 0) return (hovered && w.hoveredFrames.length ? w.hoveredFrames : w.frames)[fi];
   if (hovered && w.hoveredText != null) return w.hoveredText;
   return w.frames.length ? w.frames[0] : w.text;
+}
+
+/**
+ * Мировое смещение (x, y) центра вращения виджета от его якоря (worldPos(position)) при повороте deg.
+ * Повторяет applyDelta без hover-дельты: pivot = translation (+ компенсация у текста), центр = pivot + R·(centerX·sx, centerY·sy).
+ * Нужен групповому повороту, чтобы крутить группу как одно целое - вокруг реальных визуальных центров.
+ */
+export function rotationCenterOffset(w: Widget, deg: number): [number, number] {
+  const xs = calibration.translationXSign, tr = w.translation;
+  if (w.type === 'ITEM_BUTTON') return [tr[0] * xs, tr[1]];
+  const px = calibration.px, L = layout(widgetText(w), w.lineWidth);
+  const cx = (1 + (calibration.bgRight - calibration.bgLeft) / 2) * px * w.scale[0];
+  const hc = (L.bgH / 2) * px * w.scale[1];
+  const a = THREE.MathUtils.degToRad(deg), cos = Math.cos(a), sin = Math.sin(a);
+  const comp: [number, number] = deg === 0 ? [0, 0] : [hc * sin, hc - hc * cos];
+  return [(tr[0] + comp[0]) * xs + cx * cos - hc * sin, tr[1] + comp[1] + cx * sin + hc * cos];
 }
 
 /** Размер текстового виджета в блоках (для инспектора). */
