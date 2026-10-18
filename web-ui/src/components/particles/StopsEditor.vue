@@ -3,7 +3,7 @@
 // Градиент: ручки цветов под полосой двигаются влево-вправо (неравномерная смена цвета), двойной клик по
 // полосе - новый цвет. Кривая: точки двигаются по доле и значению; ромб между точками - узел кривой
 // Безье, через который проходит отрезок (изгиб), двойной клик по нему - снова прямая.
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
+import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import { snapshot, touch } from '../../store';
 import type { Stop } from '../../particles/model';
 import { gradientOf, curveOf, sampleGradient, sampleCurve, bentPoint, alpha, cssHex, colorToString, parseColor } from '../../particles/colors';
@@ -64,23 +64,40 @@ function addButton() {
 
 // ---------------------------------------------------------------- размер области рисования
 const box = ref<HTMLElement | null>(null);
+// Ширина рисунка = ширина блока. Блок появляется позже компонента (после «Задать кривую»), поэтому
+// следим за ref, а не только за монтированием - иначе SVG оставался 280 px, а мышь мерилась по всей ширине.
 const W = ref(280);
-let ro: ResizeObserver | null = null;
-onMounted(() => { ro = new ResizeObserver(() => { if (box.value) W.value = Math.max(120, box.value.clientWidth); }); if (box.value) ro.observe(box.value); });
-onBeforeUnmount(() => ro?.disconnect());
+const ro = new ResizeObserver(() => { if (box.value) W.value = Math.max(120, box.value.clientWidth); });
+watch(box, (el, old) => { if (old) ro.unobserve(old); if (el) { ro.observe(el); W.value = Math.max(120, el.clientWidth); } }, { flush: 'post' });
+onBeforeUnmount(() => ro.disconnect());
 
-/** Перетаскивание с одним снимком undo; fn получает долю 0..1 по x и (для кривой) по y. */
-function drag(e: PointerEvent, fn: (x: number, y: number) => void) {
+/**
+ * Перетаскивание с одним снимком undo. fn получает долю 0..1 по x и по y (сверху вниз) - с поправкой на
+ * точку захвата: объект не прыгает центром под курсор, а едет вместе с ним. Правки - не чаще кадра.
+ * `at` - где объект сейчас (те же доли), чтобы посчитать поправку.
+ */
+const dragging = ref(false);
+function drag(e: PointerEvent, at: [number, number], fn: (x: number, y: number) => void) {
   if (e.button !== 0) return;
   e.preventDefault(); e.stopPropagation();
   snapshot();
   const el = box.value!;
-  const move = (ev: PointerEvent) => {
+  const frac = (ev: PointerEvent): [number, number] => {
     const r = el.getBoundingClientRect();
-    fn((ev.clientX - r.left - PAD_X) / (r.width - 2 * PAD_X), (ev.clientY - r.top - PAD_Y) / (H - 2 * PAD_Y));
+    return [(ev.clientX - r.left - PAD_X) / (r.width - 2 * PAD_X), (ev.clientY - r.top - PAD_Y) / (H - 2 * PAD_Y)];
   };
-  const up = () => { window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up); };
-  window.addEventListener('pointermove', move); window.addEventListener('pointerup', up);
+  const [x0, y0] = frac(e);
+  const dx = at[0] - x0, dy = at[1] - y0;
+  let last: PointerEvent | null = null, raf = 0;
+  dragging.value = true;
+  const apply = () => { raf = 0; if (last) { const [x, y] = frac(last); fn(x + dx, y + dy); last = null; } };
+  const move = (ev: PointerEvent) => { last = ev; if (!raf) raf = requestAnimationFrame(apply); };
+  const up = () => {
+    if (raf) { cancelAnimationFrame(raf); apply(); }
+    dragging.value = false;
+    window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up); window.removeEventListener('pointercancel', up);
+  };
+  window.addEventListener('pointermove', move); window.addEventListener('pointerup', up); window.addEventListener('pointercancel', up);
 }
 
 // ---------------------------------------------------------------- градиент
@@ -95,7 +112,7 @@ const gradientCss = computed(() => {
   return `linear-gradient(90deg, ${parts.join(', ')})`;
 });
 function handleCss(v: V) { const c = parseColor(String(v)); return c == null ? '#fff' : `rgba(${(c >>> 16) & 255},${(c >>> 8) & 255},${c & 255},${alpha(c) / 255})`; }
-function dragHandle(e: PointerEvent, i: number) { selected.value = i; drag(e, (x) => setAt(i, x)); }
+function dragHandle(e: PointerEvent, i: number) { selected.value = i; drag(e, [times.value[i], 0], (x) => setAt(i, x)); }
 function barDbl(e: MouseEvent) {
   const r = box.value!.getBoundingClientRect();
   insertAt(Math.max(0, Math.min(1, (e.clientX - r.left - PAD_X) / (r.width - 2 * PAD_X))));
@@ -103,7 +120,13 @@ function barDbl(e: MouseEvent) {
 
 // ---------------------------------------------------------------- кривая
 const H = 150, PAD_X = 10, PAD_Y = 12;
-const top = computed(() => Math.max(props.max ?? 1, ...stops.value.map((s) => Number(s.value)), ...stops.value.map((s, i) => (i > 0 && s.bend ? Number(s.value) + Math.abs(s.bend[1]) : 0))));
+// Верх шкалы: max (у opacity - 1) или наибольшее значение; пока тянем - не меняется, иначе шкала
+// «уезжала» из-под курсора и точки прыгали.
+const liveTop = computed(() => props.max ?? Math.max(1, ...stops.value.map((s) => Number(s.value))));
+const frozenTop = ref(1);
+watch(dragging, (d) => { if (d) frozenTop.value = liveTop.value; });
+const top = computed(() => (dragging.value ? frozenTop.value : liveTop.value));
+const yFrac = (v: number) => 1 - v / top.value;
 const px = (t: number) => PAD_X + t * (W.value - 2 * PAD_X);
 const py = (v: number) => H - PAD_Y - (v / top.value) * (H - 2 * PAD_Y);
 const curvePath = computed(() => {
@@ -137,7 +160,7 @@ const nodes = computed(() => {
 });
 function dragPoint(e: PointerEvent, i: number) {
   selected.value = i;
-  drag(e, (x, y) => {
+  drag(e, [times.value[i], yFrac(Number(stops.value[i].value))], (x, y) => {
     const a = withTimes();
     const lo = i > 0 ? (a[i - 1].at as number) : 0, hi = i < a.length - 1 ? (a[i + 1].at as number) : 1;
     a[i].at = r3(Math.max(lo, Math.min(hi, x)));
@@ -146,11 +169,12 @@ function dragPoint(e: PointerEvent, i: number) {
   });
 }
 function dragNode(e: PointerEvent, i: number) {
-  drag(e, (x, y) => {
+  const n = nodes.value.find((k) => k.i === i)!;
+  drag(e, [(n.x - PAD_X) / (W.value - 2 * PAD_X), (n.y - PAD_Y) / (H - 2 * PAD_Y)], (x, y) => {
     const a = withTimes();
     const t0 = a[i - 1].at as number, t1 = a[i].at as number;
     const u = Math.max(0.25, Math.min(0.75, (x - t0) / (t1 - t0)));
-    const v = Math.max(-top.value * 0.5, Math.min(top.value * 1.5, (1 - y) * top.value));
+    const v = Math.max(0, Math.min(top.value, (1 - y) * top.value));
     const v0 = a[i - 1].value as number, v1 = a[i].value as number;
     a[i].bend = [r3(u), r3(v - (v0 + (v1 - v0) * u))];
     set(a);
@@ -193,10 +217,12 @@ const gridY = computed(() => [0, 0.25, 0.5, 0.75, 1].map((k) => ({ y: py(k * top
           <path class="area" :d="areaPath" />
           <path class="line" :d="curvePath" />
           <g v-for="n in nodes" :key="'n' + n.i" class="node" :class="{ bent: n.bent }" @pointerdown="dragNode($event, n.i)" @dblclick.stop="straighten(n.i)">
+            <circle class="hit" :cx="n.x" :cy="n.y" r="10" />
             <rect :x="n.x - 5" :y="n.y - 5" width="10" height="10" :transform="`rotate(45 ${n.x} ${n.y})`" />
             <title>Изгиб отрезка: тяните; двойной клик - прямая</title>
           </g>
           <g v-for="(s, i) in stops" :key="'p' + i" class="pt" :class="{ on: i === sel }" @pointerdown="dragPoint($event, i)" @dblclick.stop="remove(i)">
+            <circle class="hit" :cx="px(times[i])" :cy="py(Number(s.value))" r="11" />
             <circle :cx="px(times[i])" :cy="py(Number(s.value))" r="6" />
             <title>{{ (times[i] * 100).toFixed(0) }}% жизни: {{ s.value }} (двойной клик - убрать)</title>
           </g>

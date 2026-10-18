@@ -316,6 +316,7 @@ html:not(.dark) .tok-op { color: #0e7490; }
 .grad-handle.on::before { border-bottom-color: var(--vp-c-brand-1); }
 .curve-edit { position: relative; height: 150px; border-radius: 8px; border: 1px solid var(--vp-c-divider); background: var(--vp-c-bg-soft); overflow: hidden; user-select: none; cursor: crosshair; }
 .curve-edit svg { display: block; }
+.curve-edit circle.hit { fill: transparent; stroke: none !important; cursor: move; }
 .curve-edit .grid line { stroke: var(--vp-c-divider); stroke-width: 1; }
 .curve-edit .grid text { fill: var(--vp-c-text-3); font-size: 9.5px; font-family: var(--vp-font-family-mono); }
 .curve-edit .area { fill: color-mix(in srgb, var(--vp-c-brand-1) 14%, transparent); }
