@@ -7,6 +7,8 @@ import Icon from './Icon.vue';
 import VecInput from './fields/VecInput.vue';
 import { state, selectedWidgets, selectedWidget, snapshot, touch, removeWidgets, selectedUids } from '../store';
 import { cloneDeep, type Vec3, type Widget, type HoverAnimation } from '../model/screen';
+import { rotationCenterOffset } from '../render/scene';
+import { calibration } from '../render/metrics';
 
 const ws = computed(() => selectedWidgets.value.filter((w) => !w.locked));
 const r = (v: number) => Math.round(v * 10000) / 10000;
@@ -53,16 +55,34 @@ const scaleMixed = mixed((w) => w.scale), trMixed = mixed((w) => w.translation),
 function setAll<K extends 'scale' | 'translation' | 'tolerance'>(k: K, v: number[]) { for (const w of ws.value) (w as any)[k] = [...v]; touch(); }
 
 // ---- поворот: слайдер как у одного виджета. Если у всех одинаковый rotation - показываем его; сдвиг слайдера
-// поворачивает группу вокруг центра (позиции по дуге) и прибавляет дельту к rotation каждого.
+// поворачивает группу как одно целое: визуальный центр вращения каждого виджета (с учётом translation и высоты
+// текста - ровно та точка, вокруг которой крутится он сам) идёт по дуге вокруг общего центра, rotation += дельта.
+// Считаем всегда от состояния на начало жеста, чтобы центр не «плыл» от шага к шагу.
 const rotMixed = computed(() => { const f = ws.value[0]; return !!f && ws.value.some((w) => w.rotation !== f.rotation); });
 const groupRot = computed(() => (rotMixed.value ? 0 : ws.value[0]?.rotation ?? 0));
+interface RotBase { startDeg: number; c: [number, number]; items: { w: Widget; pos: Vec3; rot: number; cw: [number, number] }[] }
+let rotBase: RotBase | null = null;
+function beginRotate() {
+  const sx = calibration.positionXSign;
+  const items = ws.value.map((w) => {
+    const o = rotationCenterOffset(w, w.rotation);
+    return { w, pos: [...w.position] as Vec3, rot: w.rotation, cw: [w.position[0] * sx + o[0], w.position[1] + o[1]] as [number, number] };
+  });
+  const xs = items.map((i) => i.cw[0]), ys = items.map((i) => i.cw[1]);
+  const c: [number, number] = xs.length ? [(Math.min(...xs) + Math.max(...xs)) / 2, (Math.min(...ys) + Math.max(...ys)) / 2] : [0, 0];
+  rotBase = { startDeg: groupRot.value, c, items };
+}
+function endRotate() { rotBase = null; }
 function rotateTo(deg: number) {
-  const d = deg - groupRot.value; if (!d) return;
-  const c = center.value, a = (d * Math.PI) / 180, cos = Math.cos(a), sin = Math.sin(a);
-  for (const w of ws.value) {
-    const dx = w.position[0] - c[0], dy = w.position[1] - c[1];
-    w.position = [r(c[0] + dx * cos - dy * sin), r(c[1] + dx * sin + dy * cos), w.position[2]];
-    w.rotation = r(w.rotation + d);
+  if (!rotBase || rotBase.items.length !== ws.value.length || rotBase.items.some((i, k) => i.w !== ws.value[k])) beginRotate();
+  const b = rotBase!, d = deg - b.startDeg;
+  const a = (d * Math.PI) / 180, cos = Math.cos(a), sin = Math.sin(a), sx = calibration.positionXSign;
+  for (const it of b.items) {
+    const dx = it.cw[0] - b.c[0], dy = it.cw[1] - b.c[1];
+    const nx = b.c[0] + dx * cos - dy * sin, ny = b.c[1] + dx * sin + dy * cos;
+    const rot = r(it.rot + d), o = rotationCenterOffset(it.w, rot);
+    it.w.position = [r((nx - o[0]) * sx), r(ny - o[1]), it.pos[2]];
+    it.w.rotation = rot;
   }
   touch();
 }
@@ -94,12 +114,12 @@ const num = (e: Event) => Number((e.target as HTMLInputElement).value);
     <div class="field"><label>scale<span v-if="scaleMixed" class="hint" title="У виджетов разные значения; показано первого, правка задаст всем"> ≠</span></label><VecInput :model-value="scaleV" :labels="['x', 'y', 'z']" :step="0.05" @update:model-value="setAll('scale', $event)" /></div>
     <div class="field"><label>translation<span v-if="trMixed" class="hint" title="Разные; правка задаст всем"> ≠</span></label><VecInput :model-value="trV" :labels="['x', 'y', 'z']" :step="0.01" @update:model-value="setAll('translation', $event)" /></div>
     <div class="field"><label>rotation<span v-if="rotMixed" class="hint" title="Разные; слайдер поворачивает группу на дельту"> ≠</span></label><div class="row">
-      <input type="range" min="-180" max="180" step="1" class="grow" :value="groupRot" title="Поворот группы вокруг её центра" @pointerdown="snapshot()" @input="rotateTo(num($event))" @dblclick="snapshot(); rotateTo(0)" />
-      <input type="number" step="1" style="width:64px" :value="groupRot" @focus="snapshot()" @input="rotateTo(num($event) || 0)" /><span class="hint">°</span>
+      <input type="range" min="-180" max="180" step="1" class="grow" :value="groupRot" title="Поворот группы вокруг её центра" @pointerdown="snapshot(); beginRotate()" @pointerup="endRotate()" @change="endRotate()" @input="rotateTo(num($event))" @dblclick="snapshot(); beginRotate(); rotateTo(0); endRotate()" />
+      <input type="number" step="1" style="width:64px" :value="groupRot" @focus="snapshot(); beginRotate()" @blur="endRotate()" @input="rotateTo(num($event) || 0)" /><span class="hint">°</span>
     </div></div>
     <div class="field"><label>tolerance<span v-if="tolMixed" class="hint" title="Разные; правка задаст всем"> ≠</span></label><VecInput :model-value="tolV" :labels="['Полуширина', 'Полувысота']" :step="0.01" :min="0" @update:model-value="setAll('tolerance', $event)" /></div>
     <div class="field"><label>масштаб группы</label><div class="row"><button class="btn sm" @click="applyScale(0.5)">½</button><button class="btn sm" @click="applyScale(0.8)">×0.8</button><button class="btn sm" @click="applyScale(1.25)">×1.25</button><button class="btn sm" @click="applyScale(2)">×2</button></div></div>
-    <div class="hint">position - центр охватывающего прямоугольника (правка сдвигает всех). Поворот - вокруг центра группы: позиции идут по дуге, rotation каждого меняется на ту же дельту. «Масштаб группы» - вокруг центра: позиции, scale, translation, tolerance и смещения hover-анимаций.</div>
+    <div class="hint">position - центр охватывающего прямоугольника (правка сдвигает всех). Поворот - группа крутится как одно целое вокруг своего центра: центры виджетов идут по дуге, rotation каждого меняется на ту же дельту. «Масштаб группы» - вокруг центра: позиции, scale, translation, tolerance и смещения hover-анимаций.</div>
   </div>
 
   <div class="section">
