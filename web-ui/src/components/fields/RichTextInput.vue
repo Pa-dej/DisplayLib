@@ -8,11 +8,12 @@ import { snapshot, touch } from '../../store';
 import SpriteInput from './SpriteInput.vue';
 import LineInput from './LineInput.vue';
 import TintInput from './TintInput.vue';
+import ColorPicker from './ColorPicker.vue';
 import Icon from '../Icon.vue';
 import { useReorder, moveItem } from '../../reorder';
 import { ATLASES } from '../../render/sprites';
 
-const props = defineProps<{ modelValue: RichText | null; nullable?: boolean; placeholder?: string }>();
+const props = defineProps<{ modelValue: RichText | null; nullable?: boolean; placeholder?: string; /** кнопки «сегмент/спрайт/голова» иконками в строке */ compact?: boolean }>();
 const emit = defineEmits<{ (e: 'update:modelValue', v: RichText | null): void }>();
 
 const isSegments = computed(() => Array.isArray(props.modelValue));
@@ -71,6 +72,11 @@ function setColor(i: number, ev: Event) {
     <template v-else>
       <div v-if="!isSegments" class="row">
         <LineInput class="grow" :model-value="modelValue as string" :placeholder="placeholder" @focus="snapshot()" @update:model-value="setPlainValue" />
+        <template v-if="compact">
+          <button class="btn sm icon" title="Цветной сегмент: текст разными цветами" @click="add"><Icon name="font" /></button>
+          <button class="btn sm icon" title="Спрайт атласа (предмет, блок, иконка…) - квадрат 8×8" @click="addSprite"><Icon name="icons" /></button>
+          <button class="btn sm icon" title="Голова игрока по нику - квадрат 8×8" @click="addHead"><Icon name="street-view" /></button>
+        </template>
         <button v-if="nullable" class="btn sm icon" title="Убрать" @click="clear"><Icon name="times" /></button>
       </div>
       <div v-else class="segments">
@@ -89,7 +95,7 @@ function setColor(i: number, ev: Event) {
           <template v-else>
             <LineInput :model-value="s.text" placeholder="Текст" @focus="snapshot()" @update:model-value="upd(i, { text: $event })" />
             <div class="row" style="gap:3px">
-              <input type="color" :value="cssColor(s.color)" @focus="snapshot()" @input="setColor(i, $event)" style="width:26px" />
+              <ColorPicker :model-value="cssColor(s.color)" @update:model-value="upd(i, { color: $event })" />
               <select :value="s.color && !s.color.startsWith('#') ? s.color : ''" @change="setColor(i, $event)" style="width:56px" title="Именованный цвет">
                 <option value="">#hex</option>
                 <option v-for="n in names" :key="n" :value="n">{{ n }}</option>
@@ -99,10 +105,10 @@ function setColor(i: number, ev: Event) {
           <button class="btn sm icon" title="Удалить сегмент" @click="del(i)"><Icon name="times" /></button>
         </div>
       </div>
-      <div class="row" style="margin-top:4px">
-        <button class="btn sm" title="Добавить цветной текстовый сегмент (Shift+Enter в тексте - новая строка)" @click="add"><Icon name="font" /> Сегмент</button>
-        <button class="btn sm" title="Вставить спрайт атласа (предмет, блок, иконку HUD, эффект…) - всегда квадрат 8×8" @click="addSprite"><Icon name="icons" /> Спрайт</button>
-        <button class="btn sm" title="Вставить голову игрока по нику (объект player, клиент 1.21.9+) - квадрат 8×8" @click="addHead"><Icon name="street-view" /> Голова</button>
+      <div v-if="!compact || isSegments" class="row" style="margin-top:4px">
+        <button class="btn sm" :class="{ icon: compact }" title="Добавить цветной текстовый сегмент (Shift+Enter в тексте - новая строка)" @click="add"><Icon name="font" /><template v-if="!compact"> Сегмент</template></button>
+        <button class="btn sm" :class="{ icon: compact }" title="Вставить спрайт атласа (предмет, блок, иконку HUD, эффект…) - всегда квадрат 8×8" @click="addSprite"><Icon name="icons" /><template v-if="!compact"> Спрайт</template></button>
+        <button class="btn sm" :class="{ icon: compact }" title="Вставить голову игрока по нику (объект player, клиент 1.21.9+) - квадрат 8×8" @click="addHead"><Icon name="street-view" /><template v-if="!compact"> Голова</template></button>
         <datalist id="atlas-list-seg"><option v-for="a in ATLASES" :key="a.id" :value="a.id">{{ a.hint }}</option></datalist>
         <span class="grow"></span>
         <button v-if="nullable && isSegments" class="btn sm" @click="clear">Убрать</button>

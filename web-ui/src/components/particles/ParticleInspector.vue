@@ -61,10 +61,16 @@ function setOutward(v: boolean) { edit(() => { mo.value.direction = v ? 'OUTWARD
 const DIRS: { label: string; v: Vec3 }[] = [{ label: '↑', v: [0, 1, 0] }, { label: '↓', v: [0, -1, 0] }, { label: '+X', v: [1, 0, 0] }, { label: '+Z', v: [0, 0, 1] }];
 
 // ---- текст: основной и варианты
-const variants = computed<RichText[]>(() => r.value.variants);
-function addVariant() { edit(() => { r.value.variants = [...r.value.variants, '✦']; }); }
-function delVariant(i: number) { edit(() => { r.value.variants = r.value.variants.filter((_, j) => j !== i); }); }
-function setVariant(i: number, v: RichText | null) { const a = [...r.value.variants]; a[i] = v ?? ''; r.value.variants = a; }
+// В файле есть text (один) и variants (случайный из списка); в редакторе это один список:
+// один вариант пишется как text, несколько - как variants.
+const variants = computed<RichText[]>(() => [...(r.value.text != null ? [r.value.text] : []), ...r.value.variants]);
+function storeVariants(all: RichText[]) {
+  if (all.length === 1) { r.value.text = all[0]; r.value.variants = []; }
+  else { r.value.text = null; r.value.variants = all; }
+}
+function addVariant() { edit(() => storeVariants([...variants.value, '✦'])); }
+function delVariant(i: number) { edit(() => storeVariants(variants.value.filter((_, j) => j !== i))); }
+function setVariant(i: number, v: RichText | null) { const a = [...variants.value]; a[i] = v ?? ''; storeVariants(a); }
 
 // ---- фон текста
 function setBg(on: boolean) { edit(() => { r.value.background = on ? [0, 0, 0] : null; r.value.backgroundAlpha = on ? 64 : null; }); }
@@ -102,14 +108,13 @@ const blockNames = ITEM_NAMES;
         <p class="hint">{{ RENDER_HINT[r.type] }}</p>
 
         <template v-if="r.type === 'TEXT'">
-          <div class="field stack"><label>text</label><RichTextInput v-model="r.text" nullable placeholder="★" /></div>
-          <div class="field stack"><label title="Случайный на каждую частицу (вместе с text)">variants</label>
+          <div class="field stack"><label title="Один вариант - у всех частиц он; несколько - на каждую частицу случайный (в файле: text или variants)">Текст частицы <span class="hint">{{ variants.length > 1 ? 'случайный из ' + variants.length : '' }}</span></label>
             <div class="plist">
-              <div v-for="(v, i) in variants" :key="i" class="plist-row">
-                <RichTextInput :model-value="v" @update:model-value="setVariant(i, $event)" />
-                <button class="btn sm icon" title="Убрать" @click="delVariant(i)"><Icon name="times" /></button>
+              <div v-for="(v, i) in variants" :key="i" class="plist-row variant-row">
+                <RichTextInput compact :model-value="v" placeholder="★" @update:model-value="setVariant(i, $event)" />
+                <button class="btn sm icon" title="Убрать вариант" :disabled="variants.length <= 1" @click="delVariant(i)"><Icon name="trash" /></button>
               </div>
-              <button class="btn sm" @click="addVariant"><Icon name="plus" /> Вариант</button>
+              <button class="btn sm" @click="addVariant"><Icon name="plus" /> Ещё вариант</button>
             </div>
           </div>
         </template>

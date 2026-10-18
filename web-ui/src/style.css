@@ -293,7 +293,7 @@ html:not(.dark) .tok-op { color: #0e7490; }
 .range-input .dash { text-align: center; color: var(--vp-c-text-3); }
 .range-input .dash.same { opacity: .35; }
 .range-input .unit { min-width: 28px; }
-.pcolor { display: grid; grid-template-columns: 28px 1fr 12px 56px; gap: 4px; align-items: center; flex: 1; min-width: 0; }
+.pcolor { display: grid; grid-template-columns: 28px 1fr; gap: 4px; align-items: center; flex: 1; min-width: 0; }
 .pcolor .swatch { position: relative; width: 28px; height: 28px; border-radius: 6px; border: 1px solid var(--vp-c-divider); overflow: hidden; background: repeating-conic-gradient(#999 0 25%, #ddd 0 50%) 0 0 / 10px 10px; }
 .pcolor .swatch > span { position: absolute; inset: 0; pointer-events: none; }
 .pcolor .swatch input { position: absolute; inset: 0; opacity: 0; width: 100%; height: 100%; cursor: pointer; padding: 0; border: 0; }
@@ -316,3 +316,44 @@ html:not(.dark) .tok-op { color: #0e7490; }
 .pstats .hint { color: rgba(255,255,255,.65); }
 .perrors { position: absolute; left: 12px; right: 160px; bottom: 34px; margin: 0; }
 .nav-item.example .name { color: var(--vp-c-text-2); }
+
+/* --- выбор цвета (fields/ColorPicker.vue) */
+.checker { background-color: #fff; background-image: repeating-conic-gradient(#c8c8c8 0 25%, transparent 0 50%); background-size: 8px 8px; }
+.cp-trigger { position: relative; flex: none; padding: 0; border-radius: 6px; border: 1px solid var(--vp-c-divider); cursor: pointer; overflow: hidden; background-color: #fff; background-image: repeating-conic-gradient(#c8c8c8 0 25%, transparent 0 50%); background-size: 8px 8px; }
+.cp-trigger > span { position: absolute; inset: 0; box-shadow: inset 0 0 0 1px rgba(0,0,0,.12); }
+.cp-trigger:hover, .cp-trigger.open { border-color: var(--vp-c-brand-1); box-shadow: 0 0 0 2px var(--vp-c-brand-soft); }
+.cp-pop { position: fixed; z-index: 1000; width: 264px; padding: 10px; border-radius: 12px; background: var(--vp-c-bg-elv); border: 1px solid var(--vp-c-divider); box-shadow: 0 12px 32px rgba(0,0,0,.28), 0 2px 6px rgba(0,0,0,.12); display: flex; flex-direction: column; gap: 9px; outline: none; font-size: 12px; }
+.cp-sv { position: relative; height: 150px; border-radius: 8px; cursor: crosshair; touch-action: none; outline: none; }
+.cp-sv:focus-visible { box-shadow: 0 0 0 2px var(--vp-c-brand-1); }
+.cp-sv-white, .cp-sv-black { position: absolute; inset: 0; border-radius: 8px; pointer-events: none; }
+.cp-sv-white { background: linear-gradient(90deg, #fff, rgba(255,255,255,0)); }
+.cp-sv-black { background: linear-gradient(0deg, #000, rgba(0,0,0,0)); }
+.cp-knob { position: absolute; width: 14px; height: 14px; margin: -7px 0 0 -7px; border-radius: 50%; border: 2px solid #fff; box-shadow: 0 0 0 1px rgba(0,0,0,.35), 0 1px 3px rgba(0,0,0,.4); pointer-events: none; }
+.cp-row { display: flex; align-items: center; gap: 8px; }
+.cp-compare { position: relative; width: 34px; height: 34px; border-radius: 50%; overflow: hidden; flex: none; border: 1px solid var(--vp-c-divider); }
+.cp-compare > span { position: absolute; }
+.cp-compare .checker { inset: 0; }
+.cp-compare .old { left: 0; top: 0; bottom: 0; width: 50%; cursor: pointer; }
+.cp-compare .new { right: 0; top: 0; bottom: 0; width: 50%; }
+.cp-sliders { flex: 1; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.cp-hue, .cp-alpha { position: relative; height: 12px; border-radius: 6px; cursor: pointer; touch-action: none; outline: none; }
+.cp-hue { background: linear-gradient(90deg, #f00 0%, #ff0 16.66%, #0f0 33.33%, #0ff 50%, #00f 66.66%, #f0f 83.33%, #f00 100%); }
+.cp-hue:focus-visible, .cp-alpha:focus-visible { box-shadow: 0 0 0 2px var(--vp-c-brand-1); }
+.cp-alpha-fill { position: absolute; inset: 0; border-radius: 6px; }
+.cp-thumb { position: absolute; top: 50%; width: 14px; height: 14px; margin: -7px 0 0 -7px; border-radius: 50%; border: 2px solid #fff; box-shadow: 0 0 0 1px rgba(0,0,0,.35), 0 1px 3px rgba(0,0,0,.4); pointer-events: none; }
+.cp-fields { display: flex; gap: 6px; align-items: center; }
+.cp-modes { flex: none; }
+.cp-modes > button { padding: 0 6px; font-size: 11px; }
+.cp-inputs { flex: 1; display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 4px; min-width: 0; }
+.cp-inputs input { width: 100%; height: 26px; padding: 0 4px; text-align: center; font-family: var(--vp-font-family-mono); font-size: 12px; -moz-appearance: textfield; }
+.cp-inputs input::-webkit-inner-spin-button { display: none; }
+.cp-inputs label { display: flex; flex-direction: column; align-items: center; gap: 1px; min-width: 0; }
+.cp-inputs label > span { font-size: 9.5px; color: var(--vp-c-text-3); line-height: 1; }
+.cp-inputs.one input { text-align: left; padding: 0 8px; }
+.cp-swatches { display: grid; grid-template-columns: repeat(8, 1fr); gap: 4px; }
+.cp-sw { position: relative; height: 20px; padding: 0; border-radius: 5px; border: 1px solid rgba(0,0,0,.15); cursor: pointer; overflow: hidden; }
+.cp-sw > span { position: absolute; inset: 0; }
+.cp-sw:hover { transform: scale(1.12); box-shadow: 0 1px 4px rgba(0,0,0,.3); }
+.cp-swatches.recent { grid-template-columns: repeat(12, 1fr); padding-top: 6px; border-top: 1px solid var(--vp-c-divider); }
+.cp-swatches.recent .cp-sw { height: 16px; border-radius: 4px; }
+.cp-hint { color: var(--vp-c-text-3); font-size: 11px; line-height: 1.35; min-height: 15px; }

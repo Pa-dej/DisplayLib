@@ -201,7 +201,9 @@ export class ParticleScene {
 
   /** Текстура текста с цветом (корневой цвет красит сегменты без своего, как text.color() в плагине). */
   private textTexture(e: ParticleEffect, variant: number, rgb: number | null): { tex: THREE.Texture; w: number; h: number } {
-    const key = variant + '|' + (rgb == null ? '-' : rgb) + '|' + this.spriteRevision;
+    // ключ - содержимое варианта и фона, а не номер: правка текста не должна показывать старую картинку
+    const rd = e.render;
+    const key = JSON.stringify([this.richVariant(e, variant), rgb, rd.background, rd.backgroundAlpha, rd.shadow, this.spriteRevision]);
     let t = this.textCache.get(key);
     if (t) return t;
     let rich = this.richVariant(e, variant);
