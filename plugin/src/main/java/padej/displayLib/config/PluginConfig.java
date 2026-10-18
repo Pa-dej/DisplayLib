@@ -27,17 +27,23 @@ public record PluginConfig(boolean hotReload, long scriptTimeoutMs, CloseOn clos
     public static final PluginConfig DEFAULTS = new PluginConfig(true, 1000, CloseOn.DEFAULTS, Storage.DEFAULTS, Particles.DEFAULTS);
 
     /**
-     * Частицы: {@code dyn particles = { maxAlive: 1500 };}
+     * Частицы: {@code dyn particles = { maxAlive: 1500, packets: true, viewDistance: 96 };}
      *
-     * @param maxAlive сколько частиц может жить одновременно на всём сервере; новые сверх предела не появляются
+     * @param maxAlive     сколько частиц может жить одновременно на всём сервере; новые сверх предела не появляются
+     * @param packets      показывать частицы пакетами, без сущностей на сервере; {@code false} - настоящими сущностями
+     * @param viewDistance с какого расстояния от точки запуска игроки видят частицы (только для пакетов)
      */
-    public record Particles(int maxAlive) {
-        public static final Particles DEFAULTS = new Particles(1500);
+    public record Particles(int maxAlive, boolean packets, double viewDistance) {
+        public static final Particles DEFAULTS = new Particles(1500, true, 96);
 
         static Particles parse(Object v) {
             if (!(v instanceof JTable t)) return DEFAULTS;
             Integer max = JmcValues.integer(t, "maxAlive", "max_alive", "max");
-            return new Particles(max != null && max > 0 ? max : DEFAULTS.maxAlive());
+            Boolean packets = JmcValues.bool(t, "packets");
+            Double view = JmcValues.number(t, "viewDistance", "view_distance");
+            return new Particles(max != null && max > 0 ? max : DEFAULTS.maxAlive(),
+                    packets != null ? packets : DEFAULTS.packets(),
+                    view != null && view > 0 ? view : DEFAULTS.viewDistance());
         }
     }
 

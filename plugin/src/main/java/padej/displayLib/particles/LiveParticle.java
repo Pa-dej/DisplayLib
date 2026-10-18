@@ -3,7 +3,6 @@ package padej.displayLib.particles;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.TextColor;
 import org.bukkit.Color;
-import org.bukkit.Location;
 import org.bukkit.World;
 import org.bukkit.entity.Display;
 import org.bukkit.entity.TextDisplay;
@@ -27,6 +26,9 @@ import org.joml.Vector3f;
  */
 final class LiveParticle {
     final ParticleEmission emission;
+    /** Показ частицы: сущность в мире или пакеты */
+    final ParticleView view;
+    /** Сущность, у которой меняется вид (у пакетов - вне мира) */
     final Display entity;
     final World world;
     /** Тело в момент последней цели клиента */
@@ -67,13 +69,13 @@ final class LiveParticle {
     /** Поворот сущности (FIXED-текст смотрит в эту сторону); сохраняется при телепортах */
     float yaw;
 
-    LiveParticle(ParticleEmission emission, Display entity, World world, ParticleSim.Body body, int life,
+    LiveParticle(ParticleEmission emission, ParticleView view, World world, ParticleSim.Body body, int life,
                  double startScale, double startRotation, double spin, float[] center, int spawnTick,
                  boolean pixel, Component baseText, int startColor) {
-        this(emission, entity, world, body, life, startScale, startRotation, spin, center, spawnTick, pixel, baseText, startColor, null, 0, baseText != null);
+        this(emission, view, world, body, life, startScale, startRotation, spin, center, spawnTick, pixel, baseText, startColor, null, 0, baseText != null);
     }
 
-    LiveParticle(ParticleEmission emission, Display entity, World world, ParticleSim.Body body, int life,
+    LiveParticle(ParticleEmission emission, ParticleView view, World world, ParticleSim.Body body, int life,
                  double startScale, double startRotation, double spin, float[] center, int spawnTick,
                  boolean pixel, Component baseText, int startColor, ParticleEffect.TextVariant frames, int frameStart, boolean recolor) {
         this.frames = frames;
@@ -85,7 +87,8 @@ final class LiveParticle {
         this.startColor = startColor;
         this.sentColor = ParticleSim.colorAt(emission.effect.animation(), startColor, 0, life);
         this.emission = emission;
-        this.entity = entity;
+        this.view = view;
+        this.entity = view.display();
         this.world = world;
         this.body = body;
         this.life = life;
@@ -153,6 +156,7 @@ final class LiveParticle {
         if (age >= nextPosition) sendPosition(keyframeTicks, solid);
         if (age >= nextTransform) sendTransform(keyframeTicks);
         if (frames != null) updateFrame();
+        view.flush();
     }
 
     /** Кадр текста для видимого возраста (age - 1, как и остальное): смена - один пакет метаданных. */
@@ -183,7 +187,7 @@ final class LiveParticle {
         body = segment.end();
         nextPosition = age + segment.length();
         if (!wasResting && (body.x != px || body.y != py || body.z != pz)) {
-            entity.teleport(new Location(world, body.x, body.y, body.z, yaw, 0));
+            view.moveTo(body.x, body.y, body.z, yaw);
         }
         planned = ParticleSim.planSegment(body, emission.effect.motion(), solid, keyframeTicks);
         if (planned.length() != segment.length()) entity.setTeleportDuration(planned.length());
@@ -246,18 +250,9 @@ final class LiveParticle {
         return (byte) Math.max(4, ParticleColors.alpha(argb));
     }
 
-    /** Показать частицу игроку (владелец перезашёл). */
-    void showTo(org.bukkit.entity.Player player, org.bukkit.plugin.Plugin plugin) {
-        if (!dead && entity.isValid()) player.showEntity(plugin, entity);
-    }
-
     void kill() {
         if (dead) return;
         dead = true;
-        try {
-            entity.remove();
-        } catch (RuntimeException ignored) {
-            // мир уже выгружен - сущности и так нет
-        }
+        view.remove();
     }
 }

@@ -47,6 +47,8 @@ public final class ParticleManager implements Listener {
     private final Plugin plugin;
     private final Logger log;
     private final int maxAlive;
+    /** Как частицы показываются: пакетами или сущностями в мире */
+    private ParticleBackend backend;
 
     private final List<ParticleEmission> emissions = new ArrayList<>();
     private int alive;
@@ -59,13 +61,36 @@ public final class ParticleManager implements Listener {
     private final Map<String, Material> materialCache = new HashMap<>();
 
     /**
-     * @param maxAlive предел одновременно живых частиц на сервере; новые сверх него не появляются
+     * @param maxAlive     предел одновременно живых частиц на сервере; новые сверх него не появляются
+     * @param packets      показывать частицы пакетами, без сущностей на сервере (если версия сервера позволяет)
+     * @param viewDistance с какого расстояния от точки запуска игроки видят частицы (только для пакетов)
      */
-    public ParticleManager(Plugin plugin, int maxAlive) {
+    public ParticleManager(Plugin plugin, int maxAlive, boolean packets, double viewDistance) {
         this.plugin = plugin;
         this.log = plugin.getLogger();
         this.maxAlive = Math.max(1, maxAlive);
+        this.backend = packets ? packetBackend(plugin, viewDistance) : new EntityBackend(plugin);
         Bukkit.getPluginManager().registerEvents(this, plugin);
+    }
+
+    public ParticleManager(Plugin plugin, int maxAlive) {
+        this(plugin, maxAlive, true, PacketBackend.DEFAULT_VIEW_DISTANCE);
+    }
+
+    /** Пакеты зависят от внутренних классов сервера: на другой версии - сущности. */
+    private static ParticleBackend packetBackend(Plugin plugin, double viewDistance) {
+        try {
+            return new PacketBackend(plugin, viewDistance);
+        } catch (LinkageError | RuntimeException ex) {
+            plugin.getLogger().warning("Particles: packets are not available on this server version (" + ex
+                    + "), falling back to entities");
+            return new EntityBackend(plugin);
+        }
+    }
+
+    /** Как показываются частицы: {@code packets} или {@code entities}. */
+    public String backendName() {
+        return backend.name();
     }
 
     /** Сколько частиц сейчас живо. */
@@ -91,7 +116,10 @@ public final class ParticleManager implements Listener {
         if (!emission.isDone()) {
             emissions.add(emission);
             ensureTask();
+        } else {
+            backend.finish(emission);
         }
+        backend.flush();
         return emission;
     }
 
@@ -113,7 +141,10 @@ public final class ParticleManager implements Listener {
         if (!emission.isDone()) {
             emissions.add(emission);
             ensureTask();
+        } else {
+            backend.finish(emission);
         }
+        backend.flush();
         return emission;
     }
 
@@ -122,6 +153,7 @@ public final class ParticleManager implements Listener {
         if (world == null) return;
         Player owner = e.owner != null && e.effect.viewers() == ParticleEffect.Viewers.OWNER ? Bukkit.getPlayer(e.owner) : null;
         if (e.owner != null && e.effect.viewers() == ParticleEffect.Viewers.OWNER && owner == null) return;
+        if (!backend.visible(e)) return; // некому показывать
         RandomGenerator r = ThreadLocalRandom.current();
         int now = Bukkit.getCurrentTick();
         for (ParticlePiece piece : pieces) {
@@ -141,8 +173,10 @@ public final class ParticleManager implements Listener {
         for (ParticleEmission e : emissions) {
             e.cancel();
             if (!ticking) e.particles.clear(); // во время обхода списки чистит сам tick()
+            backend.finish(e);
         }
         emissions.clear();
+        backend.flush();
         alive = 0;
         if (task != null) {
             task.cancel();
@@ -159,6 +193,7 @@ public final class ParticleManager implements Listener {
     /** Выключение плагина: убрать всё и отписаться от событий. */
     public void shutdown() {
         stopAll();
+        backend.shutdown();
         HandlerList.unregisterAll(this);
     }
 
@@ -166,9 +201,32 @@ public final class ParticleManager implements Listener {
         ticking = true;
         try {
             tickAll();
+        } catch (LinkageError ex) {
+            if (backend instanceof EntityBackend) throw ex;
+            fallBack(ex);
         } finally {
             ticking = false;
         }
+    }
+
+    /**
+     * Пакеты несовместимы с версией сервера (внутренний класс или метод изменился): дальше - сущности.
+     * Уже выпущенные частицы-пакеты убираются, запуски продолжают испускать новые сущностями.
+     */
+    private void fallBack(LinkageError ex) {
+        log.warning("Particles: packets are not available on this server version (" + ex + "), falling back to entities");
+        ParticleBackend old = backend;
+        backend = new EntityBackend(plugin);
+        try {
+            for (ParticleEmission e : emissions) {
+                for (LiveParticle p : e.particles) p.kill();
+                old.finish(e);
+            }
+            old.flush();
+        } catch (LinkageError | RuntimeException ignored) {
+            // не удалось даже убрать - клиенты забудут их при перезаходе
+        }
+        old.shutdown();
     }
 
     private void tickAll() {
@@ -185,8 +243,10 @@ public final class ParticleManager implements Listener {
             if (e.isDone()) {
                 e.particles.clear();
                 emissions.remove(e);
+                backend.finish(e);
             }
         }
+        backend.flush();
         // счётчик - заново: события и отмены во время обхода не дают ему разойтись с реальностью
         int count = 0;
         for (ParticleEmission e : emissions) count += e.particles.size();
@@ -202,6 +262,7 @@ public final class ParticleManager implements Listener {
             e.cancel(); // мир выгружен
             return;
         }
+        backend.tick(e, now);
         int keyframeTicks = e.effect.keyframeTicks();
         boolean collide = e.effect.motion().collide();
         ParticleSim.Solid solid = null;
@@ -210,7 +271,7 @@ public final class ParticleManager implements Listener {
             LiveParticle p = pi.next();
             if (!p.dead && now > p.spawnTick) {
                 p.age++;
-                if (!p.entity.isValid()) {
+                if (!p.view.valid()) {
                     p.kill(); // чанк выгрузился, сущность убрали
                 } else if (p.age > p.life) { // клиент отстаёт на тик: даём дойти до конца жизни
                     p.kill();
@@ -257,6 +318,7 @@ public final class ParticleManager implements Listener {
         if (world == null) return;
         Player owner = e.owner != null && e.effect.viewers() == ParticleEffect.Viewers.OWNER ? Bukkit.getPlayer(e.owner) : null;
         if (e.owner != null && e.effect.viewers() == ParticleEffect.Viewers.OWNER && owner == null) return; // владелец не в сети
+        if (!backend.visible(e)) return; // некому показывать (пакеты: рядом нет игроков)
         RandomGenerator r = ThreadLocalRandom.current();
         int now = Bukkit.getCurrentTick();
         for (int i = 0; i < count; i++) {
@@ -281,7 +343,7 @@ public final class ParticleManager implements Listener {
         Player player = event.getPlayer();
         for (ParticleEmission e : emissions) {
             if (player.getUniqueId().equals(e.owner) && e.effect.viewers() == ParticleEffect.Viewers.OWNER) {
-                for (LiveParticle p : e.particles) p.showTo(player, plugin);
+                backend.rejoin(player, e);
             }
         }
     }
@@ -332,15 +394,13 @@ public final class ParticleManager implements Listener {
         ParticleEffect.TextVariant textVariant = null;
         boolean textRecolor = false;
         Consumer<Display> common = d -> {
-            d.setPersistent(false);
             d.setBillboard(render.billboard());
             if (render.brightness() != null) d.setBrightness(new Display.Brightness(render.brightness(), render.brightness()));
             d.setTeleportDuration(first.length());
             d.setInterpolationDuration(0);
-            if (owner != null) d.setVisibleByDefault(false);
         };
 
-        Display entity;
+        ParticleView entity;
         switch (render.type()) {
             case TEXT -> {
                 textVariant = piece != null && piece.text() != null ? ParticleEffect.TextVariant.of(piece.text()) : pick(render.texts(), r);
@@ -361,7 +421,7 @@ public final class ParticleManager implements Listener {
                 center[0] = TEXT_PIXEL;
                 center[1] = (5 - (objectOnly ? 0 : 1)) * TEXT_PIXEL;
                 Component finalText = text;
-                entity = world.spawn(at, TextDisplay.class, d -> {
+                entity = spawnView(e, owner, at, TextDisplay.class, d -> {
                     common.accept(d);
                     d.text(finalText);
                     d.setBackgroundColor(Color.fromARGB(render.backgroundArgb()));
@@ -371,7 +431,7 @@ public final class ParticleManager implements Listener {
                 });
             }
             case PIXEL -> {
-                entity = world.spawn(at, TextDisplay.class, d -> {
+                entity = spawnView(e, owner, at, TextDisplay.class, d -> {
                     common.accept(d);
                     d.text(Component.text(" "));
                     d.setBackgroundColor(Color.fromARGB(color0));
@@ -385,7 +445,7 @@ public final class ParticleManager implements Listener {
                     warnOnce("item:" + name, "Particle effect '" + effect.id() + "': unknown item '" + name + "'");
                     return null;
                 }
-                entity = world.spawn(at, ItemDisplay.class, d -> {
+                entity = spawnView(e, owner, at, ItemDisplay.class, d -> {
                     common.accept(d);
                     d.setItemStack(new ItemStack(m));
                     d.setGlowing(render.glow());
@@ -397,7 +457,7 @@ public final class ParticleManager implements Listener {
                 BlockData data = blockData(effect, pick(render.blocks(), r));
                 if (data == null) return null;
                 center[0] = center[1] = center[2] = 0.5f; // блок рисуется от угла
-                entity = world.spawn(at, BlockDisplay.class, d -> {
+                entity = spawnView(e, owner, at, BlockDisplay.class, d -> {
                     common.accept(d);
                     d.setBlock(data);
                     d.setGlowing(render.glow());
@@ -409,13 +469,23 @@ public final class ParticleManager implements Listener {
                 return null;
             }
         }
-        if (owner != null) owner.showEntity(plugin, entity);
         LiveParticle particle = new LiveParticle(e, entity, world, body, life, scale, rotation, spin, center, now,
                 render.type() == ParticleEffect.RenderType.PIXEL, baseText, startColor,
                 textVariant != null && textVariant.animated() ? textVariant : null, frameStart, textRecolor);
         particle.planned = first;
         particle.yaw = yaw;
         return particle;
+    }
+
+    /** Показ новой частицы; если пакеты несовместимы с версией сервера - переход на сущности. */
+    private <T extends Display> ParticleView spawnView(ParticleEmission e, Player owner, Location at, Class<T> type, Consumer<T> setup) {
+        try {
+            return backend.spawn(e, owner, at, type, setup);
+        } catch (LinkageError ex) {
+            if (backend instanceof EntityBackend) throw ex;
+            fallBack(ex);
+            return backend.spawn(e, owner, at, type, setup);
+        }
     }
 
     /** Вид в момент появления (с fadeIn - нулевой размер). */

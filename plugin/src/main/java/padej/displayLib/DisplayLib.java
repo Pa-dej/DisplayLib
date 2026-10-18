@@ -107,7 +107,9 @@ public final class DisplayLib extends JavaPlugin {
         // Эффекты частиц (particles/*.jmc)
         particleRegistry = new ParticleRegistry(getDataFolder().toPath().resolve("particles"), getLogger());
         particleRegistry.loadAll();
-        particleManager = new ParticleManager(this, config.particles().maxAlive());
+        particleManager = new ParticleManager(this, config.particles().maxAlive(),
+                config.particles().packets(), config.particles().viewDistance());
+        getLogger().info("Particles: shown as " + particleManager.backendName());
         Particles.install(particleRegistry, particleManager);
 
         UIManager.getInstance().initialize(screenRegistry, scriptEngine,

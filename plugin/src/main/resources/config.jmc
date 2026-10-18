@@ -23,5 +23,9 @@ dyn closeOn = { death: true, worldChange: true, teleport: 8, inventory: false };
 dyn storage = { persist: true, autosaveSeconds: 300 };
 
 // Частицы (particles/*.jmc, /displaylib particle):
-//   maxAlive - сколько частиц-сущностей может жить одновременно на всём сервере; новые сверх предела не появляются
-dyn particles = { maxAlive: 1500 };
+//   maxAlive     - сколько частиц может жить одновременно на всём сервере; новые сверх предела не появляются
+//   packets      - показывать частицы пакетами: на сервере нет сущностей (ни в чанках, ни в трекере), нагрузка
+//                  на основной поток в разы меньше. false - настоящие Display-сущности (как раньше). На другой
+//                  версии сервера плагин сам вернётся к сущностям.
+//   viewDistance - с какого расстояния от точки запуска эффекта игроки видят его частицы (только для пакетов)
+dyn particles = { maxAlive: 1500, packets: true, viewDistance: 96 };

@@ -1,6 +1,8 @@
 plugins {
     java
-    id("xyz.jpenilla.run-paper") version "2.3.1"
+    // NMS (частицы пакетами): сервер Paper с mojang-именами для компиляции
+    id("io.papermc.paperweight.userdev") version "2.0.0-beta.24"
+    id("xyz.jpenilla.run-paper") version "3.1.0"
 }
 
 group = "padej"
@@ -22,18 +24,21 @@ repositories {
 }
 
 dependencies {
-    compileOnly("io.papermc.paper:paper-api:1.21.11-R0.1-SNAPSHOT")
+    // Paper API + внутренние классы сервера (compileOnly и для тестов - paperweight подключает сам)
+    paperweight.paperDevBundle("$mcVersion-R0.1-SNAPSHOT")
 
     // Jumper: язык скриптов (.jmp), конфигов (.jmc) и политик доступа (.jma).
     // Без зависимостей, вшивается в JAR плагина. Версия - тег релиза
     // https://github.com/jumper-lang/jumper/releases (JitPack собирает :lang по jitpack.yml).
     implementation("com.github.jumper-lang:jumper:v0.11.2")
 
-    testImplementation("io.papermc.paper:paper-api:1.21.11-R0.1-SNAPSHOT")
     testImplementation(platform("org.junit:junit-bom:5.11.3"))
     testImplementation("org.junit.jupiter:junit-jupiter")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
+
+// Paper 1.20.5+ работает на mojang-именах: jar не переобфусцируется (в манифест пишется mojang namespace)
+paperweight.reobfArtifactConfiguration = io.papermc.paperweight.userdev.ReobfArtifactConfiguration.MOJANG_PRODUCTION
 
 tasks.test {
     useJUnitPlatform()
@@ -42,7 +47,7 @@ tasks.test {
 
 tasks {
     runServer {
-        minecraftVersion("1.21")
+        minecraftVersion(mcVersion)
     }
 
     jar {

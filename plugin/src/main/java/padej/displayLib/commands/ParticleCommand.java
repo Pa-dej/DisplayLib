@@ -41,7 +41,8 @@ final class ParticleCommand {
         switch (args[1].toLowerCase()) {
             case "list" -> {
                 Map<String, Integer> alive = Particles.aliveByEffect();
-                sender.sendMessage("§eЭффекты частиц §7(живо сейчас: " + Particles.alive() + "):");
+                sender.sendMessage("§eЭффекты частиц §7(живо сейчас: " + Particles.alive() + ", показ: "
+                        + ("packets".equals(Particles.mode()) ? "пакетами" : "сущностями") + "):");
                 for (String id : Particles.ids()) {
                     ParticleEffect e = Particles.effect(id);
                     int n = alive.getOrDefault(id, 0);

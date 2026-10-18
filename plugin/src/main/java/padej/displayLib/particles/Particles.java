@@ -94,6 +94,11 @@ public final class Particles {
         return manager != null ? manager.aliveCount() : 0;
     }
 
+    /** Как показываются частицы: {@code packets} (без сущностей на сервере) или {@code entities}. */
+    public static String mode() {
+        return manager != null ? manager.backendName() : "-";
+    }
+
     /** Живые частицы по эффектам. */
     public static Map<String, Integer> aliveByEffect() {
         return manager != null ? manager.aliveByEffect() : Map.of();

@@ -35,4 +35,7 @@
 ## Сборка
 
 Jumper подключается через JitPack: `com.github.jumper-lang:jumper:<тег релиза>` (см. `build.gradle.kts`, сейчас `v0.11.2`).
-Gradle 8.8 запускайте на JDK 21.
+Gradle 9.2 (wrapper), JDK 21+. Частицы-пакеты используют внутренние классы сервера: компиляция идёт против
+dev bundle Paper через [paperweight-userdev](https://docs.papermc.io/paper/dev/userdev/) (`paperweight.paperDevBundle`
+в `build.gradle.kts`; первая сборка скачивает и готовит сервер - несколько минут). Jar - на mojang-именах, как и сам
+Paper 1.21.11, без переобфускации.
