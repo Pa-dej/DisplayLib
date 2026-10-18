@@ -14,6 +14,7 @@ import VecInput from '../fields/VecInput.vue';
 import ColorInput from '../fields/ColorInput.vue';
 import ColorPicker from '../fields/ColorPicker.vue';
 import LoadMark from '../load/LoadMark.vue';
+import { useReorder, moveItem } from '../../reorder';
 import { compile, transformPlan } from '../../particles/sim';
 import { parseColor } from '../../particles/colors';
 import { cloneEffect } from '../../particles/model';
@@ -76,6 +77,7 @@ function storeVariants(all: RichText[]) {
 function addVariant() { edit(() => storeVariants([...variants.value, '✦'])); }
 function delVariant(i: number) { edit(() => storeVariants(variants.value.filter((_, j) => j !== i))); }
 function setVariant(i: number, v: RichText | null) { const a = [...variants.value]; a[i] = v ?? ''; storeVariants(a); }
+const dndVariants = useReorder((from, to) => edit(() => { const a = [...variants.value]; moveItem(a, from, to); storeVariants(a); }));
 
 // ---- фон текста
 function setBg(on: boolean) { edit(() => { r.value.background = on ? [0, 0, 0] : null; r.value.backgroundAlpha = on ? 64 : null; }); }
@@ -152,12 +154,17 @@ const blockNames = ITEM_NAMES;
 
         <template v-if="r.type === 'TEXT'">
           <div class="field stack"><label title="Один вариант - у всех частиц он; несколько - на каждую частицу случайный (в файле: text или variants)">Текст частицы <span class="hint">{{ variants.length > 1 ? 'случайный из ' + variants.length : '' }}</span></label>
-            <div class="plist">
-              <div v-for="(v, i) in variants" :key="i" class="plist-row variant-row">
+            <div class="frames variants">
+              <div v-for="(v, i) in variants" :key="i" class="variant-card" :class="dndVariants.rowClass(i)" data-row @dragover="dndVariants.over(i, $event)" @dragleave="dndVariants.leave(i)" @drop="dndVariants.drop(i, $event)">
+                <div class="variant-head">
+                  <span class="grip" title="Перетащить, чтобы изменить порядок" draggable="true" @dragstart="dndVariants.start(i, $event)" @dragend="dndVariants.end()"><Icon name="grip-vertical" :size="10" /></span>
+                  <span class="kind">{{ i + 1 }}</span>
+                  <span class="hint grow">{{ variants.length > 1 ? 'вариант ' + (i + 1) : 'текст' }}</span>
+                  <button class="btn sm icon" title="Убрать вариант" :disabled="variants.length <= 1" @click="delVariant(i)"><Icon name="trash" :size="12" /></button>
+                </div>
                 <RichTextInput compact :model-value="v" placeholder="★" @update:model-value="setVariant(i, $event)" />
-                <button class="btn sm icon" title="Убрать вариант" :disabled="variants.length <= 1" @click="delVariant(i)"><Icon name="trash" /></button>
               </div>
-              <button class="btn sm" @click="addVariant"><Icon name="plus" /> Ещё вариант</button>
+              <div class="row"><button class="btn sm" @click="addVariant"><Icon name="plus" /> Вариант</button></div>
             </div>
           </div>
         </template>

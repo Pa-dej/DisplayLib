@@ -186,8 +186,20 @@ input[type=range] { accent-color: var(--vp-c-brand-1); }
 .code { margin: 0; padding: 12px 16px; flex: 1; min-height: 0; overflow: auto; font-size: 12.5px; line-height: 1.5; white-space: pre; background: var(--vp-code-bg); font-family: var(--vp-font-family-mono); }
 
 /* --- сегменты текста */
-.segments { display: flex; flex-direction: column; gap: 4px; }
-.segment { display: grid; grid-template-columns: 14px 1fr 86px 26px; gap: 4px; align-items: center; }
+.segments { display: flex; flex-direction: column; gap: 6px; container-type: inline-size; }
+/* строка сегмента: [ручка][главное поле][доп. поля][×]; в узкой панели доп. поля (атлас, тинт, цвет)
+   уходят второй строкой под главное поле, а × остаётся справа от него */
+.segment { display: grid; grid-template-columns: 14px minmax(0, 1fr) auto auto 26px; grid-template-areas: "g m e e2 x"; column-gap: 4px; row-gap: 4px; align-items: center; }
+.segment > .seg-g { grid-area: g; }
+.segment > .seg-m { grid-area: m; min-width: 0; }
+.segment > .seg-e { grid-area: e; min-width: 0; }
+.segment > .seg-e2 { grid-area: e2; min-width: 0; }
+.segment > .seg-x { grid-area: x; }
+.segment > .seg-atlas { width: 86px; }
+@container (max-width: 380px) {
+  .segment { grid-template-columns: 14px minmax(0, 1fr) auto 26px; grid-template-areas: "g m m x" ". e e2 ."; }
+  .segment > .seg-atlas { width: 100%; }
+}
 .grip { display: inline-flex; align-items: center; justify-content: center; width: 14px; height: 24px; color: var(--vp-c-text-3); cursor: grab; opacity: 0.5; flex: none; }
 .grip:hover { opacity: 1; color: var(--vp-c-text-1); }
 .grip:active { cursor: grabbing; }
@@ -495,3 +507,22 @@ html.theme-anim, html.theme-anim *, html.theme-anim *::before, html.theme-anim *
 .btn.primary kbd { background: rgba(255,255,255,.16); border-color: rgba(255,255,255,.35); color: #fff; }
 @media (max-width: 1420px) { .topbar .brand .badge { display: none; } .topbar .btn kbd { display: none; } }
 @media (max-width: 1220px) { .topbar { gap: 8px; padding: 0 12px; } .mode-switch > button { padding: 0 10px; } }
+.frame-row > .grow { flex: 1 1 0; min-width: 0; }
+/* текст сегментами: панель кнопок не распирает узкую колонку */
+.rich-input { container-type: inline-size; min-width: 0; }
+.rt-add { flex-wrap: wrap; }
+@container (max-width: 250px) { .rt-add .lbl { display: none; } .rt-add .btn { width: 26px; padding: 0; justify-content: center; } }
+.pinspector .field > .row { flex-wrap: wrap; min-width: 0; row-gap: 4px; }
+.pinspector .field > * { min-width: 0; }
+/* варианты текста частицы: карточка - заголовок (порядок, номер, удалить вариант) и сам текст */
+.variants { gap: 6px; }
+.variant-card { border: 1px solid var(--vp-c-divider); border-radius: 8px; padding: 4px 6px 6px; background: color-mix(in srgb, var(--vp-c-bg-soft) 55%, transparent); animation: ui-fade-up .18s var(--ease-out); }
+.variant-head { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; }
+.variant-head .kind { font-size: 10px; font-weight: 700; padding: 1px 5px; border-radius: 4px; background: var(--vp-c-default-soft); color: var(--vp-c-text-3); }
+.variant-head .btn.sm.icon { width: 22px; height: 22px; }
+.variant-card.drop-before { box-shadow: 0 -2px 0 0 var(--vp-c-brand-1); }
+.variant-card.drop-after { box-shadow: 0 2px 0 0 var(--vp-c-brand-1); }
+/* очень узко: доп. поля сегмента - каждое своей строкой */
+@container (max-width: 260px) {
+  .segment { grid-template-columns: 14px minmax(0, 1fr) 26px; grid-template-areas: "g m x" ". e e" ". e2 e2"; }
+}

@@ -64,7 +64,7 @@ function setColor(i: number, ev: Event) {
 }
 </script>
 <template>
-  <div>
+  <div class="rich-input">
     <div v-if="modelValue === null" class="row">
       <span class="hint grow">{{ placeholder ?? 'Не задано' }}</span>
       <button class="btn sm" @click="snapshot(); emit('update:modelValue', ''); touch()">Задать</button>
@@ -81,20 +81,20 @@ function setColor(i: number, ev: Event) {
       </div>
       <div v-else class="segments">
         <div v-for="(s, i) in segs" :key="i" class="segment" :class="[{ sprite: isSprite(s) || isHead(s) }, dnd.rowClass(i)]" data-row @dragover="dnd.over(i, $event)" @dragleave="dnd.leave(i)" @drop="dnd.drop(i, $event)">
-          <span class="grip" title="Перетащить, чтобы изменить порядок" draggable="true" @dragstart="dnd.start(i, $event)" @dragend="dnd.end()"><Icon name="grip-vertical" :size="10" /></span>
+          <span class="grip seg-g" title="Перетащить, чтобы изменить порядок" draggable="true" @dragstart="dnd.start(i, $event)" @dragend="dnd.end()"><Icon name="grip-vertical" :size="10" /></span>
           <template v-if="isHead(s)">
-            <input type="text" class="grow" :value="s.player" placeholder="Ник игрока" title="Голова игрока (объект player, клиент 1.21.9+): текстуру клиент берёт по нику сам" @focus="snapshot()" @input="setPlayer(i, ($event.target as HTMLInputElement).value)" />
-            <label class="row hint" title="Слой шапки скина"><input type="checkbox" :checked="s.hat !== false" @change="snapshot(); setHat(i, ($event.target as HTMLInputElement).checked)" /> шапка</label>
-            <TintInput :model-value="s.color" none="без тинта" @update:model-value="upd(i, { color: $event ?? undefined })" />
+            <input type="text" class="seg-m" :value="s.player" placeholder="Ник игрока" title="Голова игрока (объект player, клиент 1.21.9+): текстуру клиент берёт по нику сам" @focus="snapshot()" @input="setPlayer(i, ($event.target as HTMLInputElement).value)" />
+            <label class="row hint seg-e" title="Слой шапки скина"><input type="checkbox" :checked="s.hat !== false" @change="snapshot(); setHat(i, ($event.target as HTMLInputElement).checked)" /> шапка</label>
+            <TintInput class="seg-e2" :model-value="s.color" none="без тинта" @update:model-value="upd(i, { color: $event ?? undefined })" />
           </template>
           <template v-else-if="isSprite(s)">
-            <SpriteInput :model-value="s.sprite!" :atlas="s.atlas" @update:model-value="setSprite(i, $event)" @update:atlas="setAtlas(i, $event ?? '')" />
-            <input type="text" list="atlas-list-seg" :value="s.atlas ?? ''" @focus="snapshot()" @input="setAtlas(i, ($event.target as HTMLInputElement).value)" placeholder="Атлас: авто" title="Атлас (пусто - по имени: item/… → items, иначе blocks)" style="width:86px" />
-            <TintInput :model-value="s.color" none="без тинта" title="Тинт спрайта: текстура умножается на цвет (как у текста)" @update:model-value="upd(i, { color: $event ?? undefined })" />
+            <SpriteInput class="seg-m" :model-value="s.sprite!" :atlas="s.atlas" @update:model-value="setSprite(i, $event)" @update:atlas="setAtlas(i, $event ?? '')" />
+            <input type="text" class="seg-e seg-atlas" list="atlas-list-seg" :value="s.atlas ?? ''" @focus="snapshot()" @input="setAtlas(i, ($event.target as HTMLInputElement).value)" placeholder="Атлас: авто" title="Атлас (пусто - по имени: item/… → items, иначе blocks)" />
+            <TintInput class="seg-e2" :model-value="s.color" none="без тинта" title="Тинт спрайта: текстура умножается на цвет (как у текста)" @update:model-value="upd(i, { color: $event ?? undefined })" />
           </template>
           <template v-else>
-            <LineInput :model-value="s.text" placeholder="Текст" @focus="snapshot()" @update:model-value="upd(i, { text: $event })" />
-            <div class="row" style="gap:3px">
+            <LineInput class="seg-m" :model-value="s.text" placeholder="Текст" @focus="snapshot()" @update:model-value="upd(i, { text: $event })" />
+            <div class="row seg-e" style="gap:3px">
               <ColorPicker :model-value="cssColor(s.color)" @update:model-value="upd(i, { color: $event })" />
               <select :value="s.color && !s.color.startsWith('#') ? s.color : ''" @change="setColor(i, $event)" style="width:56px" title="Именованный цвет">
                 <option value="">#hex</option>
@@ -102,13 +102,13 @@ function setColor(i: number, ev: Event) {
               </select>
             </div>
           </template>
-          <button class="btn sm icon" title="Удалить сегмент" @click="del(i)"><Icon name="times" /></button>
+          <button class="btn sm icon seg-x" title="Удалить сегмент" @click="del(i)"><Icon name="times" /></button>
         </div>
       </div>
-      <div v-if="!compact || isSegments" class="row" style="margin-top:4px">
-        <button class="btn sm" :class="{ icon: compact }" title="Добавить цветной текстовый сегмент (Shift+Enter в тексте - новая строка)" @click="add"><Icon name="font" /><template v-if="!compact"> Сегмент</template></button>
-        <button class="btn sm" :class="{ icon: compact }" title="Вставить спрайт атласа (предмет, блок, иконку HUD, эффект…) - всегда квадрат 8×8" @click="addSprite"><Icon name="icons" /><template v-if="!compact"> Спрайт</template></button>
-        <button class="btn sm" :class="{ icon: compact }" title="Вставить голову игрока по нику (объект player, клиент 1.21.9+) - квадрат 8×8" @click="addHead"><Icon name="street-view" /><template v-if="!compact"> Голова</template></button>
+      <div v-if="!compact || isSegments" class="row rt-add" style="margin-top:4px">
+        <button class="btn sm" :class="{ icon: compact }" title="Добавить цветной текстовый сегмент (Shift+Enter в тексте - новая строка)" @click="add"><Icon name="font" /><span v-if="!compact" class="lbl">Сегмент</span></button>
+        <button class="btn sm" :class="{ icon: compact }" title="Вставить спрайт атласа (предмет, блок, иконку HUD, эффект…) - всегда квадрат 8×8" @click="addSprite"><Icon name="icons" /><span v-if="!compact" class="lbl">Спрайт</span></button>
+        <button class="btn sm" :class="{ icon: compact }" title="Вставить голову игрока по нику (объект player, клиент 1.21.9+) - квадрат 8×8" @click="addHead"><Icon name="street-view" /><span v-if="!compact" class="lbl">Голова</span></button>
         <datalist id="atlas-list-seg"><option v-for="a in ATLASES" :key="a.id" :value="a.id">{{ a.hint }}</option></datalist>
         <span class="grow"></span>
         <button v-if="nullable && isSegments" class="btn sm" @click="clear">Убрать</button>
