@@ -96,6 +96,7 @@ public final class ParticleManager implements Listener {
     /** Запуск добавлен в список: async - ещё и потоку частиц. */
     private void register(ParticleEmission emission) {
         emissions.add(emission);
+        if (emission.async && !(backend instanceof PacketBackend)) demote(emission); // откат во время первого спавна
         if (emission.async) {
             if (worker == null) worker = new ParticleWorker(this, (PacketBackend) backend, log);
             worker.add(emission);
@@ -105,6 +106,7 @@ public final class ParticleManager implements Listener {
 
     /** Новая частица запуска: обычная - в список, async - потоку частиц. */
     private void adopt(ParticleEmission e, LiveParticle p) {
+        if (e.async && !(backend instanceof PacketBackend)) demote(e); // откат на сущности посреди испускания
         if (e.async) {
             e.asyncAlive.incrementAndGet();
             e.incoming.offer(p);
@@ -260,19 +262,21 @@ public final class ParticleManager implements Listener {
         log.warning("Particles: packets are not available on this server version (" + ex + "), falling back to entities");
         ParticleBackend old = backend;
         backend = new EntityBackend(plugin);
+        List<ParticleEmission> drained = worker != null ? worker.drainAll() : List.of();
         if (worker != null) {
-            // поток частиц больше не нужен: его запуски гасим здесь (поток стоит)
-            for (ParticleEmission e : worker.drainAll()) {
-                for (LiveParticle p; (p = e.incoming.poll()) != null; ) e.particles.add(p);
-                for (LiveParticle p : e.particles) p.kill();
-                e.particles.clear();
-                e.asyncAlive.set(0);
-                e.stop();
-            }
             worker.stop(0, false);
             worker = null;
         }
         try {
+            // частицы потока частиц: убрать у клиентов (поток стоит - их трогает основной поток)
+            if (old instanceof PacketBackend packets && !drained.isEmpty()) {
+                for (ParticleEmission e : drained) {
+                    for (LiveParticle p : e.particles) p.kill();
+                    packets.workerFinish(e);
+                }
+                packets.workerFlush(drained, packets.forgetStamp());
+                packets.sendWorkerPackets();
+            }
             for (ParticleEmission e : emissions) {
                 if (!e.async) for (LiveParticle p : e.particles) p.kill();
                 old.finish(e);
@@ -281,7 +285,20 @@ public final class ParticleManager implements Listener {
         } catch (LinkageError | RuntimeException ignored) {
             // не удалось даже убрать - клиенты забудут их при перезаходе
         }
+        for (ParticleEmission e : emissions) if (e.async) demote(e);
+        for (ParticleEmission e : drained) if (e.async) demote(e);
         old.shutdown();
+    }
+
+    /**
+     * Запуск потока частиц переходит в основной поток (откат на сущности): его частицы-пакеты уже убраны
+     * (или ещё не были показаны), дальше он испускает сущностями.
+     */
+    private void demote(ParticleEmission e) {
+        e.incoming.clear(); // не показаны: attach делает поток частиц
+        e.particles.clear();
+        e.asyncAlive.set(0);
+        e.async = false;
     }
 
     private void tickAll() {

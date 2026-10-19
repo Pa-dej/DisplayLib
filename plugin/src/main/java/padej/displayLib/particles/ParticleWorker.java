@@ -7,6 +7,7 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Logger;
@@ -32,13 +33,20 @@ final class ParticleWorker {
     private final AtomicInteger count = new AtomicInteger();
     private Future<?> running;
     private long lagWarned;
+    /** Поток остановлен (или завис при остановке) - новых тиков нет */
+    private boolean stopped;
+    /** Тик потока не закончился за отведённое время: трогать его запуски из основного потока нельзя */
+    private boolean stuck;
 
     ParticleWorker(ParticleManager manager, PacketBackend backend, Logger log) {
         this.manager = manager;
         this.backend = backend;
         this.log = log;
         this.exec = Executors.newSingleThreadExecutor(r -> {
-            Thread t = new Thread(r, "DisplayLib Particles");
+            Thread t = new Thread(() -> {
+                ThreadLocalRandom.current(); // своё зерно потока (wander берёт генератор основного потока)
+                r.run();
+            }, "DisplayLib Particles");
             t.setDaemon(true);
             return t;
         });
@@ -57,6 +65,7 @@ final class ParticleWorker {
 
     /** Основной поток, конец тика частиц: тик потока частиц. */
     void tick(int now) {
+        if (stopped) return;
         if (running != null && !running.isDone()) {
             long t = System.currentTimeMillis();
             if (t - lagWarned > 60_000) {
@@ -65,10 +74,11 @@ final class ParticleWorker {
             }
             return;
         }
-        running = exec.submit(() -> run(now));
+        int stamp = backend.forgetStamp();
+        running = exec.submit(() -> run(now, stamp));
     }
 
-    private void run(int now) {
+    private void run(int now, int stamp) {
         for (ParticleEmission e; (e = added.poll()) != null; ) owned.add(e);
         for (Iterator<ParticleEmission> it = owned.iterator(); it.hasNext(); ) {
             ParticleEmission e = it.next();
@@ -88,7 +98,7 @@ final class ParticleWorker {
             }
         }
         try {
-            backend.workerFlush(owned);
+            backend.workerFlush(owned, stamp);
         } catch (Throwable ex) {
             manager.asyncFailed(null, ex);
         }
@@ -99,14 +109,17 @@ final class ParticleWorker {
         backend.sendWorkerPackets();
     }
 
-    /** Дождаться текущего тика потока. */
+    /** Дождаться текущего тика потока; не дождались - {@link #stuck}. */
     private void await() {
         Future<?> f = running;
         if (f == null) return;
         try {
             f.get(5, TimeUnit.SECONDS);
+        } catch (java.util.concurrent.TimeoutException ex) {
+            stuck = true;
+            log.warning("Particles: the particle thread did not finish its tick in 5 s; its particles are left as they are");
         } catch (Exception ignored) {
-            // завис или упал - дальше всё равно останавливаемся
+            // тик упал - поток свободен
         }
     }
 
@@ -115,10 +128,11 @@ final class ParticleWorker {
      * свои частицы у клиентов (выключение плагина).
      */
     void stop(int now, boolean finalTick) {
+        stopped = true;
         await();
-        if (finalTick) {
+        if (finalTick && !stuck) {
             try {
-                run(now);
+                run(now, backend.forgetStamp());
                 backend.sendWorkerPackets();
             } catch (Throwable ignored) {
                 // выключение - не мешаем остальному
@@ -129,7 +143,9 @@ final class ParticleWorker {
 
     /** Основной поток, поток стоит: все запуски потока (для отката на сущности). */
     List<ParticleEmission> drainAll() {
+        stopped = true;
         await();
+        if (stuck) return List.of();
         for (ParticleEmission e; (e = added.poll()) != null; ) owned.add(e);
         List<ParticleEmission> out = new ArrayList<>(owned);
         owned.clear();

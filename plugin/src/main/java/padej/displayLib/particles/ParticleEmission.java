@@ -28,8 +28,8 @@ public final class ParticleEmission {
      */
     final List<LiveParticle> particles = new ArrayList<>();
 
-    /** Частицы этого запуска движутся в потоке частиц (пакеты, без коллизий) */
-    final boolean async;
+    /** Частицы этого запуска движутся в потоке частиц (пакеты, без коллизий); при откате на сущности - false */
+    boolean async;
     /** Созданные основным потоком, ещё не взятые потоком частиц */
     final ConcurrentLinkedQueue<LiveParticle> incoming = new ConcurrentLinkedQueue<>();
     /** Живые частицы async-запуска: + при создании (основной поток), - при смерти (поток частиц) */
@@ -77,7 +77,7 @@ public final class ParticleEmission {
         ticksLeft = 0;
     }
 
-    /** Остановить и сразу убрать все частицы этого запуска. */
+    /** Остановить и убрать все частицы этого запуска (частицы потока частиц - на его ближайшем тике). */
     public void cancel() {
         stop();
         if (async) cancelled = true; // частицы уберёт поток частиц на своём тике

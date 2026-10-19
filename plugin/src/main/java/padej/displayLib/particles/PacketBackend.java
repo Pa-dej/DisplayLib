@@ -73,8 +73,18 @@ final class PacketBackend implements ParticleBackend, Listener {
      * из другого потока пакеты сервер сбрасывает в сеть вместе со своими, то в этом тике, то в следующем: у
      * клиента кадры шли рывками (0 / 100 мс вместо 50). Из основного потока - ровно раз в тик.
      */
-    private Map<ServerPlayer, List<Packet<? super ClientGamePacketListener>>> workerReady;
+    private final List<WorkerBatch> workerReady = new ArrayList<>();
     private final Object workerReadyLock = new Object();
+    /**
+     * Основной поток: когда игрок последний раз «забыл» сущности (выход, смена мира, возрождение) - номер по
+     * {@link #forgetSeq}. Пакеты потока частиц, собранные до этого, ему уже не отправляются: иначе частица
+     * появилась бы у клиента в новом мире и никогда не была бы убрана.
+     */
+    private final Map<ServerPlayer, Integer> forgotAt = new java.util.WeakHashMap<>();
+    private int forgetSeq;
+
+    /** Пакеты одного тика потока частиц и номер «забываний», при котором этот тик начался. */
+    private record WorkerBatch(int stamp, Map<ServerPlayer, List<Packet<? super ClientGamePacketListener>>> packets) {}
     private boolean probed;
 
     PacketBackend(Plugin plugin, double viewDistance) {
@@ -347,18 +357,32 @@ final class PacketBackend implements ParticleBackend, Listener {
     /** Поток частиц подготовил пакеты, которые ещё не отправлены. */
     boolean hasWorkerPackets() {
         synchronized (workerReadyLock) {
-            return workerReady != null;
+            return !workerReady.isEmpty();
         }
+    }
+
+    /** Основной поток: номер «забываний» для тика потока частиц, который сейчас начнётся. */
+    int forgetStamp() {
+        return forgetSeq;
     }
 
     /** Основной поток: отправить пакеты, которые поток частиц подготовил на прошлом тике. */
     void sendWorkerPackets() {
-        Map<ServerPlayer, List<Packet<? super ClientGamePacketListener>>> ready;
+        List<WorkerBatch> batches;
         synchronized (workerReadyLock) {
-            ready = workerReady;
-            workerReady = null;
+            if (workerReady.isEmpty()) return;
+            batches = new ArrayList<>(workerReady);
+            workerReady.clear();
         }
-        Outbox.send(ready);
+        for (WorkerBatch batch : batches) {
+            if (!forgotAt.isEmpty()) {
+                batch.packets().keySet().removeIf(p -> {
+                    Integer at = forgotAt.get(p);
+                    return at != null && at > batch.stamp();
+                });
+            }
+            Outbox.send(batch.packets());
+        }
     }
 
     @Override
@@ -469,21 +493,14 @@ final class PacketBackend implements ParticleBackend, Listener {
     }
 
     /** Поток частиц, конец тика: удаления запусков и все пакеты потока. */
-    void workerFlush(List<ParticleEmission> emissions) {
+    void workerFlush(List<ParticleEmission> emissions, int stamp) {
         for (ParticleEmission e : emissions) {
             if (e.workerAudience instanceof Audience a) sendRemoved(a);
         }
         Map<ServerPlayer, List<Packet<? super ClientGamePacketListener>>> ready = workerOut.take();
         if (ready.isEmpty()) return;
-        // основной поток мог ещё не забрать прошлые - дописываем к ним
         synchronized (workerReadyLock) {
-            if (workerReady == null) {
-                workerReady = ready;
-            } else {
-                for (Map.Entry<ServerPlayer, List<Packet<? super ClientGamePacketListener>>> e : ready.entrySet()) {
-                    workerReady.computeIfAbsent(e.getKey(), k -> new ArrayList<>()).addAll(e.getValue());
-                }
-            }
+            workerReady.add(new WorkerBatch(stamp, ready));
         }
     }
 
@@ -499,6 +516,7 @@ final class PacketBackend implements ParticleBackend, Listener {
     private void forget(Player player) {
         ServerPlayer sp = ((CraftPlayer) player).getHandle();
         mainOut.packets.remove(sp);
+        forgotAt.put(sp, ++forgetSeq);
         for (Audience a : audiences.values()) {
             a.lastWant.remove(sp);
             a.nextRefresh = 0;
