@@ -5,6 +5,8 @@ import org.bukkit.Location;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * Один запуск эффекта: всплеск или испускание в течение {@code emitter.duration} тиков.
@@ -20,9 +22,32 @@ public final class ParticleEmission {
     /** Накопленная дробная часть rate */
     double carry;
     boolean stopped;
+    /**
+     * Живые частицы. У запуска в потоке частиц ({@link #async}) список принадлежит потоку частиц: основной поток
+     * кладёт новые частицы в {@link #incoming}, а живых считает по {@link #asyncAlive}.
+     */
     final List<LiveParticle> particles = new ArrayList<>();
 
+    /** Частицы этого запуска движутся в потоке частиц (пакеты, без коллизий) */
+    final boolean async;
+    /** Созданные основным потоком, ещё не взятые потоком частиц */
+    final ConcurrentLinkedQueue<LiveParticle> incoming = new ConcurrentLinkedQueue<>();
+    /** Живые частицы async-запуска: + при создании (основной поток), - при смерти (поток частиц) */
+    final AtomicInteger asyncAlive = new AtomicInteger();
+    /** Отменён: поток частиц убирает все его частицы */
+    volatile boolean cancelled;
+    /** Основной поток больше не ведёт запуск: поток частиц может его забыть */
+    volatile boolean closed;
+    /** Зрители запуска у {@link PacketBackend} (пишет основной поток) и те, что видел поток частиц */
+    volatile Object audience;
+    Object workerAudience;
+
     ParticleEmission(ParticleEffect effect, Location center, UUID owner) {
+        this(effect, center, owner, false);
+    }
+
+    ParticleEmission(ParticleEffect effect, Location center, UUID owner, boolean async) {
+        this.async = async;
         this.effect = effect;
         this.center = center.clone();
         this.owner = owner;
@@ -55,11 +80,13 @@ public final class ParticleEmission {
     /** Остановить и сразу убрать все частицы этого запуска. */
     public void cancel() {
         stop();
-        for (LiveParticle p : particles) p.kill();
+        if (async) cancelled = true; // частицы уберёт поток частиц на своём тике
+        else for (LiveParticle p : particles) p.kill();
     }
 
     /** Сколько частиц этого запуска ещё живо. */
     public int alive() {
+        if (async) return asyncAlive.get();
         int n = 0;
         for (LiveParticle p : particles) if (!p.dead) n++;
         return n;

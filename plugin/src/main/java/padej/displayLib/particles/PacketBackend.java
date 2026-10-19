@@ -34,6 +34,7 @@ import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.function.Consumer;
 
 /**
@@ -63,9 +64,17 @@ final class PacketBackend implements ParticleBackend, Listener {
     private static final int BUNDLE_MAX = 4000;
 
     private final double enter2, leave2;
+    /** Зрители запусков; только основной поток */
     private final Map<ParticleEmission, Audience> audiences = new IdentityHashMap<>();
-    /** Пакеты этого тика по игрокам - уходят связкой в flush() */
-    private final Map<ServerPlayer, List<Packet<? super ClientGamePacketListener>>> outbox = new IdentityHashMap<>();
+    /** Пакеты тика: обычных запусков (основной поток) и запусков потока частиц */
+    private final Outbox mainOut = new Outbox(), workerOut = new Outbox();
+    /**
+     * Готовые пакеты потока частиц - отправит основной поток в начале следующего тика частиц. Отправленные
+     * из другого потока пакеты сервер сбрасывает в сеть вместе со своими, то в этом тике, то в следующем: у
+     * клиента кадры шли рывками (0 / 100 мс вместо 50). Из основного потока - ровно раз в тик.
+     */
+    private Map<ServerPlayer, List<Packet<? super ClientGamePacketListener>>> workerReady;
+    private final Object workerReadyLock = new Object();
     private boolean probed;
 
     PacketBackend(Plugin plugin, double viewDistance) {
@@ -91,7 +100,7 @@ final class PacketBackend implements ParticleBackend, Listener {
     public void shutdown() {
         HandlerList.unregisterAll(this);
         audiences.clear();
-        outbox.clear();
+        mainOut.packets.clear();
     }
 
     // -------------------------------------------------------------------------
@@ -101,9 +110,15 @@ final class PacketBackend implements ParticleBackend, Listener {
     @Override
     public boolean visible(ParticleEmission emission) {
         if (!emission.center.isWorldLoaded()) return false;
-        return !audience(emission, emission.center.getWorld()).viewers.isEmpty();
+        Audience a = audience(emission, emission.center.getWorld());
+        return a.async ? a.hasViewers : !a.viewers.isEmpty();
     }
 
+    /**
+     * Частица запуска в потоке частиц ({@link ParticleEmission#async}) создаётся здесь, в основном потоке, но
+     * показывается зрителям уже в потоке частиц ({@link #attach}): все пакеты такого запуска шлёт один поток,
+     * и порядок «появление → движение → удаление» у каждого зрителя не нарушается.
+     */
     @Override
     public <T extends Display> ParticleView spawn(ParticleEmission emission, Player owner, Location at, Class<T> type, Consumer<T> setup) {
         T display = at.getWorld().createEntity(at, type);
@@ -115,9 +130,17 @@ final class PacketBackend implements ParticleBackend, Listener {
         }
         Audience audience = audience(emission, at.getWorld());
         View view = new View(audience, display, handle);
-        for (ServerPlayer p : audience.viewers) queueSpawn(p, view);
-        handle.getEntityData().packDirty(); // всё уже в пакетах появления
+        if (!audience.async) attach(view);
         return view;
+    }
+
+    /** Показать частицу зрителям её запуска - в потоке, который ведёт этот запуск. */
+    void attach(ParticleView particle) {
+        View view = (View) particle;
+        Audience a = view.audience;
+        a.views.add(view);
+        for (ServerPlayer p : a.viewers) queueSpawn(p, view);
+        view.handle.getEntityData().packDirty(); // всё уже в пакетах появления
     }
 
     /** Первая частица: собрать все виды пакетов (без отправки) - несовместимость версии всплывёт здесь, а не в тике. */
@@ -142,18 +165,52 @@ final class PacketBackend implements ParticleBackend, Listener {
     }
 
     /** Появление и полный вид - подряд в одной связке тика: клиент не покажет кадр без метаданных. */
-    private void queueSpawn(ServerPlayer p, View v) {
+    private static void queueSpawn(ServerPlayer p, View v) {
         net.minecraft.world.entity.Display handle = v.handle;
-        queue(p, addPacket(handle, v.x, v.y, v.z, v.yaw));
+        Outbox out = v.audience.out;
+        out.queue(p, addPacket(handle, v.x, v.y, v.z, v.yaw));
         List<SynchedEntityData.DataValue<?>> data = handle.getEntityData().getNonDefaultValues();
-        if (data != null && !data.isEmpty()) queue(p, new ClientboundSetEntityDataPacket(handle.getId(), data));
+        if (data != null && !data.isEmpty()) out.queue(p, new ClientboundSetEntityDataPacket(handle.getId(), data));
     }
 
-    private void queue(ServerPlayer p, Packet<? super ClientGamePacketListener> packet) {
-        outbox.computeIfAbsent(p, k -> new ArrayList<>()).add(packet);
+    /** Пакеты тика по игрокам; у каждого потока свой. Отправляет всегда основной поток. */
+    private static final class Outbox {
+        Map<ServerPlayer, List<Packet<? super ClientGamePacketListener>>> packets = new IdentityHashMap<>();
+
+        void queue(ServerPlayer p, Packet<? super ClientGamePacketListener> packet) {
+            packets.computeIfAbsent(p, k -> new ArrayList<>()).add(packet);
+        }
+
+        /** Забрать накопленное (поток частиц отдаёт его основному). */
+        Map<ServerPlayer, List<Packet<? super ClientGamePacketListener>>> take() {
+            Map<ServerPlayer, List<Packet<? super ClientGamePacketListener>>> out = packets;
+            packets = new IdentityHashMap<>();
+            return out;
+        }
+
+        void flush() {
+            send(take());
+        }
+
+        /** Каждому игроку - одна связка. */
+        static void send(Map<ServerPlayer, List<Packet<? super ClientGamePacketListener>>> packets) {
+            if (packets == null || packets.isEmpty()) return;
+            for (Map.Entry<ServerPlayer, List<Packet<? super ClientGamePacketListener>>> entry : packets.entrySet()) {
+                ServerPlayer p = entry.getKey();
+                List<Packet<? super ClientGamePacketListener>> list = entry.getValue();
+                if (p.hasDisconnected() || list.isEmpty()) continue;
+                if (list.size() == 1) {
+                    p.connection.send(list.get(0));
+                    continue;
+                }
+                for (int i = 0; i < list.size(); i += BUNDLE_MAX) {
+                    p.connection.send(new ClientboundBundlePacket(new ArrayList<>(list.subList(i, Math.min(list.size(), i + BUNDLE_MAX)))));
+                }
+            }
+        }
     }
 
-    private final class View implements ParticleView {
+    private static final class View implements ParticleView {
         final Audience audience;
         final Display display;
         final net.minecraft.world.entity.Display handle;
@@ -170,7 +227,6 @@ final class PacketBackend implements ParticleBackend, Listener {
             this.y = handle.getY();
             this.z = handle.getZ();
             this.yaw = handle.getYRot();
-            audience.views.add(this);
         }
 
         @Override
@@ -186,7 +242,7 @@ final class PacketBackend implements ParticleBackend, Listener {
             this.yaw = yaw;
             if (audience.viewers.isEmpty()) return;
             Packet<? super ClientGamePacketListener> packet = syncPacket(handle.getId(), x, y, z, yaw);
-            for (ServerPlayer p : audience.viewers) queue(p, packet);
+            for (ServerPlayer p : audience.viewers) audience.out.queue(p, packet);
         }
 
         @Override
@@ -194,7 +250,7 @@ final class PacketBackend implements ParticleBackend, Listener {
             List<SynchedEntityData.DataValue<?>> dirty = handle.getEntityData().packDirty();
             if (dirty == null || audience.viewers.isEmpty()) return;
             Packet<? super ClientGamePacketListener> packet = new ClientboundSetEntityDataPacket(handle.getId(), dirty);
-            for (ServerPlayer p : audience.viewers) queue(p, packet);
+            for (ServerPlayer p : audience.viewers) audience.out.queue(p, packet);
         }
 
         @Override
@@ -215,19 +271,34 @@ final class PacketBackend implements ParticleBackend, Listener {
     // Зрители
     // -------------------------------------------------------------------------
 
-    /** Зрители одного запуска в одном мире и его частицы. */
+    /**
+     * Зрители одного запуска в одном мире и его частицы. Поля {@code viewers}, {@code views}, {@code removed} -
+     * у потока, который ведёт запуск (основной или поток частиц). Кого показывать, всегда считает основной
+     * поток (игроки и миры - только там) и для запуска в потоке частиц отдаёт список через {@code want}.
+     */
     private static final class Audience {
         final World world;
+        final boolean async;
+        final Outbox out;
         List<ServerPlayer> viewers = new ArrayList<>();
         final Set<View> views = Collections.newSetFromMap(new IdentityHashMap<>());
         /** Удалённые за этот тик (уйдут одним пакетом) */
         final IntArrayList removed = new IntArrayList();
+        /** Основной поток: последний подсчитанный список (для запаса на выход из зоны) */
+        List<ServerPlayer> lastWant = new ArrayList<>();
+        /** Для потока частиц: кого показывать; есть ли зрители */
+        volatile List<ServerPlayer> want = List.of();
+        volatile boolean hasViewers;
+        /** Для потока частиц: игроки, которые сами забыли сущности (выход, смена мира, возрождение) */
+        final ConcurrentLinkedQueue<ServerPlayer> forgotten = new ConcurrentLinkedQueue<>();
         /** Точка, от которой меряется видимость: центр запуска, пока он в этом мире */
         double ax, ay, az;
         int nextRefresh;
 
-        Audience(World world, Location center) {
+        Audience(World world, Location center, boolean async, Outbox out) {
             this.world = world;
+            this.async = async;
+            this.out = out;
             this.ax = center.getX();
             this.ay = center.getY();
             this.az = center.getZ();
@@ -241,19 +312,20 @@ final class PacketBackend implements ParticleBackend, Listener {
     private Audience audience(ParticleEmission emission, World world) {
         Audience a = audiences.get(emission);
         if (a != null && a.world != world) {
-            retire(a);
+            if (!a.async) retire(a); // запуск в потоке частиц уберёт старые сам (workerBegin)
             a = null;
         }
         if (a == null) {
-            a = new Audience(world, emission.center);
+            a = new Audience(world, emission.center, emission.async, emission.async ? workerOut : mainOut);
             audiences.put(emission, a);
+            emission.audience = a;
             refresh(emission, a, Bukkit.getCurrentTick());
         }
         return a;
     }
 
-    /** Убрать частицы запуска у всех зрителей; сами частицы доживают невидимыми. */
-    private void retire(Audience a) {
+    /** Убрать частицы у всех зрителей; сами частицы доживают невидимыми. */
+    private static void retire(Audience a) {
         for (View v : a.views) if (!v.removed) a.removed.add(v.handle.getId());
         sendRemoved(a);
         a.viewers = new ArrayList<>();
@@ -268,27 +340,31 @@ final class PacketBackend implements ParticleBackend, Listener {
 
     @Override
     public void flush() {
-        for (Audience a : audiences.values()) sendRemoved(a);
-        if (outbox.isEmpty()) return;
-        for (Map.Entry<ServerPlayer, List<Packet<? super ClientGamePacketListener>>> entry : outbox.entrySet()) {
-            ServerPlayer p = entry.getKey();
-            List<Packet<? super ClientGamePacketListener>> packets = entry.getValue();
-            if (p.hasDisconnected() || packets.isEmpty()) continue;
-            if (packets.size() == 1) {
-                p.connection.send(packets.get(0));
-                continue;
-            }
-            for (int i = 0; i < packets.size(); i += BUNDLE_MAX) {
-                p.connection.send(new ClientboundBundlePacket(new ArrayList<>(packets.subList(i, Math.min(packets.size(), i + BUNDLE_MAX)))));
-            }
+        for (Audience a : audiences.values()) if (!a.async) sendRemoved(a);
+        mainOut.flush();
+    }
+
+    /** Поток частиц подготовил пакеты, которые ещё не отправлены. */
+    boolean hasWorkerPackets() {
+        synchronized (workerReadyLock) {
+            return workerReady != null;
         }
-        outbox.clear();
+    }
+
+    /** Основной поток: отправить пакеты, которые поток частиц подготовил на прошлом тике. */
+    void sendWorkerPackets() {
+        Map<ServerPlayer, List<Packet<? super ClientGamePacketListener>>> ready;
+        synchronized (workerReadyLock) {
+            ready = workerReady;
+            workerReady = null;
+        }
+        Outbox.send(ready);
     }
 
     @Override
     public void finish(ParticleEmission emission) {
         Audience a = audiences.remove(emission);
-        if (a == null) return;
+        if (a == null || a.async) return; // запуск потока частиц заканчивает сам поток (workerFinish)
         for (View v : a.views) if (!v.removed) a.removed.add(v.handle.getId());
         a.views.clear();
         sendRemoved(a);
@@ -300,19 +376,30 @@ final class PacketBackend implements ParticleBackend, Listener {
         if (a != null) a.nextRefresh = 0; // покажется на ближайшем тике
     }
 
-    private void sendRemoved(Audience a) {
+    private static void sendRemoved(Audience a) {
         if (a.removed.isEmpty()) return;
         if (!a.viewers.isEmpty()) {
             Packet<? super ClientGamePacketListener> packet = new ClientboundRemoveEntitiesPacket(new IntArrayList(a.removed));
-            for (ServerPlayer p : a.viewers) queue(p, packet);
+            for (ServerPlayer p : a.viewers) a.out.queue(p, packet);
         }
         a.removed.clear();
     }
 
-    /** Пересчитать зрителей: новым - все живые частицы, ушедшим - их удаление. */
+    /** Основной поток: кого показывать. Обычный запуск применяет сразу, запуск потока частиц - в {@link #workerBegin}. */
     private void refresh(ParticleEmission emission, Audience audience, int now) {
         audience.nextRefresh = now + REFRESH_TICKS;
         List<ServerPlayer> want = wanted(emission, audience);
+        audience.lastWant = want;
+        if (audience.async) {
+            audience.want = List.copyOf(want);
+            audience.hasViewers = !want.isEmpty();
+            return;
+        }
+        applyViewers(audience, want);
+    }
+
+    /** Новым зрителям - все живые частицы, ушедшим - их удаление (в потоке, который ведёт запуск). */
+    private static void applyViewers(Audience audience, List<ServerPlayer> want) {
         List<ServerPlayer> old = audience.viewers;
         if (want.equals(old)) return;
         sendRemoved(audience); // удаления этого тика - ещё старым зрителям
@@ -324,14 +411,14 @@ final class PacketBackend implements ParticleBackend, Listener {
                     ids = new IntArrayList(audience.views.size());
                     for (View v : audience.views) ids.add(v.handle.getId());
                 }
-                queue(p, new ClientboundRemoveEntitiesPacket(ids));
+                audience.out.queue(p, new ClientboundRemoveEntitiesPacket(ids));
             }
             for (ServerPlayer p : want) {
                 if (old.contains(p)) continue;
                 for (View v : audience.views) queueSpawn(p, v);
             }
         }
-        audience.viewers = want;
+        audience.viewers = new ArrayList<>(want);
     }
 
     private List<ServerPlayer> wanted(ParticleEmission emission, Audience audience) {
@@ -352,17 +439,71 @@ final class PacketBackend implements ParticleBackend, Listener {
             ServerPlayer sp = ((CraftPlayer) p).getHandle();
             double dx = sp.getX() - audience.ax, dy = sp.getY() - audience.ay, dz = sp.getZ() - audience.az;
             double d2 = dx * dx + dy * dy + dz * dz;
-            if (d2 <= enter2 || (d2 <= leave2 && audience.viewers.contains(sp))) out.add(sp);
+            if (d2 <= enter2 || (d2 <= leave2 && audience.lastWant.contains(sp))) out.add(sp);
         }
         return out;
+    }
+
+    // -------------------------------------------------------------------------
+    // Поток частиц (ParticleWorker): запуски без коллизий
+    // -------------------------------------------------------------------------
+
+    /**
+     * Поток частиц, начало запуска в тике: старый мир запуска убрать, забывших игроков вычеркнуть,
+     * применить зрителей, которых насчитал основной поток.
+     */
+    void workerBegin(ParticleEmission emission) {
+        Audience a = (Audience) emission.audience;
+        Audience prev = (Audience) emission.workerAudience;
+        if (prev != null && prev != a) retire(prev);
+        emission.workerAudience = a;
+        if (a == null) return;
+        for (ServerPlayer p; (p = a.forgotten.poll()) != null; ) {
+            if (a.viewers.contains(p)) {
+                List<ServerPlayer> copy = new ArrayList<>(a.viewers);
+                copy.remove(p);
+                a.viewers = copy;
+            }
+        }
+        applyViewers(a, a.want);
+    }
+
+    /** Поток частиц, конец тика: удаления запусков и все пакеты потока. */
+    void workerFlush(List<ParticleEmission> emissions) {
+        for (ParticleEmission e : emissions) {
+            if (e.workerAudience instanceof Audience a) sendRemoved(a);
+        }
+        Map<ServerPlayer, List<Packet<? super ClientGamePacketListener>>> ready = workerOut.take();
+        if (ready.isEmpty()) return;
+        // основной поток мог ещё не забрать прошлые - дописываем к ним
+        synchronized (workerReadyLock) {
+            if (workerReady == null) {
+                workerReady = ready;
+            } else {
+                for (Map.Entry<ServerPlayer, List<Packet<? super ClientGamePacketListener>>> e : ready.entrySet()) {
+                    workerReady.computeIfAbsent(e.getKey(), k -> new ArrayList<>()).addAll(e.getValue());
+                }
+            }
+        }
+    }
+
+    /** Поток частиц: запуск закончен - убрать у зрителей всё, что ещё показано. */
+    void workerFinish(ParticleEmission emission) {
+        if (!(emission.workerAudience instanceof Audience a)) return;
+        for (View v : a.views) if (!v.removed) a.removed.add(v.handle.getId());
+        a.views.clear();
+        sendRemoved(a);
     }
 
     /** Игрок больше не видит частицы: при выходе, смене мира и возрождении клиент сам забывает сущности. */
     private void forget(Player player) {
         ServerPlayer sp = ((CraftPlayer) player).getHandle();
-        outbox.remove(sp);
+        mainOut.packets.remove(sp);
         for (Audience a : audiences.values()) {
-            if (a.viewers.remove(sp)) a.nextRefresh = 0;
+            a.lastWant.remove(sp);
+            a.nextRefresh = 0;
+            if (a.async) a.forgotten.offer(sp);
+            else a.viewers.remove(sp);
         }
     }
 

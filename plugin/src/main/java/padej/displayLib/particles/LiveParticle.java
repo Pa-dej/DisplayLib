@@ -55,7 +55,7 @@ final class LiveParticle {
     final int startColor;
     int sentColor;
     /** Серверный тик появления: первый кадр - не раньше следующего (интерполяция только что появившейся сущности не работает) */
-    final int spawnTick;
+    int spawnTick;
 
     int age;
     int nextPosition = 1;

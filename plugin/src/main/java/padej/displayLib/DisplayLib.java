@@ -108,7 +108,7 @@ public final class DisplayLib extends JavaPlugin {
         particleRegistry = new ParticleRegistry(getDataFolder().toPath().resolve("particles"), getLogger());
         particleRegistry.loadAll();
         particleManager = new ParticleManager(this, config.particles().maxAlive(),
-                config.particles().packets(), config.particles().viewDistance());
+                config.particles().packets(), config.particles().viewDistance(), config.particles().async());
         getLogger().info("Particles: shown as " + particleManager.backendName());
         Particles.install(particleRegistry, particleManager);
 
