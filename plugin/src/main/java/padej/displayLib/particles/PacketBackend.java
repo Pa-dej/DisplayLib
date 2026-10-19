@@ -10,6 +10,7 @@ import net.minecraft.network.protocol.game.ClientboundRemoveEntitiesPacket;
 import net.minecraft.network.protocol.game.ClientboundSetEntityDataPacket;
 import net.minecraft.network.syncher.SynchedEntityData;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.entity.PositionMoveRotation;
 import net.minecraft.world.phys.Vec3;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
@@ -114,32 +115,36 @@ final class PacketBackend implements ParticleBackend, Listener {
         }
         Audience audience = audience(emission, at.getWorld());
         View view = new View(audience, display, handle);
-        for (ServerPlayer p : audience.viewers) queueSpawn(p, handle);
+        for (ServerPlayer p : audience.viewers) queueSpawn(p, view);
         handle.getEntityData().packDirty(); // всё уже в пакетах появления
         return view;
     }
 
     /** Первая частица: собрать все виды пакетов (без отправки) - несовместимость версии всплывёт здесь, а не в тике. */
     private static void probe(net.minecraft.world.entity.Display handle) {
-        addPacket(handle);
+        addPacket(handle, handle.getX(), handle.getY(), handle.getZ(), handle.getYRot());
         new ClientboundSetEntityDataPacket(handle.getId(), List.of());
-        ClientboundEntityPositionSyncPacket.of(handle);
+        syncPacket(handle.getId(), 0, 0, 0, 0);
         new ClientboundRemoveEntitiesPacket(new IntArrayList(new int[]{handle.getId()}));
         new ClientboundBundlePacket(List.of());
-        handle.snapTo(handle.getX(), handle.getY(), handle.getZ(), handle.getYRot(), 0);
         handle.getEntityData().getNonDefaultValues();
         handle.getEntityData().packDirty();
     }
 
-    private static ClientboundAddEntityPacket addPacket(net.minecraft.world.entity.Display handle) {
+    private static ClientboundAddEntityPacket addPacket(net.minecraft.world.entity.Display handle, double x, double y, double z, float yaw) {
         // точные координаты (конструктор с BlockPos округлил бы их до блока)
-        return new ClientboundAddEntityPacket(handle.getId(), handle.getUUID(), handle.getX(), handle.getY(), handle.getZ(),
-                handle.getXRot(), handle.getYRot(), handle.getType(), 0, Vec3.ZERO, handle.getYHeadRot());
+        return new ClientboundAddEntityPacket(handle.getId(), handle.getUUID(), x, y, z, 0, yaw, handle.getType(), 0, Vec3.ZERO, yaw);
+    }
+
+    /** Позиция у клиента: сущность вне мира не двигаем (snapTo пересчитывает чанк, рамку и т.п. - лишняя работа). */
+    private static ClientboundEntityPositionSyncPacket syncPacket(int id, double x, double y, double z, float yaw) {
+        return new ClientboundEntityPositionSyncPacket(id, new PositionMoveRotation(new Vec3(x, y, z), Vec3.ZERO, yaw, 0), false);
     }
 
     /** Появление и полный вид - подряд в одной связке тика: клиент не покажет кадр без метаданных. */
-    private void queueSpawn(ServerPlayer p, net.minecraft.world.entity.Display handle) {
-        queue(p, addPacket(handle));
+    private void queueSpawn(ServerPlayer p, View v) {
+        net.minecraft.world.entity.Display handle = v.handle;
+        queue(p, addPacket(handle, v.x, v.y, v.z, v.yaw));
         List<SynchedEntityData.DataValue<?>> data = handle.getEntityData().getNonDefaultValues();
         if (data != null && !data.isEmpty()) queue(p, new ClientboundSetEntityDataPacket(handle.getId(), data));
     }
@@ -152,12 +157,19 @@ final class PacketBackend implements ParticleBackend, Listener {
         final Audience audience;
         final Display display;
         final net.minecraft.world.entity.Display handle;
+        /** Где частица у клиента (последняя отправленная цель) */
+        double x, y, z;
+        float yaw;
         boolean removed;
 
         View(Audience audience, Display display, net.minecraft.world.entity.Display handle) {
             this.audience = audience;
             this.display = display;
             this.handle = handle;
+            this.x = handle.getX();
+            this.y = handle.getY();
+            this.z = handle.getZ();
+            this.yaw = handle.getYRot();
             audience.views.add(this);
         }
 
@@ -168,9 +180,12 @@ final class PacketBackend implements ParticleBackend, Listener {
 
         @Override
         public void moveTo(double x, double y, double z, float yaw) {
-            handle.snapTo(x, y, z, yaw, 0);
+            this.x = x;
+            this.y = y;
+            this.z = z;
+            this.yaw = yaw;
             if (audience.viewers.isEmpty()) return;
-            Packet<? super ClientGamePacketListener> packet = ClientboundEntityPositionSyncPacket.of(handle);
+            Packet<? super ClientGamePacketListener> packet = syncPacket(handle.getId(), x, y, z, yaw);
             for (ServerPlayer p : audience.viewers) queue(p, packet);
         }
 
@@ -313,7 +328,7 @@ final class PacketBackend implements ParticleBackend, Listener {
             }
             for (ServerPlayer p : want) {
                 if (old.contains(p)) continue;
-                for (View v : audience.views) queueSpawn(p, v.handle);
+                for (View v : audience.views) queueSpawn(p, v);
             }
         }
         audience.viewers = want;
