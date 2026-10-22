@@ -36,3 +36,30 @@ void whisper(dyn widget, dyn player) {
     player.message([ { text: "Сообщение сегментами: ", color: "gray" }, { text: "работает", color: "green" } ]);
     player.command("me машет рукой");            // команда от имени игрока
 }
+
+// Поле ввода: следующее сообщение игрока в чат не уходит в чат, а приходит в функцию (player.input).
+// Таймаут 30 с (600 тиков); ожидание снимается и при закрытии экрана. Повторный клик - отмена.
+int asked = 0;
+
+void fieldText(dyn widget, String value, String color) {
+    widget.text([ { text: "Поле ввода: ", color: "gray" }, { text: value, color: color } ]);
+}
+
+void field(dyn widget, dyn player) {
+    if (player.awaitingInput()) {
+        player.cancelInput();
+        asked++;
+        fieldText(widget, "нажмите", "white");
+        return;
+    }
+    asked++;
+    int mine = asked;
+    fieldText(widget, "пишите в чат…", "yellow");
+    player.input([ { text: "Напишите текст в чат", color: "#47a2b6" }, { text: " (30 с, повторный клик - отмена)", color: "gray" } ], 600, text -> {
+        asked++;
+        fieldText(widget, text, "white");
+        player.sound("ui.button.click");
+    });
+    // не ответил за 30 с - вернуть подпись
+    timer.after(600, () -> { if (asked == mine) fieldText(widget, "нажмите", "white"); });
+}
