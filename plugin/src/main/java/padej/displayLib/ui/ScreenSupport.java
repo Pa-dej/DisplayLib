@@ -196,6 +196,7 @@ public final class ScreenSupport {
             cfg.setTooltipDelay(def.getTooltipDelay());
         }
 
+        if (def.isShadow()) cfg.enableTextShadow();
         if (withHoverAnimation && def.getHoverAnimation() != null) {
             cfg.setHoverAnimation(def.getHoverAnimation());
         }

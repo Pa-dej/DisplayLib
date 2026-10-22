@@ -515,7 +515,7 @@ export class ScreenScene {
     const text = widgetText(w, hovered);
     const bg = hovered ? w.hoveredBackgroundColor : w.backgroundColor;
     const alpha = hovered ? w.hoveredBackgroundAlpha : w.backgroundAlpha;
-    const { texture, layout: L } = buildTextTexture(text, w.alignment, bg, alpha, 4, w.lineWidth);
+    const { texture, layout: L } = buildTextTexture(text, w.alignment, bg, alpha, 4, w.lineWidth, w.shadow);
     const objectOnly = L.lines.length === 1 && L.lines[0].length > 0 && L.lines[0].every((r) => !!r.sprite);
     // видимые габариты без фона: одиночный спрайт/голова - 8 px (верх строки), текст - без пустой нижней строки-отступа (l - 1)
     const inkH = objectOnly ? 8 : Math.max(1, L.height - 1);

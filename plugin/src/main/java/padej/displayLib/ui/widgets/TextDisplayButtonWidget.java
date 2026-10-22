@@ -72,6 +72,8 @@ public class TextDisplayButtonWidget implements Widget {
     private float rotationDeg = 0.0f;
     /** Ширина переноса, px шрифта. */
     private int lineWidth = 200;
+    /** Тень текста (shadow в файле экрана) */
+    private boolean shadowed = false;
     private Transformation hoveredTransformation;
     private int hoveredTransformationDuration;
     private padej.displayLib.config.HoverAnimation hoverAnimation;
@@ -139,6 +141,7 @@ public class TextDisplayButtonWidget implements Widget {
         widget.display = entity;
         entity.setAlignment(widget.textAlignment);
         entity.setLineWidth(widget.lineWidth);
+        entity.setShadowed(widget.shadowed);
         entity.setPersistent(false);
         return widget;
     }
@@ -174,6 +177,7 @@ public class TextDisplayButtonWidget implements Widget {
         widget.translation = config.getTranslation();
         widget.rotationDeg = config.getRotation();
         widget.lineWidth = config.getLineWidth();
+        widget.shadowed = config.isTextShadowEnabled();
         widget.hoveredTransformation = config.getHoveredTransformation();
         widget.hoveredTransformationDuration = config.getHoveredTransformationDuration();
         widget.hoverAnimation = config.getHoverAnimation();
@@ -272,6 +276,7 @@ public class TextDisplayButtonWidget implements Widget {
         display.text(text);
         display.setBackgroundColor(backgroundArgb());
         display.setLineWidth(lineWidth);
+        display.setShadowed(shadowed);
         
         // Применяем выравнивание текста
         display.setAlignment(textAlignment);

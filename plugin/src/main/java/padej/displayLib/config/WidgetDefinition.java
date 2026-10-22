@@ -195,6 +195,8 @@ public class WidgetDefinition {
     
     /** Включить свечение при наведении (для ITEM_BUTTON) */
     private boolean glowOnHover = true;
+    /** Тень текста (TextDisplay.shadowed), TEXT_BUTTON / SPRITE_BUTTON */
+    private boolean shadow = false;
 
     /**
      * Статический виджет (результат {@link ScreenAnalyzer} при загрузке): клик ничего не делает и
@@ -326,6 +328,8 @@ public class WidgetDefinition {
     public boolean isInert() { return inert; }
     public void setInert(boolean inert) { this.inert = inert; }
     public void setGlowOnHover(boolean glowOnHover) { this.glowOnHover = glowOnHover; }
+    public boolean isShadow() { return shadow; }
+    public void setShadow(boolean shadow) { this.shadow = shadow; }
     
     public int[] getGlowColor() { return glowColor; }
     public void setGlowColor(int[] glowColor) { this.glowColor = glowColor; }

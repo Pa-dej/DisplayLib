@@ -117,6 +117,7 @@ function fmt(n: number) { return (Math.round(n * 1000) / 1000).toString(); }
       <div class="field"><label>hoveredSprite</label><div class="row"><SpriteInput v-if="w.hoveredSprite != null" v-model="w.hoveredSprite" :atlas="w.atlas" @update:atlas="w.atlas = $event" class="grow" /><span v-else class="hint grow">Как sprite</span><button class="btn sm" @click="toggleHoveredSprite">{{ w.hoveredSprite != null ? 'Убрать' : 'Задать' }}</button></div></div>
       </template>
       <div class="field"><label>spriteColor</label><TintInput v-model="w.spriteColor" none="без тинта" /></div>
+      <div class="field"><label></label><label class="row" title="shadow: тень под текстом, как в чате (TextDisplay)"><input type="checkbox" :checked="w.shadow" @change="snapshot(); w.shadow = ($event.target as HTMLInputElement).checked; touch()" /> Тень текста</label></div>
       <div class="field"><label>hoveredSpriteColor</label><TintInput v-model="w.hoveredSpriteColor" none="как spriteColor" /></div>
       <div class="hint">Тинт - цвет текста, на который клиент умножает текстуру: белые/серые иконки (HUD, эффекты, узоры) красятся чисто, цветные предметы лишь затемняются.</div>
       <div class="field"><label>Фон</label><ColorInput v-model="w.backgroundColor" :alpha="w.backgroundAlpha" @update:alpha="w.backgroundAlpha = $event" /></div>
@@ -158,6 +159,7 @@ function fmt(n: number) { return (Math.round(n * 1000) / 1000).toString(); }
         <RichTextInput v-else v-model="w.hoveredText" nullable placeholder="Как text" />
       </div>
       <div class="field"><label>lineWidth</label><div class="row"><input type="number" min="1" step="10" style="width:72px" :value="w.lineWidth" @focus="snapshot()" @input="w.lineWidth = Math.max(1, Math.round(Number(text($event))) || 200); touch()" /><span class="hint">px шрифта; дальше текст переносится (клиент: 200 ≈ 33 символа)</span></div></div>
+      <div class="field"><label></label><label class="row" title="shadow: тень под текстом, как в чате (TextDisplay)"><input type="checkbox" :checked="w.shadow" @change="snapshot(); w.shadow = ($event.target as HTMLInputElement).checked; touch()" /> Тень текста</label></div>
       <div class="field"><label>alignment</label><select :value="w.alignment" @change="snapshot(); w.alignment = ($event.target as HTMLSelectElement).value as any; touch()"><option>LEFT</option><option>CENTERED</option><option>RIGHT</option></select></div>
       <div class="field"><label>Фон</label><ColorInput v-model="w.backgroundColor" :alpha="w.backgroundAlpha" @update:alpha="w.backgroundAlpha = $event" /></div>
       <div class="field"><label>Фон hover</label><ColorInput v-model="w.hoveredBackgroundColor" :alpha="w.hoveredBackgroundAlpha" @update:alpha="w.hoveredBackgroundAlpha = $event" /></div>

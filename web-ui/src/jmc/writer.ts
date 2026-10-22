@@ -104,6 +104,7 @@ export function widgetToJmc(w: Widget, opts: WriteOptions): string {
     if (v || w.backgroundAlpha !== 0) f.push(`backgroundAlpha: ${w.backgroundAlpha}`);
     if (v || !same(w.hoveredBackgroundColor, WIDGET_DEFAULTS.hoveredBackgroundColor) || w.hoveredBackgroundAlpha !== 0) f.push(`hoveredBackgroundColor: ${arr(w.hoveredBackgroundColor)}`);
     if (v || w.hoveredBackgroundAlpha !== 0) f.push(`hoveredBackgroundAlpha: ${w.hoveredBackgroundAlpha}`);
+    if (v || w.shadow) f.push(`shadow: ${w.shadow}`);
   } else {
     if (v || !w.glowOnHover) f.push(`glowOnHover: ${w.glowOnHover}`);
     if (w.glowColor) f.push(`glowColor: ${arr(w.glowColor)}`);

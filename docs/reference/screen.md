@@ -59,7 +59,7 @@ dyn widgets = [
 Поля виджетов: `id`, `type`, `position`, `scale`, `tolerance`, `translation`, `rotation`, `text`, `hoveredText`,
 `alignment`, `backgroundColor`, `backgroundAlpha`, `hoveredBackgroundColor`, `hoveredBackgroundAlpha`,
 `material`, `glowOnHover`, `glowColor`, `sprite`, `atlas`, `hoveredSprite`, `spriteColor`, `hoveredSpriteColor`,
-`lineWidth` (ширина переноса текста, px шрифта; 200 по умолчанию), `tooltip`, `tooltipColor`, `tooltipDelay`, `clickSound`, `hoverSound`, `onClick`, `hoverAnimation`. Тип можно не писать: есть `material` - `ITEM_BUTTON`, есть `sprite` - `SPRITE_BUTTON`,
+`lineWidth` (ширина переноса текста, px шрифта; 200 по умолчанию), `shadow` (тень текста, `true`/`false`, у текста и спрайтов), `tooltip`, `tooltipColor`, `tooltipDelay`, `clickSound`, `hoverSound`, `onClick`, `hoverAnimation`. Тип можно не писать: есть `material` - `ITEM_BUTTON`, есть `sprite` - `SPRITE_BUTTON`,
 иначе `TEXT_BUTTON`. `SPRITE_BUTTON` - это TextDisplay с компонентом-объектом (`{"atlas": ..., "sprite": ...}`),
 поэтому у него есть фон, hover и `tolerance` как у текстовой кнопки; из скрипта - `widget.sprite("item/apple")`.
 Атласы клиента: `minecraft:items`, `minecraft:blocks`, `minecraft:gui` для иконок эффектов (`mob_effect/speed`), `minecraft:gui`

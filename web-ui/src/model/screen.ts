@@ -103,6 +103,8 @@ export interface Widget {
   // ITEM_BUTTON
   material: string;
   glowOnHover: boolean;
+  /** Тень текста (TextDisplay.shadowed) - TEXT_BUTTON / SPRITE_BUTTON */
+  shadow: boolean;
   glowColor: RGB | null;
   // SPRITE_BUTTON (TextDisplay со спрайтом атласа; фон/hover - как у текста)
   sprite: string;
@@ -227,6 +229,7 @@ export function defaultWidget(type: WidgetType = 'TEXT_BUTTON'): Widget {
     hoveredBackgroundAlpha: type === 'TEXT_BUTTON' ? 220 : 0,
     material: 'DIAMOND',
     glowOnHover: true,
+    shadow: false,
     glowColor: null,
     sprite: 'item/diamond_sword',
     atlas: null,
@@ -255,6 +258,7 @@ export const WIDGET_DEFAULTS = {
   hoveredBackgroundColor: [60, 60, 60] as RGB,
   hoveredBackgroundAlpha: 0,
   glowOnHover: true,
+  shadow: false,
 };
 
 export function defaultScreen(id = 'new_screen'): Screen {

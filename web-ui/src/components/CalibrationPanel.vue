@@ -15,7 +15,6 @@ import { font } from '../render/font';
     <div class="field"><label>Глаза над центром</label><input type="number" step="0.01" v-model.number="calibration.eyeAboveCenter" /></div>
     <div class="field"><label>До экрана, бл.</label><input type="number" step="0.1" v-model.number="calibration.eyeDistance" /></div>
     <div class="field"><label>FOV</label><input type="number" step="1" v-model.number="calibration.fov" /></div>
-    <div class="field"><label></label><label class="row"><input type="checkbox" v-model="calibration.shadow" /> Тень текста</label></div>
     <div class="callout" :class="font.loaded ? '' : 'warn'">
       <b>Шрифт:</b> {{ font.loaded ? 'Растровый шрифт Minecraft загружен (' + font.glyphs.size + ' глифов)' : 'Используется запасной - размеры примерные' }}.
       <template v-if="!font.loaded"><br />Скопируйте из клиента <code>versions/1.21.x/1.21.x.jar</code> Папки <code>assets/minecraft/font/</code> И <code>assets/minecraft/textures/font/</code> В <code>public/assets/minecraft/</code> (структура как в jar).</template>

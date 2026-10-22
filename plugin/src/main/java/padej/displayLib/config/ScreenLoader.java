@@ -355,6 +355,9 @@ public class ScreenLoader {
             plugin.getLogger().warning(where + ": SPRITE_BUTTON without 'sprite'");
         }
 
+        Boolean shadow = bool(data, "shadow", "textShadow", "text_shadow");
+        if (shadow != null) widget.setShadow(shadow);
+
         Boolean glowOnHover = bool(data, "glowOnHover", "glow_on_hover");
         if (glowOnHover != null) widget.setGlowOnHover(glowOnHover);
 

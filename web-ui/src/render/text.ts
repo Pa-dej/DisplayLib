@@ -113,7 +113,7 @@ export interface TextTextureResult { texture: THREE.CanvasTexture; layout: TextL
  * [-bgTop, l + bgBottom]; canvas (0,0) = (-bgLeft, -bgTop). Сдвиг на +1 px по x клиент делает
  * через translate(1 - k/2) - его учитывает scene.ts при позиционировании меша.
  */
-export function buildTextTexture(t: RichText, align: 'LEFT' | 'CENTERED' | 'RIGHT', bg: RGB, bgAlpha: number, scale = 4, maxWidth = 200): TextTextureResult {
+export function buildTextTexture(t: RichText, align: 'LEFT' | 'CENTERED' | 'RIGHT', bg: RGB, bgAlpha: number, scale = 4, maxWidth = 200, shadow = false): TextTextureResult {
   const L = layout(t, maxWidth);
   const S = scale;
   const c = document.createElement('canvas');
@@ -135,7 +135,7 @@ export function buildTextTexture(t: RichText, align: 'LEFT' | 'CENTERED' | 'RIGH
     for (const r of line) {
       if (r.player) { drawHead(ctx, r.player, r.hat !== false, x, y0, S); x += runWidth(r); continue; }
       if (r.sprite) { drawSprite(ctx, r.sprite, r.atlas, x, y0, S, r.color); x += runWidth(r); continue; }
-      font.draw(ctx, r.text, x, y0, S, r.color, calibration.shadow);
+      font.draw(ctx, r.text, x, y0, S, r.color, shadow);
       if (r.bold) font.draw(ctx, r.text, x + 1, y0, S, r.color, false);
       x += runWidth(r);
     }

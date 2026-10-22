@@ -129,6 +129,7 @@ export function tableToWidget(d: JmcTable, index: number, warnings: string[]): W
   const hsc = str(d, 'hoveredSpriteColor', 'hovered_sprite_color', 'hoveredColor', 'hovered_color'); if (hsc != null && hsc.trim()) w.hoveredSpriteColor = hsc.trim();
   if (type === 'SPRITE_BUTTON' && !w.sprite) warnings.push(`виджет ${w.id || '#' + index}: SPRITE_BUTTON без sprite`);
   const g = bool(d, 'glowOnHover', 'glow_on_hover'); if (g != null) w.glowOnHover = g;
+  const sh = bool(d, 'shadow', 'textShadow', 'text_shadow'); if (sh != null) w.shadow = sh;
   const gc = nums(d, 3, 'glowColor', 'glow_color'); if (gc) w.glowColor = gc as RGB;
   const p = nums(d, 3, 'position'); if (p) w.position = p as Vec3;
   const sc = nums(d, 3, 'scale'); if (sc) w.scale = sc as Vec3;

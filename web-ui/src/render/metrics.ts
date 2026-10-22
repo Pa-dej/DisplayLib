@@ -41,8 +41,6 @@ export interface Calibration {
   /** Смещение виджетов к игроку по глубине (ScreenSupport.WIDGET_DEPTH_OFFSET / ITEM_WIDGET_DEPTH_OFFSET). */
   textDepthOffset: number;
   itemDepthOffset: number;
-  /** Тень текста (TextDisplay.shadow; плагин не включает). */
-  shadow: boolean;
   /** Камера: глаза игрока над центром экрана и расстояние до экрана. */
   eyeAboveCenter: number;
   /** advance спрайта-объекта в тексте, px (квадрат 8×8 + промежуток) */
@@ -67,7 +65,6 @@ export const DEFAULT_CALIBRATION: Calibration = {
   itemSize: 1,
   textDepthOffset: 0.001,
   itemDepthOffset: 0.01,
-  shadow: false,
   // defaultLocationFor: экран в 2 блоках перед игроком на высоте height/2 (0.9); глаза на 1.62
   eyeAboveCenter: 0.72, // 1.62 - 0.9
   spriteAdvance: 8, // AtlasGlyphProvider: GlyphInfo.simple(8.0f) - без промежутка
