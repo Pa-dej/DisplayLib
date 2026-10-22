@@ -20,8 +20,16 @@ import FramesEditor from './fields/FramesEditor.vue';
 import NumInput from './particles/NumInput.vue';
 import { calibration } from '../render/metrics';
 
-const props = defineProps<{ widget: Widget }>();
+/**
+ * group - мульти-выделение: панель правит общий «черновик» (widget), а GroupPanel переносит правки во все
+ * выделенные. Показываются только настройки, общие для всех типов в выделении; содержимое (id, текст, спрайт,
+ * предмет, клик) и положение (у группы своя секция) скрыты.
+ */
+const props = defineProps<{ widget: Widget; group?: Widget[] | null }>();
 const w = computed(() => props.widget);
+const types = computed(() => props.group ? [...new Set(props.group.map((x) => x.type))] : [w.value.type]);
+const only = (t: Widget['type']) => types.value.length === 1 && types.value[0] === t;
+const textLike = computed(() => !types.value.includes('ITEM_BUTTON'));
 type FrameKey = 'frames' | 'hoveredFrames';
 function addFrame(k: FrameKey) { snapshot(); const last = w.value[k][w.value[k].length - 1]; w.value[k].push(last != null ? cloneRich(last) : (k === 'frames' ? cloneRich(w.value.text) : '')); if (k === 'frames') w.value.text = w.value.frames[0]; touch(); }
 function removeFrame(k: FrameKey, i: number) { snapshot(); w.value[k].splice(i, 1); if (k === 'frames' && w.value.frames.length) w.value.text = w.value.frames[0]; touch(); }
@@ -83,13 +91,13 @@ function fmt(n: number) { return (Math.round(n * 1000) / 1000).toString(); }
 </script>
 <template>
   <div>
-    <div class="section">
+    <div class="section" v-if="!group">
       <h2><span>Виджет</span><span class="btn-group"><button class="btn sm" @click="duplicateWidget(w.uid)" title="Дублировать"><Icon name="clone" /></button><button class="btn sm danger" @click="removeWidget(w.uid)"><Icon name="trash" /> Удалить</button></span></h2>
       <div class="field"><label>id</label><div><input type="text" :value="w.id" @focus="snapshot()" @input="w.id = text($event); touch()" placeholder="Для screen.widget(id)" /><div v-if="idDup" class="hint" style="color:var(--vp-c-danger-1)">Такой id уже есть у другого виджета</div></div></div>
       <div class="field"><label>Тип</label><select :value="w.type" @change="setType(($event.target as HTMLSelectElement).value)"><option value="TEXT_BUTTON">TEXT_BUTTON - текст</option><option value="ITEM_BUTTON">ITEM_BUTTON - предмет</option><option value="SPRITE_BUTTON">SPRITE_BUTTON - спрайт атласа</option></select></div>
     </div>
 
-    <div class="section">
+    <div class="section" v-if="!group">
       <h3>Положение<span class="hint">Размер ≈ {{ fmt(size.w) }} × {{ fmt(size.h) }} бл.</span></h3>
       <div class="field"><label>position</label><VecInput v-model="w.position" :labels="['X вправо', 'Y вверх', 'Z от игрока (−0.01 = ближе)']" /></div>
       <div class="field"><label>scale</label><VecInput v-model="w.scale" :labels="['x', 'y', 'z']" :step="0.05" /></div>
@@ -102,8 +110,9 @@ function fmt(n: number) { return (Math.round(n * 1000) / 1000).toString(); }
       <div class="hint">tolerance - зона наведения (голубой прямоугольник): центр в position + translation, у текста и спрайтов - по центру нарисованного текста</div>
     </div>
 
-    <div class="section" v-if="w.type === 'SPRITE_BUTTON'">
+    <div class="section" v-if="only('SPRITE_BUTTON')">
       <h3>Спрайт</h3>
+      <template v-if="!group">
       <div class="field"><label>источник</label><select :value="w.player != null ? 'player' : 'sprite'" @change="setSpriteSource(($event.target as HTMLSelectElement).value)"><option value="sprite">Спрайт атласа</option><option value="player">Голова игрока (по нику)</option></select></div>
       <template v-if="w.player != null">
         <div class="field"><label>player</label><input type="text" :value="w.player" placeholder="Ник игрока" @focus="snapshot()" @input="w.player = text($event).trim(); touch()" /></div>
@@ -116,17 +125,19 @@ function fmt(n: number) { return (Math.round(n * 1000) / 1000).toString(); }
       <div class="field"><label>sprite</label><SpriteInput v-model="w.sprite" :atlas="w.atlas" @update:atlas="w.atlas = $event" /></div>
       <div class="field"><label>hoveredSprite</label><div class="row"><SpriteInput v-if="w.hoveredSprite != null" v-model="w.hoveredSprite" :atlas="w.atlas" @update:atlas="w.atlas = $event" class="grow" /><span v-else class="hint grow">Как sprite</span><button class="btn sm" @click="toggleHoveredSprite">{{ w.hoveredSprite != null ? 'Убрать' : 'Задать' }}</button></div></div>
       </template>
+      </template>
       <div class="field"><label>spriteColor</label><TintInput v-model="w.spriteColor" none="без тинта" /></div>
       <div class="field"><label></label><label class="row" title="shadow: тень под текстом, как в чате (TextDisplay)"><input type="checkbox" :checked="w.shadow" @change="snapshot(); w.shadow = ($event.target as HTMLInputElement).checked; touch()" /> Тень текста</label></div>
       <div class="field"><label>hoveredSpriteColor</label><TintInput v-model="w.hoveredSpriteColor" none="как spriteColor" /></div>
       <div class="hint">Тинт - цвет текста, на который клиент умножает текстуру: белые/серые иконки (HUD, эффекты, узоры) красятся чисто, цветные предметы лишь затемняются.</div>
       <div class="field"><label>Фон</label><ColorInput v-model="w.backgroundColor" :alpha="w.backgroundAlpha" @update:alpha="w.backgroundAlpha = $event" /></div>
       <div class="field"><label>Фон hover</label><ColorInput v-model="w.hoveredBackgroundColor" :alpha="w.hoveredBackgroundAlpha" @update:alpha="w.hoveredBackgroundAlpha = $event" /></div>
-      <div class="hint">Спрайт - квадрат 8×8 текстовых пикселей (0.2 блока при scale 1), рисуется клиентом 1.21.9+ как объект в тексте. Имя спрайта = путь к png внутри папки атласа без расширения: items/blocks - <code>item/apple</code>, <code>block/stone</code> (из <code>textures/</code>); gui - <code>hud/heart/full</code> (из <code>textures/gui/sprites/</code>); иконки эффектов - тоже gui: <code>mob_effect/speed</code>; particles - <code>heart</code>; paintings, banner_patterns, shield_patterns, armor_trims аналогично. Голое имя без атласа (<code>mace</code>, <code>bricks</code>, <code>speed</code>) плагин дополняет сам: предмет → <code>item/mace</code>, блок → <code>block/bricks</code>, эффект → <code>mob_effect/speed</code> (gui). Подсказки берутся из скопированных текстур (<code>npm run sprites</code>).</div>
+      <div v-if="!group" class="hint">Спрайт - квадрат 8×8 текстовых пикселей (0.2 блока при scale 1), рисуется клиентом 1.21.9+ как объект в тексте. Имя спрайта = путь к png внутри папки атласа без расширения: items/blocks - <code>item/apple</code>, <code>block/stone</code> (из <code>textures/</code>); gui - <code>hud/heart/full</code> (из <code>textures/gui/sprites/</code>); иконки эффектов - тоже gui: <code>mob_effect/speed</code>; particles - <code>heart</code>; paintings, banner_patterns, shield_patterns, armor_trims аналогично. Голое имя без атласа (<code>mace</code>, <code>bricks</code>, <code>speed</code>) плагин дополняет сам: предмет → <code>item/mace</code>, блок → <code>block/bricks</code>, эффект → <code>mob_effect/speed</code> (gui). Подсказки берутся из скопированных текстур (<code>npm run sprites</code>).</div>
     </div>
 
-    <div class="section" v-if="w.type === 'TEXT_BUTTON'">
+    <div class="section" v-if="only('TEXT_BUTTON')">
       <h3>Текст</h3>
+      <template v-if="!group">
       <!-- текст и кадры - как у текстовых частиц: «Кадры» превращает текст в анимацию (text = первый кадр) -->
       <div class="field stack"><label class="with-toggle">text
           <button class="btn sm frames-toggle" :class="{ on: w.frames.length > 0 }" :title="w.frames.length ? 'Убрать анимацию: останется первый кадр' : 'Анимация кадрами: текст сменяется каждые N тиков (frames)'" @click="toggleFrames('frames')"><Icon name="images" :size="12" /> Кадры</button>
@@ -158,6 +169,7 @@ function fmt(n: number) { return (Math.round(n * 1000) / 1000).toString(); }
         </template>
         <RichTextInput v-else v-model="w.hoveredText" nullable placeholder="Как text" />
       </div>
+      </template>
       <div class="field"><label>lineWidth</label><div class="row"><input type="number" min="1" step="10" style="width:72px" :value="w.lineWidth" @focus="snapshot()" @input="w.lineWidth = Math.max(1, Math.round(Number(text($event))) || 200); touch()" /><span class="hint">px шрифта; дальше текст переносится (клиент: 200 ≈ 33 символа)</span></div></div>
       <div class="field"><label></label><label class="row" title="shadow: тень под текстом, как в чате (TextDisplay)"><input type="checkbox" :checked="w.shadow" @change="snapshot(); w.shadow = ($event.target as HTMLInputElement).checked; touch()" /> Тень текста</label></div>
       <div class="field"><label>alignment</label><select :value="w.alignment" @change="snapshot(); w.alignment = ($event.target as HTMLSelectElement).value as any; touch()"><option>LEFT</option><option>CENTERED</option><option>RIGHT</option></select></div>
@@ -166,9 +178,16 @@ function fmt(n: number) { return (Math.round(n * 1000) / 1000).toString(); }
       <div class="hint">Строки длиннее 200 px переносятся, как в игре; §-коды (§6, §l) работают внутри текста</div>
     </div>
 
-    <div class="section" v-if="w.type === 'ITEM_BUTTON'">
+    <div class="section" v-if="group && textLike && types.length > 1">
+      <h3>Оформление <span class="hint">текст и спрайты</span></h3>
+      <div class="field"><label></label><label class="row" title="shadow: тень под текстом, как в чате (TextDisplay)"><input type="checkbox" :checked="w.shadow" @change="snapshot(); w.shadow = ($event.target as HTMLInputElement).checked; touch()" /> Тень текста</label></div>
+      <div class="field"><label>Фон</label><ColorInput v-model="w.backgroundColor" :alpha="w.backgroundAlpha" @update:alpha="w.backgroundAlpha = $event" /></div>
+      <div class="field"><label>Фон hover</label><ColorInput v-model="w.hoveredBackgroundColor" :alpha="w.hoveredBackgroundAlpha" @update:alpha="w.hoveredBackgroundAlpha = $event" /></div>
+    </div>
+
+    <div class="section" v-if="only('ITEM_BUTTON')">
       <h3>Предмет</h3>
-      <div class="field"><label>material</label><MaterialInput v-model="w.material" /></div>
+      <div v-if="!group" class="field"><label>material</label><MaterialInput v-model="w.material" /></div>
       <div class="field"><label></label><label class="row"><input type="checkbox" :checked="w.glowOnHover" @change="snapshot(); w.glowOnHover = ($event.target as HTMLInputElement).checked; touch()" /> Свечение при наведении</label></div>
       <div class="field"><label>glowColor</label><div class="row"><ColorInput v-if="w.glowColor" v-model="w.glowColor" /><button class="btn sm" @click="toggleGlowColor">{{ w.glowColor ? 'Убрать' : 'Задать' }}</button></div></div>
     </div>
@@ -189,7 +208,7 @@ function fmt(n: number) { return (Math.round(n * 1000) / 1000).toString(); }
       <div class="hint">Ключи звуков клиента (<code>ui.button.click</code>, <code>block.note_block.pling</code>…). По умолчанию клик: у текста/спрайта - <code>block.dispenser.fail</code> (pitch 2), у предмета - <code>ui.button.click</code>; звук наведения считается hover-реакцией.</div>
     </div>
 
-    <div class="section">
+    <div class="section" v-if="!group">
       <h3>По клику</h3>
       <div class="field"><label>onClick</label><select :value="action" @change="setAction(($event.target as HTMLSelectElement).value)">
         <option value="NONE">Ничего</option><option value="RUN_SCRIPT">Функция скрипта</option><option value="SWITCH_SCREEN">Открыть экран</option><option value="CLOSE_SCREEN">Закрыть экран</option></select></div>

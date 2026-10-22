@@ -2,7 +2,8 @@
 // Панель группы: выбрано несколько виджетов. Положение правится «как у одного»: центр группы (сдвиг всех),
 // масштаб (вокруг центра, вместе с позициями, tolerance и смещениями анимаций), поворот (вокруг центра или у каждого),
 // а translation / tolerance / scale можно задать всем одинаковыми. Плюс копирование свойств с главного.
-import { computed } from 'vue';
+import { computed, reactive, watch } from 'vue';
+import WidgetPanel from './WidgetPanel.vue';
 import Icon from './Icon.vue';
 import VecInput from './fields/VecInput.vue';
 import { state, selectedWidgets, selectedWidget, snapshot, touch, removeWidgets, selectedUids } from '../store';
@@ -102,6 +103,67 @@ function copyFromPrimary(what: 'bg' | 'anim' | 'tolerance' | 'scale' | 'sound') 
   touch();
 }
 const num = (e: Event) => Number((e.target as HTMLInputElement).value);
+
+// ---- общие настройки: панель виджета правит черновик (копия главного), правка поля уходит всем выделенным.
+// Только настройки оформления/поведения - содержимое (id, текст, спрайт, предмет, клик) у каждого своё.
+const SHARED = ['backgroundColor', 'backgroundAlpha', 'hoveredBackgroundColor', 'hoveredBackgroundAlpha', 'shadow', 'alignment', 'lineWidth',
+  'spriteColor', 'hoveredSpriteColor', 'glowOnHover', 'glowColor', 'tooltip', 'tooltipDelay', 'tooltipColor',
+  'clickSound', 'hoverSound', 'hoverAnimation'] as const;
+type SharedKey = typeof SHARED[number];
+const LABELS: Record<SharedKey, string> = {
+  backgroundColor: 'фон', backgroundAlpha: 'фон', hoveredBackgroundColor: 'фон hover', hoveredBackgroundAlpha: 'фон hover', shadow: 'тень текста',
+  alignment: 'alignment', lineWidth: 'lineWidth', spriteColor: 'spriteColor', hoveredSpriteColor: 'hoveredSpriteColor', glowOnHover: 'свечение',
+  glowColor: 'glowColor', tooltip: 'подсказка', tooltipDelay: 'tooltipDelay', tooltipColor: 'tooltipColor', clickSound: 'clickSound',
+  hoverSound: 'hoverSound', hoverAnimation: 'hover-анимация',
+};
+/** У каких типов есть настройка (нет записи - у всех). */
+const T = 'TEXT_BUTTON', S = 'SPRITE_BUTTON', I = 'ITEM_BUTTON';
+const APPLIES: Partial<Record<SharedKey, string[]>> = {
+  backgroundColor: [T, S], backgroundAlpha: [T, S], hoveredBackgroundColor: [T, S], hoveredBackgroundAlpha: [T, S], shadow: [T, S], lineWidth: [T, S],
+  alignment: [T], spriteColor: [S], hoveredSpriteColor: [S], glowOnHover: [I], glowColor: [I],
+};
+const primary = computed(() => (selectedWidget.value && ws.value.includes(selectedWidget.value) ? selectedWidget.value : ws.value[0]) ?? null);
+const draft = reactive(cloneDeep(primary.value ?? ({} as Widget))) as Widget;
+const seen: Record<string, string> = {};
+/** Черновик = главный (при смене выделения, отмене, правке главного в сцене) - без переноса на остальных. */
+function resync() {
+  const p = primary.value; if (!p) return;
+  const copy = cloneDeep(p);
+  for (const k of Object.keys(copy) as (keyof Widget)[]) (draft as any)[k] = (copy as any)[k];
+  for (const k of SHARED) seen[k] = JSON.stringify((draft as any)[k]);
+}
+resync();
+watch(() => [selectedUids.value.join(), primary.value?.uid], resync);
+watch(() => primary.value && JSON.stringify(SHARED.map((k) => (primary.value as any)[k])), () => {
+  // главный изменился не через черновик (отмена, правка в сцене) - подтянуть
+  const p = primary.value; if (!p) return;
+  if (SHARED.some((k) => JSON.stringify((p as any)[k]) !== seen[k])) resync();
+});
+watch(draft, () => {
+  let changed = false;
+  for (const k of SHARED) {
+    const j = JSON.stringify((draft as any)[k]);
+    if (j === seen[k]) continue;
+    seen[k] = j;
+    for (const w of ws.value) if (!APPLIES[k] || APPLIES[k]!.includes(w.type)) (w as any)[k] = cloneDeep((draft as any)[k]);
+    changed = true;
+  }
+  if (changed) touch();
+}, { deep: true });
+/** Какие общие настройки у выделенных разные (показано значение главного, правка задаст всем). */
+const differing = computed(() => {
+  void state.revision;
+  const out = new Set<string>();
+  const first = ws.value[0]; if (!first) return [];
+  const types = new Set(ws.value.map((w) => w.type));
+  for (const k of SHARED) {
+    const only = APPLIES[k];
+    if (only && [...types].some((t) => !only.includes(t))) continue; // настройки нет у части выбранных типов - в панели её нет
+    if (ws.value.some((w) => JSON.stringify((w as any)[k]) !== JSON.stringify((first as any)[k]))) out.add(LABELS[k]);
+  }
+  return [...out];
+});
+const typeNames = computed(() => [...new Set(ws.value.map((w) => w.type === 'TEXT_BUTTON' ? 'текст' : w.type === 'SPRITE_BUTTON' ? 'спрайт' : 'предмет'))].join(' + '));
 </script>
 <template>
   <h2 class="row" style="justify-content:space-between">Группа <span class="hint">{{ selectedUids.length }} виджетов{{ ws.length !== selectedUids.length ? ', заблокированные не трогаем' : '' }}</span>
@@ -132,5 +194,11 @@ const num = (e: Event) => Number((e.target as HTMLInputElement).value);
       <button class="btn sm" @click="copyFromPrimary('tolerance')">Tolerance</button>
     </div>
   </div>
+  <div class="section" v-if="primary">
+    <h3>Общие настройки <span class="hint">{{ typeNames }}</span></h3>
+    <div class="hint">Значения главного виджета; правка поля задаёт его всем выделенным. Показаны только настройки, которые есть у всех выбранных типов{{ differing.length ? '.' : ', у всех сейчас одинаковые.' }}</div>
+    <div v-if="differing.length" class="hint" style="color:var(--vp-c-warning-1)">Сейчас разные: {{ differing.join(', ') }}</div>
+  </div>
+  <WidgetPanel v-if="primary" :widget="draft" :group="ws" />
   <div style="margin-top:8px"><button class="btn sm" @click="state.extra = []">Оставить только главный</button></div>
 </template>
