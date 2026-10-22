@@ -49,6 +49,40 @@ dyn packs = ["WordBomb"];
 - **`storage`** - общее хранилище DisplayLib (`plugins/DisplayLib/data/storage/`), ключи у всех экранов игрока одни;
   используйте префикс: `storage.set("wordbomb.wins", ...)`.
 
+## Подсказки редактора скриптов
+
+Редакторы Jumper (IntelliJ, VS Code, Neovim) узнают, чья папка и какие у скриптов глобалы, по дескриптору хоста в
+JAR плагина. У DisplayLib он описывает только `plugins/DisplayLib/`, поэтому для своей папки положите в свой JAR
+`src/main/resources/META-INF/jumper/host.jmc`:
+
+```java
+// Дескриптор хоста Jumper для редакторов: скрипты WordBomb - экраны DisplayLib.
+// Плагин его не читает; редактор находит его в plugins/WordBomb.jar.
+String name = "WordBomb";
+String root = "WordBomb";                       // plugins/WordBomb (относительно папки JAR)
+dyn scripts = ["scripts/**/*.jmp"];
+String access = "scripts.jma";                  // своя политика - как в игре
+dyn configs = ["screens/**/*.jmc", "particles/**/*.jmc"];
+dyn globals = {
+    player: "padej.displayLib.script.api.PlayerAPI",
+    screen: "padej.displayLib.script.api.ScreenAPI",
+    storage: "padej.displayLib.script.api.StorageAPI",
+    timer: "padej.displayLib.script.api.TimerAPI",
+    log: "padej.displayLib.script.api.LogAPI",
+};
+String hooks = "padej.displayLib.script.api.ScreenHooks";   // onOpen, onClose(reason)
+```
+
+`name` и `root` - имя плагина и его папки, остальное как у DisplayLib. С ним редактор для
+`plugins/WordBomb/scripts/*.jmp` знает глобалы `player`, `screen`, `storage`, `timer`, `log`, хуки `onOpen` /
+`onClose` и проверяет `import` и Java-вызовы по `plugins/WordBomb/scripts.jma`.
+
+::: warning Ограничение редакторов Jumper (v0.11)
+Классы для проверки редактор берёт только из JAR самого хоста: JAR других плагинов-хостов (в том числе
+`DisplayLib.jar`) в этот список не попадают. Поэтому методы `player.…`, `screen.…` в скриптах набора редактор не
+подсказывает и не проверяет - имена глобалов и хуки знает, а их методы нет. В игре всё работает как обычно.
+:::
+
 ## Java API
 
 | Метод | Что делает |
