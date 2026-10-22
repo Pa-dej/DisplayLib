@@ -12,6 +12,7 @@ import padej.displayLib.particles.Particles;
 import padej.displayLib.render.shapes.Highlight;
 import padej.displayLib.script.JumperEngine;
 import padej.displayLib.ui.UIManager;
+import padej.displayLib.ui.ScreenDisplays;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.io.File;
@@ -91,6 +92,11 @@ public final class DisplayLib extends JavaPlugin {
         // статический разбор экранов читает скрипты под той же политикой
         scriptEngine = new JumperEngine(this, config.scriptTimeoutMs());
 
+        // Сущности экранов: пакетами (по умолчанию) или настоящими сущностями; до загрузки экранов -
+        // от режима зависит, какие виджеты публичных экранов тикать
+        ScreenDisplays.install(this, config.screens().packets(), config.screens().viewDistance());
+        getLogger().info("Screens: shown as " + (ScreenDisplays.packets() ? "packets" : "entities"));
+
         // Экраны (.jmc) и их hot reload
         screenRegistry = new ScreenRegistry(this, config.hotReload());
         screenRegistry.initialize();
@@ -147,6 +153,7 @@ public final class DisplayLib extends JavaPlugin {
             getLogger().info("Cleaning up active UI screens...");
             manager.cleanup();
         }
+        ScreenDisplays.shutdown(); // сущности экранов исчезают у клиентов
 
         // После закрытия экранов: onClose("shutdown") ещё мог писать в storage
         if (autosaveTask != null) {

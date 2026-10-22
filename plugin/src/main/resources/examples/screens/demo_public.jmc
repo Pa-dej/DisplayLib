@@ -1,6 +1,7 @@
 // demo_public: ПУБЛИЧНЫЙ экран - стоит в мире, виден всем. Открыть: /displaylib openpublic demo_public <x> <y> <z>
 //  - глобал player в скрипте равен null: кликнувший игрок приходит аргументом обработчика;
-//  - hover-анимации, hoveredText, switchTo и close не работают (экран общий), подсказки и кадры - работают;
+//  - наведение у каждого игрока своё: фон и анимация меняются только у того, кто смотрит на кнопку
+//    (экран показывается пакетами, screens.packets в config.jmc); switchTo и close не работают (экран общий);
 //  - закрыть: /displaylib closepublic demo_public
 
 String id = "demo_public";
@@ -18,9 +19,12 @@ dyn widgets = [
 
     // общий счётчик: виден всем, кликать может любой
     { id: "votes", text: "Голосов: 0", position: [0, 0.65, -0.01], scale: [0.4, 0.4, 0.4], tolerance: [0.3, 0.05],
-      backgroundColor: [31, 72, 81], backgroundAlpha: 200, tooltip: "Нажми, чтобы проголосовать", onClick: true },
+      backgroundColor: [31, 72, 81], backgroundAlpha: 200, hoveredBackgroundColor: [46, 105, 117], hoveredBackgroundAlpha: 230,
+      hoverAnimation: { type: "PRESET", preset: "SCALE", intensity: 1.15, duration: 5, easing: "EASE_OUT" },
+      tooltip: "Нажми, чтобы проголосовать", onClick: true },
     { id: "last", text: "Последний: -", position: [0, 0.42, -0.01], scale: [0.3, 0.3, 0.3], tolerance: [0, 0], backgroundAlpha: 0 },
 
     { id: "ping", text: "Кто здесь?", position: [0, 0.18, -0.01], scale: [0.35, 0.35, 0.35], tolerance: [0.2, 0.045],
-      backgroundColor: [30, 32, 44], backgroundAlpha: 200, onClick: true },
+      backgroundColor: [30, 32, 44], backgroundAlpha: 200, hoveredBackgroundColor: [60, 64, 88], hoveredBackgroundAlpha: 230,
+      hoverAnimation: { type: "PRESET", preset: "LIFT", duration: 5, easing: "EASE_OUT" }, onClick: true },
 ];

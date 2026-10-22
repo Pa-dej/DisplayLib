@@ -142,7 +142,7 @@ public final class ScreenAnalyzer {
         if (tol == null || tol.length < 2 || tol[0] <= 0 || tol[1] <= 0) return "tolerance <= 0 (no hit area)";
         String click = clickReason(def, screens, script, publicScreen);
         if (click == null) return null;                       // клик работает
-        if (hasHoverVisual(def, !publicScreen)) return null;  // есть реакция на наведение
+        if (hasHoverVisual(def, !publicScreen || padej.displayLib.ui.ScreenDisplays.perViewerHover())) return null;  // есть реакция на наведение (на публичном - с пакетами)
         return click;
     }
 

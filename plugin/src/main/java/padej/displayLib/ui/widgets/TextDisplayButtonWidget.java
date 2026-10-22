@@ -1,6 +1,8 @@
 package padej.displayLib.ui.widgets;
 
 import padej.displayLib.DisplayLib;
+import padej.displayLib.ui.ScreenAudience;
+import padej.displayLib.ui.ScreenDisplays;
 import padej.displayLib.utils.Animation;
 import padej.displayLib.utils.HitArea;
 import padej.displayLib.utils.ViewRay;
@@ -10,7 +12,6 @@ import net.kyori.adventure.title.Title;
 import org.bukkit.Bukkit;
 import org.bukkit.Color;
 import org.bukkit.Location;
-import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.TextDisplay;
 import org.bukkit.util.Transformation;
@@ -23,6 +24,12 @@ import java.time.Duration;
 public class TextDisplayButtonWidget implements Widget {
     private TextDisplay display;
     private Player viewer;
+    /** Кто видит сущность, когда она идёт пакетами ({@link ScreenDisplays}); null - по умолчанию для viewer */
+    private ScreenAudience audience;
+    /** Публичный экран: кто из игроков сейчас наведён (у каждого свой слой наведения) */
+    private final java.util.Set<java.util.UUID> hoverViewers = new java.util.HashSet<>(2);
+    private int hoverFrameIndex = 0;
+    private int hoverFrameTicks = 0;
     private boolean isHovered = false;
     /**
      * Идёт morph-переход к этому виджету: сущность ведёт {@link padej.displayLib.ui.MorphTransition}, сеттеры
@@ -108,7 +115,16 @@ public class TextDisplayButtonWidget implements Widget {
     private final Location positionScratch = new Location(null, 0, 0, 0);
 
     public static TextDisplayButtonWidget create(Location location, Player viewer, TextDisplayButtonConfig config) {
+        return create(location, viewer, config, null);
+    }
+
+    /**
+     * @param audience кто видит сущность (пакеты): приватный экран - {@link ScreenAudience#player}, публичный -
+     *                 {@link ScreenAudience#area}; {@code null} - владелец {@code viewer}, а без него - игроки рядом
+     */
+    public static TextDisplayButtonWidget create(Location location, Player viewer, TextDisplayButtonConfig config, ScreenAudience audience) {
         TextDisplayButtonWidget widget = init(location, viewer, config);
+        widget.audience = audience;
         widget.spawn();
         return widget;
     }
@@ -180,6 +196,7 @@ public class TextDisplayButtonWidget implements Widget {
         TextDisplay d = display;
         display = null;
         isHovered = false;
+        hoverViewers.clear();
         hideTooltip();
         // задачи анимации наведения привязаны к сущности, а не к виджету - иначе они доиграют уже на новом экране
         if (d != null) padej.displayLib.utils.EasedAnimation.cancelAll(d);
@@ -198,7 +215,7 @@ public class TextDisplayButtonWidget implements Widget {
      */
     public void endMorph(boolean transform) {
         morphing = false;
-        if (display == null || !display.isValid()) return;
+        if (!ScreenDisplays.alive(display)) return;
         display.text(text);
         display.setBackgroundColor(backgroundArgb());
         if (transform) {
@@ -247,7 +264,11 @@ public class TextDisplayButtonWidget implements Widget {
     public void invalidateHitArea() { positionCached = false; }
 
     private void spawn() {
-        display = (TextDisplay) location.getWorld().spawnEntity(location, EntityType.TEXT_DISPLAY);
+        hoverViewers.clear();
+        if (audience == null) {
+            audience = viewer != null ? ScreenAudience.player(viewer, location.getWorld()) : ScreenAudience.area(location);
+        }
+        display = ScreenDisplays.spawn(location, TextDisplay.class, audience);
         display.text(text);
         display.setBackgroundColor(backgroundArgb());
         display.setLineWidth(lineWidth);
@@ -434,6 +455,7 @@ public class TextDisplayButtonWidget implements Widget {
     @Override
     public void remove() {
         removed = true;
+        hoverViewers.clear();
         if (display != null) {
             display.remove();
             display = null;
@@ -488,37 +510,75 @@ public class TextDisplayButtonWidget implements Widget {
 
     private void onHoverStateChanged() {
         frameIndex = 0; frameTicks = 0;
-        if (isHovered) {
-            display.text(hoveredFrames != null ? hoveredFrames[0] : hoveredText);
-            display.setBackgroundColor(hoveredBackgroundArgb());
+        applyHover(display, isHovered, false);
+    }
+
+    /**
+     * Наведение игрока на виджет публичного экрана: свой слой наведения у каждого игрока ({@link ScreenDisplays}),
+     * остальные видят виджет как был. Без пакетов ничего не делает.
+     */
+    public void hoverFor(Player player, boolean hovered) {
+        if (display == null || player == null || morphing || !interactive) return;
+        java.util.UUID id = player.getUniqueId();
+        if (hovered == hoverViewers.contains(id)) return;
+        org.bukkit.entity.Display layer = ScreenDisplays.overlay(display, player, hovered);
+        if (hovered) {
+            if (layer == null) return;
+            if (hoverViewers.isEmpty()) { hoverFrameIndex = 0; hoverFrameTicks = 0; }
+            hoverViewers.add(id);
+            applyHover((TextDisplay) layer, true, true);
+            if (hoverSound != null) hoverSound.play(player);
+        } else {
+            hoverViewers.remove(id);
+            if (layer == null) return;
+            applyHover((TextDisplay) layer, false, true);
+            ScreenDisplays.release(display, player);
+        }
+    }
+
+    /** Игрок ушёл (вышел с сервера): забыть его наведение без анимации. */
+    public void forgetHover(java.util.UUID player) {
+        hoverViewers.remove(player);
+    }
+
+    /**
+     * Вид наведения на сущности {@code d}. {@code layer} - слой одного игрока: текст и фон пишутся, только если
+     * при наведении они другие, - иначе игрок продолжает видеть общий текст (кадры, смену из скрипта).
+     */
+    private void applyHover(TextDisplay d, boolean hovered, boolean layer) {
+        boolean textDiffers = hoveredFrames != null || !java.util.Objects.equals(hoveredText, text);
+        boolean bgDiffers = !hoveredBackgroundArgb().equals(backgroundArgb());
+        if (hovered) {
+            if (!layer || textDiffers) d.text(hoveredFrames != null ? hoveredFrames[layer ? hoverFrameIndex : 0] : hoveredText);
+            if (!layer || bgDiffers) d.setBackgroundColor(hoveredBackgroundArgb());
             
             // Приоритет: новая система анимации, затем старая hoveredTransformation
             if (hoverAnimation != null) {
                 // Используем новую систему анимации с правильной easing интерполяцией
                 try {
-                    hoverAnimation.applyHoverAnimation(display, effectiveTranslation(), baseScale, true, baseRotation());
+                    hoverAnimation.applyHoverAnimation(d, effectiveTranslation(), baseScale, true, baseRotation());
                 } catch (Exception e) {
                     DisplayLib.getInstance().getLogger().log(java.util.logging.Level.WARNING, "Error applying hover animation", e);
                 }
             } else if (hoveredTransformation != null) {
                 // Fallback на старую систему
-                Animation.applyTransformationWithInterpolation(display, hoveredTransformation, hoveredTransformationDuration);
+                Animation.applyTransformationWithInterpolation(d, hoveredTransformation, hoveredTransformationDuration);
             }
         } else {
-            display.text(frames != null ? frames[0] : text);
-            display.setBackgroundColor(backgroundArgb());
+            if (!layer || textDiffers) d.text(frames != null ? frames[layer ? frameIndex : 0] : text);
+            if (!layer || bgDiffers) d.setBackgroundColor(backgroundArgb());
             
             // Возвращаем к исходному состоянию
             if (hoverAnimation != null && hoverAnimation.isReverseOnExit()) {
                 // Используем новую систему для возврата
                 try {
-                    hoverAnimation.applyHoverAnimation(display, effectiveTranslation(), baseScale, false, baseRotation());
+                    hoverAnimation.applyHoverAnimation(d, effectiveTranslation(), baseScale, false, baseRotation());
                 } catch (Exception e) {
                     DisplayLib.getInstance().getLogger().log(java.util.logging.Level.WARNING, "Error reversing hover animation", e);
                 }
             } else if (hoveredTransformation != null) {
                 // Fallback на старую систему
-                Animation.applyTransformationWithInterpolation(display, targetTransformation(), hoveredTransformationDuration);
+                Animation.applyTransformationWithInterpolation(d, targetTransformation(), hoveredTransformationDuration);
             }
         }
     }
@@ -593,7 +653,7 @@ public class TextDisplayButtonWidget implements Widget {
     }
 
     private void applyBase(int ticks) {
-        if (display != null && display.isValid() && !isHovered && !morphing) {
+        if (ScreenDisplays.alive(display) && !isHovered && !morphing) {
             Animation.applyTransformationWithInterpolation(display, targetTransformation(), Math.max(1, ticks));
         }
     }
@@ -602,7 +662,7 @@ public class TextDisplayButtonWidget implements Widget {
     public void setRotation(float degrees, int ticks) {
         this.rotationDeg = degrees;
         this.positionCached = false; // зона наведения поворачивается вместе с виджетом
-        if (display != null && display.isValid() && !isHovered && !morphing) {
+        if (ScreenDisplays.alive(display) && !isHovered && !morphing) {
             Animation.applyTransformationWithInterpolation(display, targetTransformation(), Math.max(1, ticks));
         }
     }
@@ -698,6 +758,7 @@ public class TextDisplayButtonWidget implements Widget {
      */
     public void tickFrames() {
         if (display == null) return;
+        tickLayerFrames();
         Component[] set = isHovered && hoveredFrames != null ? hoveredFrames : (!isHovered || hoveredText == text) ? frames : null;
         if (set == null || set.length < 2) return;
         int interval = set == hoveredFrames ? hoveredFrameInterval : frameInterval;
@@ -705,6 +766,18 @@ public class TextDisplayButtonWidget implements Widget {
         frameTicks = 0;
         frameIndex = (frameIndex + 1) % set.length;
         display.text(set[frameIndex]);
+    }
+
+    /** Кадры наведения в слоях игроков публичного экрана: у всех наведённых - один и тот же кадр. */
+    private void tickLayerFrames() {
+        if (hoverViewers.isEmpty() || hoveredFrames == null || hoveredFrames.length < 2) return;
+        if (++hoverFrameTicks < hoveredFrameInterval) return;
+        hoverFrameTicks = 0;
+        hoverFrameIndex = (hoverFrameIndex + 1) % hoveredFrames.length;
+        for (java.util.UUID id : hoverViewers) {
+            org.bukkit.entity.Display layer = ScreenDisplays.overlayOf(display, id);
+            if (layer instanceof TextDisplay t) t.text(hoveredFrames[hoverFrameIndex]);
+        }
     }
 
     /** Задать кадры (null - убрать анимацию; текст остаётся текущим). */

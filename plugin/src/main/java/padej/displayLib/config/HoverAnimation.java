@@ -261,7 +261,7 @@ public class HoverAnimation {
      * а возврат идёт к нему, а не к единичному кватерниону.
      */
     public void applyHoverAnimation(org.bukkit.entity.Display display, Vector3f originalTranslation, Vector3f originalScale, boolean isHovering, Quaternionf baseRotation) {
-        if (display == null || !display.isValid()) return;
+        if (display == null || display.isDead()) return;
         Quaternionf base = baseRotation != null ? baseRotation : new Quaternionf();
         
         java.util.function.DoubleUnaryOperator easingFn = padej.displayLib.utils.EasedAnimation.getEasingFunction(easing);

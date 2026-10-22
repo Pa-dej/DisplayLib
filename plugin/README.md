@@ -322,6 +322,8 @@ dyn closeOn = { death: true, worldChange: true, teleport: 8, inventory: false };
 dyn storage = { persist: true, autosaveSeconds: 300 };
 // частиц-сущностей одновременно на весь сервер; сверх предела новые не появляются
 dyn particles = { maxAlive: 1500 };
+// экраны пакетами: приватный видит только владелец, наведение на публичном у каждого своё; false - сущности мира
+dyn screens = { packets: true, viewDistance: 64 };
 ```
 
 ## Система координат

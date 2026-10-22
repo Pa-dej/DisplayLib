@@ -1,6 +1,8 @@
 package padej.displayLib.ui.widgets;
 
 import padej.displayLib.DisplayLib;
+import padej.displayLib.ui.ScreenAudience;
+import padej.displayLib.ui.ScreenDisplays;
 import padej.displayLib.utils.Animation;
 import padej.displayLib.utils.HitArea;
 import padej.displayLib.utils.ViewRay;
@@ -25,6 +27,10 @@ import java.time.Duration;
 public class ItemDisplayButtonWidget implements Widget {
     private ItemDisplay display;
     private Player viewer;
+    /** Кто видит сущность, когда она идёт пакетами; null - по умолчанию для viewer */
+    private ScreenAudience audience;
+    /** Публичный экран: кто из игроков сейчас наведён (у каждого свой слой наведения) */
+    private final java.util.Set<java.util.UUID> hoverViewers = new java.util.HashSet<>(2);
     private boolean isHovered = false;
     /** Идёт morph-переход: сеттеры меняют только состояние виджета (см. TextDisplayButtonWidget#beginMorph) */
     private boolean morphing = false;
@@ -95,7 +101,13 @@ public class ItemDisplayButtonWidget implements Widget {
     private final Location positionScratch = new Location(null, 0, 0, 0);
 
     public static ItemDisplayButtonWidget create(Location location, Player viewer, ItemDisplayButtonConfig config) {
+        return create(location, viewer, config, null);
+    }
+
+    /** @param audience кто видит сущность (см. TextDisplayButtonWidget#create с audience) */
+    public static ItemDisplayButtonWidget create(Location location, Player viewer, ItemDisplayButtonConfig config, ScreenAudience audience) {
         ItemDisplayButtonWidget widget = init(location, viewer, config);
+        widget.audience = audience;
         widget.spawn();
         return widget;
     }
@@ -153,6 +165,7 @@ public class ItemDisplayButtonWidget implements Widget {
         ItemDisplay d = display;
         display = null;
         isHovered = false;
+        hoverViewers.clear();
         hideTooltip();
         if (d != null) padej.displayLib.utils.EasedAnimation.cancelAll(d);
         return d;
@@ -166,7 +179,7 @@ public class ItemDisplayButtonWidget implements Widget {
     /** Morph-переход закончился: сущность получает текущий предмет и (при {@code transform}) трансформацию. */
     public void endMorph(boolean transform) {
         morphing = false;
-        if (display == null || !display.isValid()) return;
+        if (!ScreenDisplays.alive(display)) return;
         ItemStack item = targetItem();
         if (!item.equals(display.getItemStack())) display.setItemStack(item);
         if (transform) {
@@ -208,7 +221,11 @@ public class ItemDisplayButtonWidget implements Widget {
             item.setItemMeta(itemMeta);
         }
 
-        display = (ItemDisplay) location.getWorld().spawnEntity(location, org.bukkit.entity.EntityType.ITEM_DISPLAY);
+        hoverViewers.clear();
+        if (audience == null) {
+            audience = viewer != null ? ScreenAudience.player(viewer, location.getWorld()) : ScreenAudience.area(location);
+        }
+        display = ScreenDisplays.spawn(location, ItemDisplay.class, audience);
         display.setItemStack(item);
         display.setItemDisplayTransform(displayTransform);
         
@@ -298,6 +315,7 @@ public class ItemDisplayButtonWidget implements Widget {
     @Override
     public void remove() {
         removed = true;
+        hoverViewers.clear();
         if (display != null) {
             display.remove();
             display = null;
@@ -351,6 +369,34 @@ public class ItemDisplayButtonWidget implements Widget {
     }
 
     private void onHoverStateChanged() {
+        applyHover(display, isHovered);
+    }
+
+    /** Наведение игрока на виджет публичного экрана: свой слой у каждого игрока (см. TextDisplayButtonWidget#hoverFor). */
+    public void hoverFor(Player player, boolean hovered) {
+        if (display == null || player == null || morphing || !interactive) return;
+        java.util.UUID id = player.getUniqueId();
+        if (hovered == hoverViewers.contains(id)) return;
+        Display layer = ScreenDisplays.overlay(display, player, hovered);
+        if (hovered) {
+            if (layer == null) return;
+            hoverViewers.add(id);
+            applyHover((ItemDisplay) layer, true);
+            if (hoverSound != null) hoverSound.play(player);
+        } else {
+            hoverViewers.remove(id);
+            if (layer == null) return;
+            applyHover((ItemDisplay) layer, false);
+            ScreenDisplays.release(display, player);
+        }
+    }
+
+    /** Игрок ушёл: забыть его наведение без анимации. */
+    public void forgetHover(java.util.UUID player) {
+        hoverViewers.remove(player);
+    }
+
+    private void applyHover(ItemDisplay display, boolean isHovered) {
         if (glowOnHover) {
             display.setGlowing(isHovered);
         }
@@ -443,7 +489,7 @@ public class ItemDisplayButtonWidget implements Widget {
     }
 
     private void applyBase(int ticks) {
-        if (display != null && display.isValid() && !isHovered && !morphing) {
+        if (ScreenDisplays.alive(display) && !isHovered && !morphing) {
             Animation.applyTransformationWithInterpolation(display, targetTransformation(), Math.max(1, ticks));
         }
     }
@@ -452,7 +498,7 @@ public class ItemDisplayButtonWidget implements Widget {
     public void setRotation(float degrees, int ticks) {
         this.rotationDeg = degrees;
         this.positionCached = false; // зона наведения поворачивается вместе с виджетом
-        if (display != null && display.isValid() && !isHovered && !morphing) {
+        if (ScreenDisplays.alive(display) && !isHovered && !morphing) {
             Animation.applyTransformationWithInterpolation(display, targetTransformation(), Math.max(1, ticks));
         }
     }

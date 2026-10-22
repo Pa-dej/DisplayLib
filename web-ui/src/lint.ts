@@ -72,16 +72,18 @@ export function clickWorks(w: Widget, s: Screen, script: ScriptInfo | null, scre
   return { ok: true };
 }
 
-/** Есть ли видимая реакция на наведение (ScreenSupport.hasHoverVisual). */
-export function hasHoverVisual(w: Widget, s: Screen): boolean {
-  const pub = s.screenType === 'PUBLIC';
+/**
+ * Есть ли видимая реакция на наведение (ScreenAnalyzer.hasHoverVisual). На публичных экранах hover-анимации и
+ * hovered-кадры тоже работают - у каждого игрока свои (экраны пакетами, screens.packets по умолчанию).
+ */
+export function hasHoverVisual(w: Widget, _s: Screen): boolean {
   if (w.tooltip != null) return true;
   if (w.hoverSound && w.hoverSound !== 'none') return true;
-  if (w.hoverAnimation && !pub) return true;
+  if (w.hoverAnimation) return true;
   if (w.type === 'ITEM_BUTTON') return w.glowOnHover;
   if (w.type === 'SPRITE_BUTTON' && ((w.hoveredSprite && w.hoveredSprite !== w.sprite) || (w.hoveredPlayer && w.hoveredPlayer !== w.player) || (w.hoveredSpriteColor && w.hoveredSpriteColor !== w.spriteColor))) return true;
   if (w.hoveredText != null && w.hoveredText !== '') return true;
-  if (w.hoveredFrames.length && !pub) return true;
+  if (w.hoveredFrames.length) return true;
   if (w.backgroundAlpha !== w.hoveredBackgroundAlpha) return true;
   return w.backgroundAlpha > 0 && w.backgroundColor.join() !== w.hoveredBackgroundColor.join();
 }
@@ -92,7 +94,6 @@ export function lintScreen(s: Screen, script: ScriptInfo | null, screenIds: stri
   const ids = new Map<string, number>();
   for (const w of s.widgets) if (w.id) ids.set(w.id, (ids.get(w.id) ?? 0) + 1);
   const bg = backgroundRect(s);
-  const pub = s.screenType === 'PUBLIC';
   const hits: { w: Widget; r: Rect }[] = [];
   for (const w of s.widgets) {
     const name = w.id || '(без id)';
@@ -100,8 +101,6 @@ export function lintScreen(s: Screen, script: ScriptInfo | null, screenIds: stri
     const click = clickWorks(w, s, script, screenIds);
     if (!click.ok && click.why) out.push({ level: 'warn', uid: w.uid, text: `${name}: клик ничего не сделает - ${click.why}` });
     if (w.onClick?.action === 'SWITCH_SCREEN' && w.onClick.target && !screenIds.includes(w.onClick.target)) out.push({ level: 'info', uid: w.uid, text: `${name}: switchTo «${w.onClick.target}» - экрана нет в редакторе (должен быть на сервере)` });
-    if (w.hoverAnimation && pub) out.push({ level: 'info', uid: w.uid, text: `${name}: hover-анимация на публичном экране не показывается` });
-    if (w.hoveredFrames.length && pub) out.push({ level: 'info', uid: w.uid, text: `${name}: hovered-кадры на публичном экране не показываются` });
     if (w.frames.length && w.type !== 'TEXT_BUTTON') out.push({ level: 'warn', uid: w.uid, text: `${name}: кадры работают только у TEXT_BUTTON` });
     const inert = w.tolerance[0] <= 0 || w.tolerance[1] <= 0 || (!click.ok && !hasHoverVisual(w, s));
     if (inert) out.push({ level: 'info', uid: w.uid, text: `${name}: статичный - без действия и реакции на наведение, плагин его не обсчитывает` });

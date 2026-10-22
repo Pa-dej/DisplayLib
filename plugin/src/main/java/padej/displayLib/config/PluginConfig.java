@@ -22,9 +22,28 @@ import java.util.logging.Level;
  * @param scriptTimeoutMs предел времени одного вызова скрипта в миллисекундах; {@code <= 0} - без предела
  * @param storage         сохранение глобала storage на диск
  */
-public record PluginConfig(boolean hotReload, long scriptTimeoutMs, CloseOn closeOn, Storage storage, Particles particles) {
+public record PluginConfig(boolean hotReload, long scriptTimeoutMs, CloseOn closeOn, Storage storage, Particles particles, Screens screens) {
     public static final String FILE = "config.jmc";
-    public static final PluginConfig DEFAULTS = new PluginConfig(true, 1000, CloseOn.DEFAULTS, Storage.DEFAULTS, Particles.DEFAULTS);
+    public static final PluginConfig DEFAULTS = new PluginConfig(true, 1000, CloseOn.DEFAULTS, Storage.DEFAULTS, Particles.DEFAULTS, Screens.DEFAULTS);
+
+    /**
+     * Сущности экранов: {@code dyn screens = { packets: true, viewDistance: 64 };}
+     *
+     * @param packets      показывать экраны пакетами: сущностей нет в мире, приватный экран видит только владелец,
+     *                     на публичном у каждого игрока своё наведение; {@code false} - настоящими сущностями
+     * @param viewDistance с какого расстояния игроки видят публичные экраны (только для пакетов)
+     */
+    public record Screens(boolean packets, double viewDistance) {
+        public static final Screens DEFAULTS = new Screens(true, 64);
+
+        static Screens parse(Object v) {
+            if (!(v instanceof JTable t)) return DEFAULTS;
+            Boolean packets = JmcValues.bool(t, "packets");
+            Double view = JmcValues.number(t, "viewDistance", "view_distance");
+            return new Screens(packets != null ? packets : DEFAULTS.packets(),
+                    view != null && view > 0 ? view : DEFAULTS.viewDistance());
+        }
+    }
 
     /**
      * Частицы: {@code dyn particles = { maxAlive: 1500, packets: true, viewDistance: 96, async: true };}
@@ -115,7 +134,8 @@ public record PluginConfig(boolean hotReload, long scriptTimeoutMs, CloseOn clos
                     timeout != null ? timeout.longValue() : DEFAULTS.scriptTimeoutMs(),
                     CloseOn.parse(JmcValues.get(table, "closeOn", "close_on")),
                     Storage.parse(JmcValues.get(table, "storage")),
-                    Particles.parse(JmcValues.get(table, "particles")));
+                    Particles.parse(JmcValues.get(table, "particles")),
+                    Screens.parse(JmcValues.get(table, "screens")));
         } catch (IOException | RuntimeException e) {
             plugin.getLogger().log(Level.WARNING, FILE + " could not be read, using defaults: " + e.getMessage());
             return DEFAULTS;

@@ -188,13 +188,13 @@ public final class MorphTransition {
         }
         pendingMatched.clear();
         for (Object o : pendingFadeIn) {
-            if (o instanceof TextDisplayButtonWidget w && w.getDisplay() != null && w.getDisplay().isValid()) {
+            if (o instanceof TextDisplayButtonWidget w && ScreenDisplays.alive(w.getDisplay())) {
                 TextDisplay d = w.getDisplay();
                 Color bg = w.targetBackground();
                 d.text(w.targetText()); // появляется сразу с текстом из onOpen (пока масштаб нулевой)
                 d.setBackgroundColor(transparent(bg));
                 fadeIn.add(new Fade(w, d, w.targetTransformation(), bg));
-            } else if (o instanceof ItemDisplayButtonWidget w && w.getDisplay() != null && w.getDisplay().isValid()) {
+            } else if (o instanceof ItemDisplayButtonWidget w && ScreenDisplays.alive(w.getDisplay())) {
                 ItemDisplay d = w.getDisplay();
                 ItemStack item = w.targetItem();
                 if (!item.equals(d.getItemStack())) d.setItemStack(item);
@@ -252,7 +252,7 @@ public final class MorphTransition {
             // телепорт после того, как клиент получил teleportDuration
             for (Matched m : matched) {
                 if (!m.display.isDead()) {
-                    m.display.teleport(m.targetLocation);
+                    ScreenDisplays.teleport(m.display, m.targetLocation);
                     m.afterMove.run();
                 }
             }
@@ -293,7 +293,7 @@ public final class MorphTransition {
         for (Matched m : matched) {
             Display d = m.display;
             if (d.isDead()) continue;
-            if (tick < 1) { d.teleport(m.targetLocation); m.afterMove.run(); }
+            if (tick < 1) { ScreenDisplays.teleport(d, m.targetLocation); m.afterMove.run(); }
             d.setTeleportDuration(1);
             endMorph(m.widget, true); // текущее состояние виджета: цель или то, что скрипт поменял во время перехода
         }

@@ -31,6 +31,8 @@ public class ScreenInstance extends WidgetManager implements ScreenAPI.Host {
     
     /** Единая ориентация для всех элементов экрана */
     private final float screenYaw;
+    /** Сущности экрана видит только владелец (пакеты, см. {@link ScreenDisplays}) */
+    private final ScreenAudience audience;
     private final float screenPitch;
     
     /** Квадраты радиусов из файла экрана (значение <= 0 означает "без ограничения") */
@@ -96,6 +98,7 @@ public class ScreenInstance extends WidgetManager implements ScreenAPI.Host {
         this.screenYaw = orientation[0];
         this.screenPitch = orientation[1];
         this.scriptFile = definition.getScript();
+        this.audience = ScreenAudience.player(viewer, location.getWorld());
         
         double interactionRadius = definition.getInteractionRadius();
         this.interactionRadiusSq = interactionRadius > 0 ? interactionRadius * interactionRadius : -1;
@@ -213,7 +216,7 @@ public class ScreenInstance extends WidgetManager implements ScreenAPI.Host {
         // Фон создается с учетом position из файла экрана
         backgroundWidget = old != null
                 ? TextDisplayButtonWidget.createAdopting(loc, viewer, cfg, old)
-                : TextDisplayButtonWidget.create(loc, viewer, cfg);
+                : TextDisplayButtonWidget.create(loc, viewer, cfg, audience);
         
         // Сохраняем единую ориентацию экрана
         backgroundWidget.saveRotation(screenYaw, screenPitch);
@@ -258,7 +261,7 @@ public class ScreenInstance extends WidgetManager implements ScreenAPI.Host {
                 org.bukkit.entity.TextDisplay entity = old instanceof TextDisplayButtonWidget t ? t.detachDisplay() : null;
                 TextDisplayButtonWidget widget = entity != null
                         ? TextDisplayButtonWidget.createAdopting(loc, viewer, cfg, entity)
-                        : TextDisplayButtonWidget.create(loc, viewer, cfg);
+                        : TextDisplayButtonWidget.create(loc, viewer, cfg, audience);
                 // Сохраняем единую ориентацию экрана (как у фона)
                 widget.saveRotation(screenYaw, screenPitch);
                 if (morph != null) {
@@ -274,7 +277,7 @@ public class ScreenInstance extends WidgetManager implements ScreenAPI.Host {
                 org.bukkit.entity.ItemDisplay entity = old instanceof ItemDisplayButtonWidget i ? i.detachDisplay() : null;
                 ItemDisplayButtonWidget widget = entity != null
                         ? ItemDisplayButtonWidget.createAdopting(loc, viewer, cfg, entity)
-                        : ItemDisplayButtonWidget.create(loc, viewer, cfg);
+                        : ItemDisplayButtonWidget.create(loc, viewer, cfg, audience);
                 widget.saveRotation(screenYaw, screenPitch);
                 if (morph != null) {
                     if (entity != null) morph.match(widget, entity);

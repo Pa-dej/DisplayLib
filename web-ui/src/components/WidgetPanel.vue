@@ -207,7 +207,7 @@ function fmt(n: number) { return (Math.round(n * 1000) / 1000).toString(); }
     <div class="section">
       <h3>Hover-анимация<button class="btn sm" @click="toggleAnim">{{ w.hoverAnimation ? 'Убрать' : 'Добавить' }}</button></h3>
       <AnimationEditor v-if="w.hoverAnimation" :anim="w.hoverAnimation" @remove="toggleAnim" />
-      <div v-if="w.hoverAnimation && currentScreen?.screenType === 'PUBLIC'" class="hint" style="color:var(--vp-c-warning-1)">На публичных экранах hover-анимации отключены</div>
+      <div v-if="w.hoverAnimation && currentScreen?.screenType === 'PUBLIC'" class="hint">На публичном экране анимацию видит только игрок, который смотрит на виджет</div>
     </div>
   </div>
 </template>

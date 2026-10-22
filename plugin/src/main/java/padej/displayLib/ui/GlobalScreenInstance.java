@@ -27,7 +27,8 @@ import java.util.UUID;
 /**
  * Публичный экран без владельца, фиксированный в мире.
  * Любой игрок поблизости может взаимодействовать.
- * Hover визуалы отключены, работают только tooltips.
+ * Сущности общие, но наведение у каждого игрока своё: с пакетами ({@link ScreenDisplays}) игрок видит
+ * hover-анимацию только виджета, на который смотрит сам. Без пакетов работают только подсказки.
  *
  * <p>Все методы вызываются только из основного потока сервера.</p>
  */
@@ -77,6 +78,11 @@ public class GlobalScreenInstance implements ScreenAPI.Host {
     
     private boolean removed = false;
 
+    /** Кто видит сущности экрана: игроки в радиусе видимости */
+    private final ScreenAudience audience;
+    /** Свой вид наведения у каждого игрока (пакеты) */
+    private final boolean hoverVisuals;
+
     /** Сохраняется ли экран в data/public_screens.jmc и восстанавливается ли после перезапуска */
     private final boolean persistent;
 
@@ -102,6 +108,8 @@ public class GlobalScreenInstance implements ScreenAPI.Host {
         double radius = definition.getInteractionRadius();
         this.radiusSq = radius > 0 ? radius * radius : -1;
         this.rangeCheckInterval = definition.getRangeCheckInterval();
+        this.audience = ScreenAudience.area(this.location);
+        this.hoverVisuals = ScreenDisplays.perViewerHover();
         
         spawnBackground();
         spawnWidgets();
@@ -328,8 +336,10 @@ public class GlobalScreenInstance implements ScreenAPI.Host {
         if (nearbyPlayerIds.remove(id)) {
             nearbyPlayers.remove(player);
         }
-        if (hoveredByPlayer.remove(id) != null) {
+        Widget hovered = hoveredByPlayer.remove(id);
+        if (hovered != null) {
             player.clearTitle();
+            hoverVisual(hovered, player, false);
         }
         if (scriptContext != null) {
             scriptContext.forgetPlayer(id);
@@ -350,7 +360,7 @@ public class GlobalScreenInstance implements ScreenAPI.Host {
 
         // Создаем фон без viewer (используем null)
         TextDisplayButtonWidget backgroundWidget = TextDisplayButtonWidget.create(
-                ScreenSupport.backgroundLocation(location, bg), null, ScreenSupport.backgroundConfig(bg));
+                ScreenSupport.backgroundLocation(location, bg), null, ScreenSupport.backgroundConfig(bg), audience);
         backgroundWidget.saveRotation(screenYaw, screenPitch);
         
         addChild(backgroundWidget, null);
@@ -381,21 +391,21 @@ public class GlobalScreenInstance implements ScreenAPI.Host {
 
     private Widget buildWidget(WidgetDefinition def) {
         // Для публичных экранов НЕ создаем onClick действие в виджете:
-        // обработка идёт через handleClickBy. Hover-анимации также отключены.
+        // обработка идёт через handleClickBy. Hover-анимации - только с пакетами (у каждого игрока свои).
         boolean clickable = ScreenSupport.clickDoesSomething(def, scriptContext, true, DisplayLib.getInstance().getLogger(), definition.getId());
-        boolean interactive = ScreenSupport.isInteractive(def, clickable, false);
+        boolean interactive = ScreenSupport.isInteractive(def, clickable, hoverVisuals);
         switch (def.getType()) {
             case TEXT_BUTTON, SPRITE_BUTTON -> {
                 Location loc = ScreenSupport.resolveLocation(location, def.getPosition(), ScreenSupport.WIDGET_DEPTH_OFFSET);
                 TextDisplayButtonWidget widget = TextDisplayButtonWidget.create(
-                        loc, null, ScreenSupport.textConfig(def, null, false, interactive));
+                        loc, null, ScreenSupport.textConfig(def, null, hoverVisuals, interactive), audience);
                 widget.saveRotation(screenYaw, screenPitch);
                 return widget;
             }
             case ITEM_BUTTON -> {
                 Location loc = ScreenSupport.resolveLocation(location, def.getPosition(), ScreenSupport.ITEM_WIDGET_DEPTH_OFFSET);
                 ItemDisplayButtonWidget widget = ItemDisplayButtonWidget.create(
-                        loc, null, ScreenSupport.itemConfig(def, null, false, interactive));
+                        loc, null, ScreenSupport.itemConfig(def, null, hoverVisuals, interactive), audience);
                 widget.saveRotation(screenYaw, screenPitch);
                 return widget;
             }
@@ -427,10 +437,14 @@ public class GlobalScreenInstance implements ScreenAPI.Host {
                 UUID id = iterator.next();
                 if (nearbyPlayerIds.contains(id)) continue;
                 
+                Widget widget = hoveredByPlayer.get(id);
                 iterator.remove();
                 Player player = Bukkit.getPlayer(id);
                 if (player != null) {
                     player.clearTitle();
+                    hoverVisual(widget, player, false);
+                } else {
+                    forgetHover(widget, id);
                 }
             }
         }
@@ -483,14 +497,29 @@ public class GlobalScreenInstance implements ScreenAPI.Host {
         // Убираем tooltip с предыдущего виджета и показываем tooltip нового
         if (previousWidget != null) {
             hideTooltipFromWidget(previousWidget, player);
+            hoverVisual(previousWidget, player, false);
         }
         showTooltipFromWidget(newHoveredWidget, player);
+        hoverVisual(newHoveredWidget, player, true);
+    }
+
+    /** Вид наведения у одного игрока (слой наведения, см. {@link ScreenDisplays}). */
+    private void hoverVisual(Widget widget, Player player, boolean hovered) {
+        if (!hoverVisuals || widget == null) return;
+        if (widget instanceof TextDisplayButtonWidget t) t.hoverFor(player, hovered);
+        else if (widget instanceof ItemDisplayButtonWidget i) i.hoverFor(player, hovered);
+    }
+
+    private void forgetHover(Widget widget, UUID player) {
+        if (widget instanceof TextDisplayButtonWidget t) t.forgetHover(player);
+        else if (widget instanceof ItemDisplayButtonWidget i) i.forgetHover(player);
     }
 
     private void clearPlayerHover(Player player) {
         Widget hoveredWidget = hoveredByPlayer.remove(player.getUniqueId());
         if (hoveredWidget != null) {
             hideTooltipFromWidget(hoveredWidget, player);
+            hoverVisual(hoveredWidget, player, false);
         }
     }
 

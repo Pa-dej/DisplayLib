@@ -118,7 +118,7 @@ public class EasedAnimation {
      */
     private static void animate(Display entity, Channel channel, Vector3f from, Vector3f to,
                                 int totalTicks, DoubleUnaryOperator easingFn) {
-        if (entity == null || !entity.isValid()) return;
+        if (entity == null || entity.isDead()) return;
         
         // Предыдущая анимация этого канала больше не актуальна
         cancel(entity, channel);
@@ -141,7 +141,7 @@ public class EasedAnimation {
             
             @Override
             public void run() {
-                if (!entity.isValid()) {
+                if (entity.isDead()) {
                     finish();
                     return;
                 }
@@ -188,7 +188,18 @@ public class EasedAnimation {
         if (tasks != null) {
             for (BukkitTask t : tasks) if (t != null) t.cancel();
         }
-        if (entity.isValid()) stopContinuousAnimation(entity);
+        if (!entity.isDead()) stopContinuousAnimation(entity);
+    }
+
+    /**
+     * Идёт ли у сущности покадровая анимация (масштаб, смещение или пульсация). Сущности экранов вне мира
+     * (пакеты) проверяются через {@code isDead()}, а не {@code isValid()}: у них {@code isValid()} всегда {@code false}.
+     */
+    public static boolean isAnimating(Display entity) {
+        if (entity == null) return false;
+        if (RUNNING.containsKey(entity.getUniqueId())) return true;
+        return entity.getPersistentDataContainer().has(
+                new org.bukkit.NamespacedKey(DisplayLib.getInstance(), "pulse_task"), org.bukkit.persistence.PersistentDataType.INTEGER);
     }
 
     /** Отменить текущую анимацию канала у сущности, если она есть. */
@@ -228,7 +239,7 @@ public class EasedAnimation {
     public static void animateRotation(Display entity, AxisAngle4f from, AxisAngle4f to,
                                       int totalTicks, DoubleUnaryOperator easingFn) {
         // Упрощенная реализация - используем прямое применение трансформации
-        if (entity == null || !entity.isValid()) return;
+        if (entity == null || entity.isDead()) return;
         
         Transformation current = entity.getTransformation();
         Quaternionf targetRotation = new Quaternionf().rotateAxis(to.angle, to.x, to.y, to.z);
@@ -268,7 +279,7 @@ public class EasedAnimation {
      * Простая анимация через стандартную интерполяцию Minecraft (для тестирования)
      */
     public static void animateScaleSimple(Display entity, Vector3f from, Vector3f to, int duration) {
-        if (entity == null || !entity.isValid()) return;
+        if (entity == null || entity.isDead()) return;
         
         Transformation current = entity.getTransformation();
         Transformation target = new Transformation(
@@ -287,7 +298,7 @@ public class EasedAnimation {
      * Простая анимация позиции через стандартную интерполяцию Minecraft (для тестирования)
      */
     public static void animateTranslationSimple(Display entity, Vector3f from, Vector3f to, int duration) {
-        if (entity == null || !entity.isValid()) return;
+        if (entity == null || entity.isDead()) return;
         
         Transformation current = entity.getTransformation();
         Transformation target = new Transformation(
@@ -305,7 +316,7 @@ public class EasedAnimation {
      * Непрерывная пульсирующая анимация масштаба (зацикленная)
      */
     public static void animatePulsingScale(Display entity, Vector3f baseScale, float intensity, int pulseDuration) {
-        if (entity == null || !entity.isValid()) return;
+        if (entity == null || entity.isDead()) return;
         
         Vector3f minScale = new Vector3f(baseScale.x, baseScale.y, baseScale.z);
         Vector3f maxScale = new Vector3f(
@@ -319,7 +330,7 @@ public class EasedAnimation {
         final boolean[] isExpanding = {true};
         
         taskId[0] = Bukkit.getScheduler().runTaskTimer(DisplayLib.getInstance(), () -> {
-            if (!entity.isValid()) {
+            if (entity.isDead()) {
                 Bukkit.getScheduler().cancelTask(taskId[0]);
                 return;
             }
@@ -357,7 +368,7 @@ public class EasedAnimation {
      * Останавливает непрерывную анимацию
      */
     public static void stopContinuousAnimation(Display entity) {
-        if (entity == null || !entity.isValid()) return;
+        if (entity == null || entity.isDead()) return;
         
         org.bukkit.NamespacedKey key = new org.bukkit.NamespacedKey(DisplayLib.getInstance(), "pulse_task");
         if (entity.getPersistentDataContainer().has(key, org.bukkit.persistence.PersistentDataType.INTEGER)) {

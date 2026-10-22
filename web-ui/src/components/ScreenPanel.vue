@@ -52,7 +52,7 @@ const idBad = computed(() => !/^[A-Za-z0-9_\-]+$/.test(s.value.id));
       <h2><span>Экран</span><button class="btn sm danger" @click="deleteCurrent" title="Удалить файл экрана"><Icon name="trash" /> Удалить</button></h2>
       <div class="field"><label>id</label><div><input type="text" :value="s.id" @focus="snapshot()" @input="s.id = text($event); touch()" /><div class="hint">Файл screens/{{ s.id }}.jmc</div><div v-if="idBad" class="hint" style="color:var(--vp-c-danger-1)">Только латиница, цифры, _ и -</div></div></div>
       <div class="field"><label>Тип</label><select :value="s.screenType" @change="snapshot(); s.screenType = ($event.target as HTMLSelectElement).value as any; touch()"><option value="PRIVATE">PRIVATE - для одного игрока</option><option value="PUBLIC">PUBLIC - стоит в мире</option></select></div>
-      <div class="hint" v-if="s.screenType === 'PUBLIC'">Публичный: открывается командой <code>/dlib openpublic {{ s.id }} x y z</code>, глобал <code>player</code> В скрипте равен null, игрок приходит аргументом обработчика; hover-анимации, switchTo и close не работают.</div>
+      <div class="hint" v-if="s.screenType === 'PUBLIC'">Публичный: открывается командой <code>/dlib openpublic {{ s.id }} x y z</code>, глобал <code>player</code> В скрипте равен null, игрок приходит аргументом обработчика; наведение у каждого игрока своё; switchTo и close не работают.</div>
       <div class="hint" v-else>Приватный: <code>/dlib open {{ s.id }}</code> - экран появляется в 2 блоках перед игроком.</div>
     </div>
 
