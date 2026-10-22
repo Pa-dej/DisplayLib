@@ -44,6 +44,31 @@ public final class ScriptContext {
 
     private ScreenScript script;
     private boolean closed;
+    /** Идёт onClose: новый ввод из чата не ставится */
+    private boolean closing;
+
+    /** Ввод из чата ({@code player.input}) от имени этого экрана. */
+    private final PlayerAPI.Input input = new PlayerAPI.Input() {
+        @Override
+        public boolean request(Player player, java.util.function.Consumer<String> fn, long timeoutTicks) {
+            ChatInput service = ChatInput.get();
+            if (service == null || closed || closing || player == null || !player.isOnline()) return false;
+            service.request(player, ScriptContext.this, text -> guarded(() -> fn.accept(text)), timeoutTicks);
+            return true;
+        }
+
+        @Override
+        public void cancel(Player player) {
+            ChatInput service = ChatInput.get();
+            if (service != null && player != null) service.cancel(player.getUniqueId(), ScriptContext.this);
+        }
+
+        @Override
+        public boolean awaiting(Player player) {
+            ChatInput service = ChatInput.get();
+            return service != null && player != null && service.awaiting(player.getUniqueId(), ScriptContext.this);
+        }
+    };
 
     /**
      * @param owner      владелец экрана; {@code null} для публичного
@@ -51,7 +76,7 @@ public final class ScriptContext {
      */
     public ScriptContext(DisplayLib plugin, JumperEngine engine, ScreenAPI.Host host, Player owner, String scriptFile) {
         this.owner = owner;
-        this.ownerApi = owner != null ? new PlayerAPI(owner) : null;
+        this.ownerApi = owner != null ? new PlayerAPI(owner, input) : null;
         if (ownerApi != null) playerApis.put(owner.getUniqueId(), ownerApi);
 
         this.screenApi = new ScreenAPI(host);
@@ -95,7 +120,7 @@ public final class ScriptContext {
     /** Обёртка игрока: одна на игрока на всё время жизни экрана. */
     public PlayerAPI playerApi(Player player) {
         if (player == null) return null;
-        return playerApis.computeIfAbsent(player.getUniqueId(), id -> new PlayerAPI(player));
+        return playerApis.computeIfAbsent(player.getUniqueId(), id -> new PlayerAPI(player, input));
     }
 
     /** Обёртка виджета: одна на виджет на всё время жизни экрана. */
@@ -121,6 +146,7 @@ public final class ScriptContext {
      * так что {@code void onClose()} без параметра тоже вызывается.
      */
     public void callClose(String reason) {
+        closing = true; // и без скрипта: экран уходит
         if (script == null || closed) return;
         script.invoke(HOOK_CLOSE, false, reason);
     }
@@ -163,6 +189,8 @@ public final class ScriptContext {
     /** Очистка при удалении экрана. Безопасно вызывать повторно. */
     public void cleanup() {
         closed = true;
+        ChatInput chat = ChatInput.get();
+        if (chat != null) chat.cancelAll(this);
         timerApi.shutdown();
         screenApi.cleanup();
         playerApis.clear();

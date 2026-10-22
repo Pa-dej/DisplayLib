@@ -6,6 +6,7 @@ import padej.displayLib.config.ScreenRegistry;
 import padej.displayLib.data.PublicScreenStore;
 import padej.displayLib.data.StorageStore;
 import padej.displayLib.particles.ParticleManager;
+import padej.displayLib.script.ChatInput;
 import padej.displayLib.particles.ParticleRegistry;
 import padej.displayLib.particles.Particles;
 import padej.displayLib.render.shapes.Highlight;
@@ -98,6 +99,7 @@ public final class DisplayLib extends JavaPlugin {
         Path dataDir = getDataFolder().toPath().resolve("data");
         storage = new StorageStore(config.storage().persist() ? dataDir.resolve("storage") : null, getLogger());
         StorageStore.install(storage);
+        ChatInput.install(this); // player.input(...) в скриптах экранов
         int autosave = config.storage().autosaveSeconds();
         if (storage.isPersistent() && autosave > 0) {
             long period = autosave * 20L;
@@ -129,6 +131,7 @@ public final class DisplayLib extends JavaPlugin {
 
     @Override
     public void onDisable() {
+        ChatInput.shutdown(); // ожидания ввода снимаются без вызова функций
         if (screenRegistry != null) {
             screenRegistry.shutdown();
         }

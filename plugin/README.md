@@ -258,7 +258,7 @@ void onClose(String reason) { log.info("shop closed (" + reason + "), sold=" + s
 
 | Глобал | Методы |
 |---|---|
-| `player` | `name()`, `uuid()`, `op()`, `online()`, `gamemode()`, `gamemode(mode)`, `health()`, `health(v)`, `message(text)`, `message(text, "#hex")`, `sound(name[, volume[, pitch]])`, `command(cmd)`, `handle()` (Bukkit `Player`, если открыт политикой) |
+| `player` | `name()`, `uuid()`, `op()`, `online()`, `gamemode()`, `gamemode(mode)`, `health()`, `health(v)`, `message(text)`, `message(text, "#hex")`, `sound(name[, volume[, pitch]])`, `command(cmd)`, `input([prompt, [timeoutTicks,]] text -> ...)`, `cancelInput()`, `awaitingInput()` (ввод из чата, см. ниже), `handle()` (Bukkit `Player`, если открыт политикой) |
 | `screen` | `id()`, `isPublic()`, `close()`, `switchTo(id)`, `widget(id)`, `widgets()`, `data(key)`, `data(key, value)` |
 | виджет | `id()`, `type()`, `valid()`, `text()`, `text(v)`, `hoveredText(v)`, `bgColor(r, g, b)`, `bgAlpha(a)`, `visible()`, `visible(b)`, `enabled()`, `enabled(b)`, `tooltip()`, `tooltip(v)`, `player(name[, hat])`, `rotation()`, `rotation(deg[, ticks])`, `scale()`, `scale(s[, ticks])`, `scale(x, y, z[, ticks])`, `translation()`, `translation(x, y, z[, ticks])` - с `ticks` плавно (интерполяция клиента) |
 | `storage` | `get(key)`, `get(key, default)`, `set(key, value)`, `has(key)`, `remove(key)`, `clear()`, `size()` - на игрока (у публичного экрана - общее на экран), сохраняется на диск |

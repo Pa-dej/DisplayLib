@@ -8,6 +8,7 @@ import org.bukkit.entity.Player;
 
 import java.util.Locale;
 import java.util.UUID;
+import java.util.function.Consumer;
 
 /**
  * Игрок, с точки зрения скрипта экрана: глобал {@code player}.
@@ -23,6 +24,7 @@ import java.util.UUID;
  * if (player.health() &lt; 10) player.health(20);
  * player.gamemode("creative");
  * player.command("spawn");
+ * player.input("Введите цену:", 600, text -&gt; label.text("Цена: " + text));
  * </pre>
  *
  * <p>Числовые параметры объявлены как {@code double}: Jumper расширяет {@code int}
@@ -31,9 +33,27 @@ import java.util.UUID;
  */
 public final class PlayerAPI {
     private final Player player;
+    private final Input input;
+
+    /**
+     * Ввод из чата для экрана, которому принадлежит эта обёртка игрока (см. {@code ScriptContext}).
+     */
+    public interface Input {
+        /** Ждать сообщение; {@code false} - нельзя (экран закрывается или закрыт). */
+        boolean request(Player player, Consumer<String> fn, long timeoutTicks);
+
+        void cancel(Player player);
+
+        boolean awaiting(Player player);
+    }
 
     public PlayerAPI(Player player) {
+        this(player, null);
+    }
+
+    public PlayerAPI(Player player, Input input) {
         this.player = player;
+        this.input = input;
     }
 
     /** Имя игрока. */
@@ -83,8 +103,11 @@ public final class PlayerAPI {
 
     /** Сообщение в чат: строка (с §-кодами) или сегменты {@code [ {text, color}, {sprite} ]}, как в файле экрана. */
     public void message(Object text) {
-        if (text instanceof java.util.List<?> || text instanceof java.util.Map<?, ?>) {
-            player.sendMessage(padej.displayLib.ui.ScreenSupport.parseFormattedText(text));
+        // таблицы скрипта (JTable) и массивы - в Map/List, как у widget.text(...); одиночный сегмент - список из одного
+        Object v = padej.displayLib.config.JmcValues.toJava(text);
+        if (v instanceof java.util.Map<?, ?> m) v = java.util.List.of(m);
+        if (v instanceof java.util.List<?>) {
+            player.sendMessage(padej.displayLib.ui.ScreenSupport.parseFormattedText(v));
         } else {
             player.sendMessage(String.valueOf(text));
         }
@@ -127,6 +150,40 @@ public final class PlayerAPI {
         } catch (IllegalArgumentException e) {
             player.playSound(player.getLocation(), name, vol, pit);
         }
+    }
+
+    /**
+     * Ждать следующее сообщение игрока в чат: оно не уходит в чат, а {@code fn(text)} получает его текст
+     * (как набрал игрок, без форматирования). Одно ожидание на игрока - новое заменяет прежнее.
+     */
+    public void input(Consumer<String> fn) {
+        input(null, 0, fn);
+    }
+
+    /** То же с подсказкой: {@code prompt} отправляется как {@link #message(Object)} (строка или сегменты). */
+    public void input(Object prompt, Consumer<String> fn) {
+        input(prompt, 0, fn);
+    }
+
+    /**
+     * То же с таймаутом: через {@code timeoutTicks} тиков ожидание снимается и {@code fn} не вызывается;
+     * {@code <= 0} - без таймаута. Ожидание снимается и при закрытии экрана, и при выходе игрока.
+     * Из {@code onClose} новое ожидание не ставится.
+     */
+    public void input(Object prompt, double timeoutTicks, Consumer<String> fn) {
+        if (fn == null || input == null) return;
+        if (!input.request(player, fn, Math.round(timeoutTicks))) return;
+        if (prompt != null) message(prompt);
+    }
+
+    /** Снять ожидание ввода, поставленное этим экраном. */
+    public void cancelInput() {
+        if (input != null) input.cancel(player);
+    }
+
+    /** Ждёт ли этот экран ввода от игрока. */
+    public boolean awaitingInput() {
+        return input != null && input.awaiting(player);
     }
 
     /** Выполнить команду от имени игрока (ведущий {@code /} отбрасывается). */

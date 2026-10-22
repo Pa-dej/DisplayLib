@@ -56,7 +56,7 @@ void onClose(String reason) { log.info("shop closed (" + reason + "), sold=" + s
 
 | Глобал | Методы |
 |---|---|
-| `player` | `name()`, `uuid()`, `op()`, `online()`, `gamemode()`, `gamemode(mode)`, `health()`, `health(v)`, `message(text)`, `message(text, "#hex")`, `sound(name[, volume[, pitch]])`, `command(cmd)`, `handle()` (Bukkit `Player`, если открыт политикой) |
+| `player` | `name()`, `uuid()`, `op()`, `online()`, `gamemode()`, `gamemode(mode)`, `health()`, `health(v)`, `message(text)`, `message(text, "#hex")`, `sound(name[, volume[, pitch]])`, `command(cmd)`, `input([prompt, [timeoutTicks,]] text -> ...)`, `cancelInput()`, `awaitingInput()` (ввод из чата, см. ниже), `handle()` (Bukkit `Player`, если открыт политикой) |
 | `screen` | `id()`, `isPublic()`, `close()`, `switchTo(id)`, `widget(id)`, `widgets()`, `data(key)`, `data(key, value)` |
 | виджет | `id()`, `type()`, `valid()`, `text()`, `text(v)`, `hoveredText(v)`, `frames(list, ticks)`, `hoveredFrames(list, ticks)`, `sprite(name)`, `sprite(atlas, name[, color])`, `spriteColor(color)`, `player(name[, hat])`, `hoveredSprite(atlas, name)`, `bgColor(r, g, b)`, `bgAlpha(a)`, `rotation()`, `rotation(deg[, ticks])`, `scale()`, `scale(s[, ticks])`, `scale(x, y, z[, ticks])`, `translation()`, `translation(x, y, z[, ticks])`, `visible()`, `visible(b)`, `enabled()`, `enabled(b)`, `tooltip()`, `tooltip(v)` |
 | `storage` | `get(key)`, `get(key, default)`, `set(key, value)`, `has(key)`, `remove(key)`, `clear()`, `size()` - на игрока (у публичного экрана - общее на экран), сохраняется на диск |
@@ -72,6 +72,43 @@ void onClose(String reason) { log.info("shop closed (" + reason + "), sold=" + s
 всё - при выключении и автосохранением (`storage.autosaveSeconds`). Сохраняются числа (`int`, `long`, `double`),
 строки, `boolean`, `null`, массивы и таблицы; объекты (игрок, виджет, экземпляры классов скрипта) не сохраняются -
 в консоли будет предупреждение с ключом.
+
+## Ввод из чата
+
+`player.input(...)` просит у игрока текст: следующее его сообщение в чат не уходит в чат, а передаётся функции
+скрипта строкой - как набрал игрок, без форматирования. Так делаются поля ввода на экранах.
+
+```java
+void price(dyn widget, dyn player) {
+    player.input("Введите цену:", 600, text -> widget.text("Цена: " + text));
+}
+
+void rename(dyn widget, dyn player) {
+    player.input([ { text: "Новое имя ", color: "gold" }, { text: "(или «-» для отмены)", color: "gray" } ], text -> {
+        if (text == "-") return;
+        storage.set("name", text);
+        widget.text(text);
+    });
+}
+```
+
+| Вызов | Что делает |
+|---|---|
+| `player.input(fn)` | ждать следующее сообщение; `fn(text)` получит его текст |
+| `player.input(prompt, fn)` | то же, сначала отправить подсказку `prompt` (строка или сегменты, как `player.message`) |
+| `player.input(prompt, timeoutTicks, fn)` | то же с таймаутом в тиках (20 = 1 с); по таймауту `fn` не вызывается; `<= 0` - без таймаута |
+| `player.cancelInput()` | снять ожидание, поставленное этим экраном |
+| `player.awaitingInput()` | ждёт ли этот экран ввода от игрока |
+
+- У игрока одно ожидание: новый `input` (с любого экрана) заменяет прежний.
+- Ожидание снимается само при закрытии экрана, который его поставил (по любой причине), при выходе игрока
+  с сервера и по таймауту. В `onClose` новое ожидание не ставится.
+- `fn` выполняется в главном потоке под тем же сторожевым таймером и с тем же перехватом ошибок, что
+  обработчики кликов. Если экран успел закрыться, пока сообщение шло, `fn` не вызывается.
+- Публичный экран: используйте объект `player` из обработчика клика - ввод ждётся от кликнувшего игрока.
+- Сообщение перехватывается на самом раннем приоритете `AsyncChatEvent` и отменяется: его не видят чат и
+  обработчики других плагинов с `ignoreCancelled = true` (обычная практика). Плагины, которые слушают и
+  отменённые сообщения, его всё же получат.
 
 ## Политика доступа (`scripts.jma`)
 
