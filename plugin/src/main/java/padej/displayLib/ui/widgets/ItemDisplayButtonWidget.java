@@ -26,6 +26,8 @@ public class ItemDisplayButtonWidget implements Widget {
     private ItemDisplay display;
     private Player viewer;
     private boolean isHovered = false;
+    /** Идёт morph-переход: сеттеры меняют только состояние виджета (см. TextDisplayButtonWidget#beginMorph) */
+    private boolean morphing = false;
     private Runnable onClick;
     private boolean interactive = true;
     private Component tooltip;
@@ -154,6 +156,23 @@ public class ItemDisplayButtonWidget implements Widget {
         hideTooltip();
         if (d != null) padej.displayLib.utils.EasedAnimation.cancelAll(d);
         return d;
+    }
+
+    /** Morph-переход начался: сеттеры больше не пишут в сущность. */
+    public void beginMorph() {
+        morphing = true;
+    }
+
+    /** Morph-переход закончился: сущность получает текущий предмет и (при {@code transform}) трансформацию. */
+    public void endMorph(boolean transform) {
+        morphing = false;
+        if (display == null || !display.isValid()) return;
+        ItemStack item = targetItem();
+        if (!item.equals(display.getItemStack())) display.setItemStack(item);
+        if (transform) {
+            display.setInterpolationDuration(1);
+            display.setTransformation(targetTransformation());
+        }
     }
 
     /** Целевая трансформация в обычном состоянии. */
@@ -424,7 +443,7 @@ public class ItemDisplayButtonWidget implements Widget {
     }
 
     private void applyBase(int ticks) {
-        if (display != null && display.isValid() && !isHovered) {
+        if (display != null && display.isValid() && !isHovered && !morphing) {
             Animation.applyTransformationWithInterpolation(display, targetTransformation(), Math.max(1, ticks));
         }
     }
@@ -433,7 +452,7 @@ public class ItemDisplayButtonWidget implements Widget {
     public void setRotation(float degrees, int ticks) {
         this.rotationDeg = degrees;
         this.positionCached = false; // зона наведения поворачивается вместе с виджетом
-        if (display != null && display.isValid() && !isHovered) {
+        if (display != null && display.isValid() && !isHovered && !morphing) {
             Animation.applyTransformationWithInterpolation(display, targetTransformation(), Math.max(1, ticks));
         }
     }

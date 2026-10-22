@@ -24,6 +24,11 @@ public class TextDisplayButtonWidget implements Widget {
     private TextDisplay display;
     private Player viewer;
     private boolean isHovered = false;
+    /**
+     * Идёт morph-переход к этому виджету: сущность ведёт {@link padej.displayLib.ui.MorphTransition}, сеттеры
+     * (текст, фон, трансформация) меняют только состояние виджета, а в сущность оно попадает в {@link #endMorph}.
+     */
+    private boolean morphing = false;
     private Runnable onClick;
     private boolean interactive = true;
     private Component tooltip;
@@ -179,6 +184,27 @@ public class TextDisplayButtonWidget implements Widget {
         // задачи анимации наведения привязаны к сущности, а не к виджету - иначе они доиграют уже на новом экране
         if (d != null) padej.displayLib.utils.EasedAnimation.cancelAll(d);
         return d;
+    }
+
+    /** Morph-переход начался: сеттеры больше не пишут в сущность (см. {@link #morphing}). */
+    public void beginMorph() {
+        morphing = true;
+    }
+
+    /**
+     * Morph-переход закончился (или передал сущность дальше): сущность получает текущее состояние виджета -
+     * текст и фон, и при {@code transform} трансформацию (без анимации). Всё, что скрипт поменял во время
+     * перехода, появляется здесь.
+     */
+    public void endMorph(boolean transform) {
+        morphing = false;
+        if (display == null || !display.isValid()) return;
+        display.text(text);
+        display.setBackgroundColor(backgroundArgb());
+        if (transform) {
+            display.setInterpolationDuration(1);
+            display.setTransformation(targetTransformation());
+        }
     }
 
     /** Целевая трансформация виджета в обычном (не наведённом) состоянии. */
@@ -567,7 +593,7 @@ public class TextDisplayButtonWidget implements Widget {
     }
 
     private void applyBase(int ticks) {
-        if (display != null && display.isValid() && !isHovered) {
+        if (display != null && display.isValid() && !isHovered && !morphing) {
             Animation.applyTransformationWithInterpolation(display, targetTransformation(), Math.max(1, ticks));
         }
     }
@@ -576,7 +602,7 @@ public class TextDisplayButtonWidget implements Widget {
     public void setRotation(float degrees, int ticks) {
         this.rotationDeg = degrees;
         this.positionCached = false; // зона наведения поворачивается вместе с виджетом
-        if (display != null && display.isValid() && !isHovered) {
+        if (display != null && display.isValid() && !isHovered && !morphing) {
             Animation.applyTransformationWithInterpolation(display, targetTransformation(), Math.max(1, ticks));
         }
     }
@@ -687,7 +713,7 @@ public class TextDisplayButtonWidget implements Widget {
         this.frameInterval = Math.max(1, interval);
         frameIndex = 0; frameTicks = 0;
         if (this.frames != null) { this.text = this.frames[0]; positionCached = false; }
-        if (display != null && !isHovered) display.text(this.frames != null ? this.frames[0] : text);
+        if (display != null && !isHovered && !morphing) display.text(this.frames != null ? this.frames[0] : text);
     }
 
     public void setHoveredFrames(Component[] frames, int interval) {
@@ -719,7 +745,7 @@ public class TextDisplayButtonWidget implements Widget {
         this.text = newText;
         this.frames = null; // текст из скрипта отменяет кадровую анимацию
         positionCached = false; // высота текста влияет на центр зоны наведения
-        if (display != null && !isHovered) {
+        if (display != null && !isHovered && !morphing) {
             display.text(this.text);
         }
     }
@@ -744,7 +770,7 @@ public class TextDisplayButtonWidget implements Widget {
     public void setBackgroundColor(int red, int green, int blue) {
         this.backgroundColor = Color.fromRGB(red, green, blue);
         this.backgroundArgb = null;
-        if (display != null && !isHovered) {
+        if (display != null && !isHovered && !morphing) {
             display.setBackgroundColor(backgroundArgb());
         }
     }
@@ -752,7 +778,7 @@ public class TextDisplayButtonWidget implements Widget {
     public void setBackgroundAlpha(int alpha) {
         this.backgroundAlpha = alpha;
         this.backgroundArgb = null;
-        if (display != null && !isHovered) {
+        if (display != null && !isHovered && !morphing) {
             display.setBackgroundColor(backgroundArgb());
         }
     }

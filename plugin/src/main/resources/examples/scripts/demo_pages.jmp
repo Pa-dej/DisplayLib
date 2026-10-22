@@ -1,0 +1,47 @@
+// demo_pages.jmp: страница списка хранится в storage (переживает переоткрытие экрана; screen.data - нет),
+// onOpen пишет слова в строки, ◀/▶ меняют страницу и открывают этот же экран заново: morph ведёт строки
+// от старых слов к новым посимвольно, а фон кнопок - к цвету, выставленному в onOpen.
+
+dyn words = [
+    "яблоко", "груша", "слива", "вишня", "персик", "абрикос", "лимон", "апельсин",
+    "кот", "собака", "лиса", "волк", "медведь", "заяц", "ёж", "белка",
+    "красный", "оранжевый", "жёлтый", "зелёный", "голубой", "синий", "фиолетовый", "белый",
+    "весна", "лето", "осень", "зима", "утро", "день", "вечер", "ночь",
+    "один", "два", "три", "четыре", "пять", "шесть", "семь", "восемь"
+];
+int perPage = 8;
+int pages = 5;   // words.length / perPage
+
+int page() {
+    int p = storage.get("demo_pages.page", 0);
+    return p < 0 ? 0 : p >= pages ? pages - 1 : p;
+}
+
+// кнопка: доступна - бирюзовая, на краю списка - серая и без клика
+void arrow(String id, boolean enabled) {
+    dyn w = screen.widget(id);
+    if (enabled) w.bgColor(31, 72, 81); else w.bgColor(60, 60, 64);
+    w.enabled(enabled);
+}
+
+void onOpen() {
+    int p = page();
+    for (int i = 0; i < perPage; i++) {
+        int n = p * perPage + i;
+        screen.widget("row_" + (i + 1)).text([ { text: (n + 1) + ". ", color: "gray" }, { text: words[n], color: "white" } ]);
+    }
+    screen.widget("page").text("Страница " + (p + 1) + " из " + pages);
+    arrow("prev", p > 0);
+    arrow("next", p < pages - 1);
+}
+
+void turn(int delta) {
+    int p = page() + delta;
+    if (p < 0 || p >= pages) return;
+    storage.set("demo_pages.page", p);
+    player.sound("item.book.page_turn");
+    screen.switchTo(screen.id());   // тот же экран: onClose("switch") → новый экран → onOpen → morph
+}
+
+void prev(dyn widget, dyn player) { turn(-1); }
+void next(dyn widget, dyn player) { turn(1); }

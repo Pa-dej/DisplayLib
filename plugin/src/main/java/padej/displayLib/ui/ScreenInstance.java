@@ -110,15 +110,24 @@ public class ScreenInstance extends WidgetManager implements ScreenAPI.Host {
         }
         spawnBackground(morphFrom);
         spawnWidgets(morphFrom);
-        if (morph != null) {
+        MorphTransition pending = morph;
+        if (pending != null) {
             // всё, что осталось у старого экрана, исчезает
-            for (Widget w : morphFrom.children) morph.fadeOut(detach(w));
+            for (Widget w : morphFrom.children) pending.fadeOut(detach(w));
             morphFrom.children.clear();
-            morph.start(() -> morph = null);
         }
-        
-        // onOpen после создания всех виджетов
+
+        // onOpen после создания всех виджетов и до старта morph: цель анимации - состояние виджетов после него
+        // (пока переход не закончится, сеттеры виджетов не пишут в сущности - их ведёт morph)
         scriptContext.callHook(ScriptContext.HOOK_OPEN);
+
+        if (pending != null) {
+            if (removed) {
+                pending.abort(); // onOpen закрыл экран: переход не начинается, исчезающие сущности убираются
+            } else if (morph == pending) {
+                pending.start(() -> { if (morph == pending) morph = null; });
+            }
+        }
     }
 
     /** Забрать сущность у виджета (он после этого ничего не удаляет). */

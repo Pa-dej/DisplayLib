@@ -43,6 +43,15 @@
 
 ![demo_player](/examples/demo_player.png)
 
+## `demo_pages` - страницы списка и morph на тот же экран
+
+`/displaylib open demo_pages`. Восемь строк заполняет `onOpen` из списка в скрипте; ◀/▶ меняют номер страницы в
+`storage` и делают `screen.switchTo(screen.id())` - экран открывается заново, и строки посимвольно перетекают из
+старых слов в новые, а фон стрелок - к цвету, который выставил `onOpen` (на краю списка стрелка серая и не
+кликается). Цель morph - состояние виджетов после `onOpen`, а не заглушки «…» из файла.
+
+![demo_pages](/examples/demo_pages.png)
+
 ## `demo_timers` - TimerAPI и модули
 
 `after`, `every`, `times`, `cancel`, `active` и `import "lib/util.jmp"`.

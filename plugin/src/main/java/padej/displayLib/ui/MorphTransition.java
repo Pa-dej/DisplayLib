@@ -50,6 +50,11 @@ import java.util.Set;
  *
  * <p>Порядок пакетов: телепорт уходит клиенту раньше метаданных того же тика, поэтому
  * {@code teleportDuration} выставляется на тике 0, а сам телепорт - на тике 1.</p>
+ *
+ * <p>Цели (текст, фон, трансформация, предмет) берутся в {@link #start} - после {@code onOpen} нового экрана:
+ * анимация ведёт к тому, что выставил скрипт, а не к значениям из файла. С {@link #match}/{@link #fadeIn}
+ * и до конца перехода виджеты не пишут в свои сущности (их сеттеры только запоминают состояние), а в
+ * конце перехода сущность получает текущее состояние виджета - с изменениями, сделанными во время него.</p>
  */
 public final class MorphTransition {
 
@@ -61,6 +66,11 @@ public final class MorphTransition {
 
     private final List<Matched> matched = new ArrayList<>();
     private final List<Fade> fadeIn = new ArrayList<>();
+    /** Собранные до start: пара «виджет - сущность» и что сущность показывала до перехода */
+    private final List<PendingMatch> pendingMatched = new ArrayList<>();
+    private final List<Object> pendingFadeIn = new ArrayList<>();
+
+    private record PendingMatch(Object widget, Display entity, Component startText) {}
     private final List<Display> fadeOut = new ArrayList<>();
 
     private BukkitTask task;
@@ -83,8 +93,11 @@ public final class MorphTransition {
         // ItemDisplay
         final ItemStack targetItem;
         final Runnable afterMove;
+        /** Виджет нового экрана: в конце перехода он сам выставляет сущности своё текущее состояние */
+        final Object widget;
 
-        Matched(TextDisplayButtonWidget w, TextDisplay d) {
+        Matched(TextDisplayButtonWidget w, TextDisplay d, Component startText) {
+            widget = w;
             display = d;
             targetLocation = w.targetLocation();
             targetTransformation = w.targetTransformation();
@@ -93,7 +106,6 @@ public final class MorphTransition {
             targetItem = null;
             afterMove = w::invalidateHitArea;
 
-            Component startText = d.text();
             startPlain = plain(startText);
             targetPlain = plain(targetText);
             startColor = colorOf(startText);
@@ -103,6 +115,7 @@ public final class MorphTransition {
         }
 
         Matched(ItemDisplayButtonWidget w, ItemDisplay d) {
+            widget = w;
             display = d;
             targetLocation = w.targetLocation();
             targetTransformation = w.targetTransformation();
@@ -121,7 +134,7 @@ public final class MorphTransition {
         }
     }
 
-    private record Fade(Display display, Transformation target, Color background) {}
+    private record Fade(Object widget, Display display, Transformation target, Color background) {}
 
     public MorphTransition(ScreenDefinition.Morph settings) {
         this.duration = Math.max(1, Math.min(59, settings.getDuration()));
@@ -132,32 +145,63 @@ public final class MorphTransition {
     // Сбор участников
     // -------------------------------------------------------------------------
 
-    /** Новый текстовый виджет, получивший сущность старого. */
+    /**
+     * Новый текстовый виджет, получивший сущность старого. Цели берутся в {@link #start}; до тех пор
+     * (и до конца перехода) виджет не пишет в сущность.
+     */
     public void match(TextDisplayButtonWidget widget, TextDisplay entity) {
-        matched.add(new Matched(widget, entity));
+        widget.beginMorph();
+        pendingMatched.add(new PendingMatch(widget, entity, entity.text()));
     }
 
     public void match(ItemDisplayButtonWidget widget, ItemDisplay entity) {
-        matched.add(new Matched(widget, entity));
+        widget.beginMorph();
+        pendingMatched.add(new PendingMatch(widget, entity, null));
     }
 
-    /** Виджет только нового экрана: сразу после создания прячем, чтобы клиент не увидел целевое состояние. */
+    /** Виджет только нового экрана: сразу после создания прячем, чтобы клиент не увидел ни файл, ни цель. */
     public void fadeIn(TextDisplayButtonWidget widget) {
         TextDisplay d = widget.getDisplay();
         if (d == null) return;
-        Transformation target = widget.targetTransformation();
-        Color bg = widget.targetBackground();
-        d.setTransformation(zeroScale(target));
-        d.setBackgroundColor(transparent(bg));
-        fadeIn.add(new Fade(d, target, bg));
+        widget.beginMorph();
+        d.setTransformation(zeroScale(widget.targetTransformation()));
+        d.setBackgroundColor(transparent(widget.targetBackground()));
+        pendingFadeIn.add(widget);
     }
 
     public void fadeIn(ItemDisplayButtonWidget widget) {
         ItemDisplay d = widget.getDisplay();
         if (d == null) return;
-        Transformation target = widget.targetTransformation();
-        d.setTransformation(zeroScale(target));
-        fadeIn.add(new Fade(d, target, null));
+        widget.beginMorph();
+        d.setTransformation(zeroScale(widget.targetTransformation()));
+        pendingFadeIn.add(widget);
+    }
+
+    /** Цели участников - по текущему состоянию виджетов (после onOpen). */
+    private void collectTargets() {
+        for (PendingMatch p : pendingMatched) {
+            if (p.widget() instanceof TextDisplayButtonWidget w && p.entity() instanceof TextDisplay td) {
+                matched.add(new Matched(w, td, p.startText()));
+            } else if (p.widget() instanceof ItemDisplayButtonWidget w && p.entity() instanceof ItemDisplay id) {
+                matched.add(new Matched(w, id));
+            }
+        }
+        pendingMatched.clear();
+        for (Object o : pendingFadeIn) {
+            if (o instanceof TextDisplayButtonWidget w && w.getDisplay() != null && w.getDisplay().isValid()) {
+                TextDisplay d = w.getDisplay();
+                Color bg = w.targetBackground();
+                d.text(w.targetText()); // появляется сразу с текстом из onOpen (пока масштаб нулевой)
+                d.setBackgroundColor(transparent(bg));
+                fadeIn.add(new Fade(w, d, w.targetTransformation(), bg));
+            } else if (o instanceof ItemDisplayButtonWidget w && w.getDisplay() != null && w.getDisplay().isValid()) {
+                ItemDisplay d = w.getDisplay();
+                ItemStack item = w.targetItem();
+                if (!item.equals(d.getItemStack())) d.setItemStack(item);
+                fadeIn.add(new Fade(w, d, w.targetTransformation(), null));
+            }
+        }
+        pendingFadeIn.clear();
     }
 
     /** Сущность, которой на новом экране нет: исчезает и удаляется. */
@@ -170,7 +214,7 @@ public final class MorphTransition {
     // -------------------------------------------------------------------------
 
     public boolean isEmpty() {
-        return matched.isEmpty() && fadeIn.isEmpty() && fadeOut.isEmpty();
+        return matched.isEmpty() && fadeIn.isEmpty() && fadeOut.isEmpty() && pendingMatched.isEmpty() && pendingFadeIn.isEmpty();
     }
 
     public int getDuration() {
@@ -183,6 +227,7 @@ public final class MorphTransition {
      */
     public void start(Runnable onFinish) {
         this.onFinish = onFinish;
+        collectTargets();
         ACTIVE.add(this);
 
         // тик 0: цели для клиента
@@ -250,16 +295,11 @@ public final class MorphTransition {
             if (d.isDead()) continue;
             if (tick < 1) { d.teleport(m.targetLocation); m.afterMove.run(); }
             d.setTeleportDuration(1);
-            d.setInterpolationDuration(1);
-            d.setTransformation(m.targetTransformation);
-            if (d instanceof TextDisplay td) { td.text(m.targetText); td.setBackgroundColor(m.targetBackground); }
-            else if (d instanceof ItemDisplay id && m.targetItem != null) id.setItemStack(m.targetItem);
+            endMorph(m.widget, true); // текущее состояние виджета: цель или то, что скрипт поменял во время перехода
         }
         for (Fade f : fadeIn) {
             if (f.display.isDead()) continue;
-            f.display.setInterpolationDuration(1);
-            f.display.setTransformation(f.target);
-            if (f.display instanceof TextDisplay td && f.background != null) td.setBackgroundColor(f.background);
+            endMorph(f.widget, true);
         }
         for (Display d : fadeOut) d.remove();
         fadeOut.clear();
@@ -275,14 +315,35 @@ public final class MorphTransition {
     }
 
     /**
+     * Переход так и не начался (экран закрыли прямо в onOpen): сущности, которые исчезали, убрать сразу,
+     * виджетам вернуть запись в сущности.
+     */
+    public void abort() {
+        for (PendingMatch p : pendingMatched) endMorph(p.widget(), true);
+        for (Object w : pendingFadeIn) endMorph(w, true);
+        pendingMatched.clear();
+        pendingFadeIn.clear();
+        for (Display d : fadeOut) d.remove();
+        fadeOut.clear();
+    }
+
+    private static void endMorph(Object widget, boolean transform) {
+        if (widget instanceof TextDisplayButtonWidget w) w.endMorph(transform);
+        else if (widget instanceof ItemDisplayButtonWidget w) w.endMorph(transform);
+    }
+
+    /**
      * Сущности matched/fade-in передаются следующему переходу (новый экран открыт, пока шёл этот):
      * этот переход их больше не трогает и лишь дожидается исчезновения своих fade-out сущностей.
      */
     public void handOff() {
         for (Matched m : matched) {
-            // текст - сразу целевой, чтобы следующий переход стартовал с него; остальное уже целевое
-            if (m.display instanceof TextDisplay td && !m.display.isDead()) td.text(m.targetText);
-            else if (m.display instanceof ItemDisplay id && m.targetItem != null && !m.display.isDead()) id.setItemStack(m.targetItem);
+            // текст/предмет и фон - текущие у виджета, чтобы следующий переход стартовал с них;
+            // трансформацию клиент уже ведёт к цели - её не трогаем
+            if (!m.display.isDead()) endMorph(m.widget, false);
+        }
+        for (Fade f : fadeIn) {
+            if (!f.display.isDead()) endMorph(f.widget, false);
         }
         matched.clear();
         fadeIn.clear();

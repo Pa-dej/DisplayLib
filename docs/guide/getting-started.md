@@ -35,6 +35,7 @@ plugins/DisplayLib/
     demo_widgets.jmc  demo_hover.jmc  demo_frames.jmc  demo_script.jmc  demo_player.jmc  demo_timers.jmc
     demo_public.jmc   # публичный экран (openpublic)
     morph_menu.jmc  morph_shop.jmc  morph_settings.jmc   # morph-переходы
+    demo_pages.jmc    # страницы списка: morph на тот же экран, данные из onOpen
   scripts/            # скрипты (.jmp) - по одному на экран, плюс lib/util.jmp (import)
   particles/          # эффекты частиц: sparkle, confetti, poison, coin_fountain, embers, flame, water_splash, fireflies
   data/               # пишет плагин: storage скриптов, сохранённые публичные экраны
