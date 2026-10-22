@@ -97,8 +97,8 @@ public class GlobalScreenInstance implements ScreenAPI.Host {
         this.screenId = screenId;
         this.definition = definition;
         this.location = location.clone();
-        this.screenYaw = yaw;
-        this.screenPitch = pitch;
+        this.screenYaw = ScreenSupport.snapAngle(yaw);
+        this.screenPitch = ScreenSupport.snapAngle(pitch);
         this.scriptFile = definition.getScript();
         
         // У публичного экрана нет владельца: глобал player равен null,

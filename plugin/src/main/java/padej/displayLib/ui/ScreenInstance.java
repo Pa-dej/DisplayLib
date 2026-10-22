@@ -95,8 +95,8 @@ public class ScreenInstance extends WidgetManager implements ScreenAPI.Host {
         super(viewer, location);
         this.screenId = screenId;
         this.definition = definition;
-        this.screenYaw = orientation[0];
-        this.screenPitch = orientation[1];
+        this.screenYaw = ScreenSupport.snapAngle(orientation[0]);
+        this.screenPitch = ScreenSupport.snapAngle(orientation[1]);
         this.scriptFile = definition.getScript();
         this.audience = ScreenAudience.player(viewer, location.getWorld());
         
