@@ -208,7 +208,7 @@ public class ScreenInstance extends WidgetManager implements ScreenAPI.Host {
         ScreenDefinition.BackgroundDefinition bg = definition.getBackground();
         if (bg == null) return;
 
-        Location loc = ScreenSupport.backgroundLocation(location, bg);
+        Location loc = ScreenSupport.backgroundLocation(location, screenYaw, screenPitch, bg);
         TextDisplayButtonConfig cfg = ScreenSupport.backgroundConfig(bg);
         org.bukkit.entity.TextDisplay old = morph != null && morphFrom.backgroundWidget != null
                 ? morphFrom.backgroundWidget.detachDisplay() : null;
@@ -256,7 +256,7 @@ public class ScreenInstance extends WidgetManager implements ScreenAPI.Host {
 
         switch (def.getType()) {
             case TEXT_BUTTON, SPRITE_BUTTON -> {
-                Location loc = ScreenSupport.resolveLocation(location, def.getPosition(), ScreenSupport.WIDGET_DEPTH_OFFSET);
+                Location loc = ScreenSupport.resolveLocation(location, screenYaw, screenPitch, def.getPosition(), ScreenSupport.WIDGET_DEPTH_OFFSET);
                 TextDisplayButtonConfig cfg = ScreenSupport.textConfig(def, onClick, true, interactive);
                 org.bukkit.entity.TextDisplay entity = old instanceof TextDisplayButtonWidget t ? t.detachDisplay() : null;
                 TextDisplayButtonWidget widget = entity != null
@@ -272,7 +272,7 @@ public class ScreenInstance extends WidgetManager implements ScreenAPI.Host {
             }
             case ITEM_BUTTON -> {
                 // Используем увеличенное смещение для ItemDisplay виджетов
-                Location loc = ScreenSupport.resolveLocation(location, def.getPosition(), ScreenSupport.ITEM_WIDGET_DEPTH_OFFSET);
+                Location loc = ScreenSupport.resolveLocation(location, screenYaw, screenPitch, def.getPosition(), ScreenSupport.ITEM_WIDGET_DEPTH_OFFSET);
                 ItemDisplayButtonConfig cfg = ScreenSupport.itemConfig(def, onClick, true, interactive);
                 org.bukkit.entity.ItemDisplay entity = old instanceof ItemDisplayButtonWidget i ? i.detachDisplay() : null;
                 ItemDisplayButtonWidget widget = entity != null

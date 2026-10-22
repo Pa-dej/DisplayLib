@@ -52,12 +52,20 @@ public final class ScreenSupport {
 
     /**
      * Перевести локальные координаты экрана (x вправо, y вверх, z в глубину) в мировые.
+     *
+     * <p>Оси берутся из ориентации самого экрана ({@code screenYaw}, {@code screenPitch} - куда смотрят его
+     * сущности, т.е. на зрителя), а не из yaw/pitch точки {@code screenLocation}. Раньше брались из точки:
+     * если она была повёрнута иначе, чем сущности (точка без поворота из API или {@code openpublic}, наклонённый
+     * экран), виджеты стояли в плоскости, не параллельной фону, и часть из них уходила за фон.</p>
      */
-    static Location resolveLocation(Location screenLocation, float[] pos, float depthOffset) {
+    static Location resolveLocation(Location screenLocation, float screenYaw, float screenPitch, float[] pos, float depthOffset) {
         Location base = screenLocation.clone();
+        base.setYaw(screenYaw);
+        base.setPitch(screenPitch);
         if (pos == null || pos.length < 3) return base;
 
-        Vector dir = base.getDirection();
+        // направление «в экран» (от зрителя): обратное взгляду сущностей
+        Vector dir = base.getDirection().multiply(-1);
         Vector right = dir.getCrossProduct(new Vector(0, 1, 0)).normalize();
         Vector up = right.getCrossProduct(dir).normalize();
 
@@ -71,9 +79,9 @@ public final class ScreenSupport {
     // Конфигурации виджетов
     // -------------------------------------------------------------------------
 
-    static Location backgroundLocation(Location screenLocation, ScreenDefinition.BackgroundDefinition bg) {
+    static Location backgroundLocation(Location screenLocation, float screenYaw, float screenPitch, ScreenDefinition.BackgroundDefinition bg) {
         float[] p = bg.getPosition() != null ? bg.getPosition() : ZERO;
-        return resolveLocation(screenLocation, p, WIDGET_DEPTH_OFFSET);
+        return resolveLocation(screenLocation, screenYaw, screenPitch, p, WIDGET_DEPTH_OFFSET);
     }
 
     static TextDisplayButtonConfig backgroundConfig(ScreenDefinition.BackgroundDefinition bg) {
