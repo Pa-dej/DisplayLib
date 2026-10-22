@@ -60,18 +60,19 @@ public final class ScreenAnalyzer {
      * Проставить {@link WidgetDefinition#isInert()} и {@link ScreenDefinition#getInertWidgetIds()} всем экранам.
      *
      * @param screens    все загруженные экраны (нужны для проверки целей {@code switchTo})
-     * @param scriptsDir папка {@code plugins/DisplayLib/scripts}
-     * @param access     политика доступа скриптов ({@code scripts.jma}) - для разбора; {@code null} = без ограничений
+     * @param scripts  папка скриптов набора экрана ({@code scripts/})
+     * @param accessOf политика доступа набора ({@code scripts.jma}) - для разбора; {@code null} = без ограничений
      */
-    public static void analyze(Map<String, ScreenDefinition> screens, Path scriptsDir, Access access, Logger log) {
-        Map<String, ScriptInfo> scripts = new HashMap<>();
+    public static void analyze(Map<String, ScreenDefinition> screens, java.util.function.Function<ScreenDefinition, Path> scripts,
+                               java.util.function.Function<ScreenDefinition, Access> accessOf, Logger log) {
+        Map<String, ScriptInfo> parsed = new HashMap<>();
         int inertTotal = 0, total = 0;
         for (ScreenDefinition screen : screens.values()) {
             Set<String> inert = new LinkedHashSet<>();
             if (screen.getWidgets() == null) { screen.setInertWidgetIds(inert); continue; }
             boolean publicScreen = screen.getScreenType() == ScreenDefinition.ScreenType.PUBLIC;
             ScriptInfo script = screen.getScript() == null ? null
-                    : scripts.computeIfAbsent(screen.getScript(), f -> parseScript(scriptsDir, f, access, log));
+                    : parsed.computeIfAbsent(scripts.apply(screen) + "|" + screen.getScript(), f -> parseScript(scripts.apply(screen), screen.getScript(), accessOf.apply(screen), log));
             int index = 0;
             for (WidgetDefinition def : screen.getWidgets()) {
                 index++;
@@ -94,18 +95,19 @@ public final class ScreenAnalyzer {
      * «кнопка не работает» (дубли id, клик в никуда, нет скрипта/функции), и список статичных виджетов.
      * Экраны уже загружены и проанализированы; тут только собираются строки для чата.
      */
-    public static java.util.List<String> report(Map<String, ScreenDefinition> screens, Path scriptsDir, Access access, Logger log) {
+    public static java.util.List<String> report(Map<String, ScreenDefinition> screens, java.util.function.Function<ScreenDefinition, Path> scripts,
+                                                java.util.function.Function<ScreenDefinition, Access> accessOf, Logger log) {
         java.util.List<String> out = new java.util.ArrayList<>();
-        Map<String, ScriptInfo> scripts = new HashMap<>();
+        Map<String, ScriptInfo> parsed = new HashMap<>();
         for (ScreenDefinition screen : new java.util.TreeMap<>(screens).values()) {
             java.util.List<String> lines = new java.util.ArrayList<>();
             boolean publicScreen = screen.getScreenType() == ScreenDefinition.ScreenType.PUBLIC;
             if (screen.getScript() != null) {
-                Path path = scriptsDir.resolve(screen.getScript()).normalize();
+                Path path = scripts.apply(screen).resolve(screen.getScript()).normalize();
                 if (!Files.isRegularFile(path)) lines.add("§cскрипт " + screen.getScript() + " не найден");
             }
             ScriptInfo script = screen.getScript() == null ? null
-                    : scripts.computeIfAbsent(screen.getScript(), f -> parseScript(scriptsDir, f, access, log));
+                    : parsed.computeIfAbsent(scripts.apply(screen) + "|" + screen.getScript(), f -> parseScript(scripts.apply(screen), screen.getScript(), accessOf.apply(screen), log));
             if (script != null && !script.parsed()) lines.add("§cскрипт " + screen.getScript() + " не разбирается");
             Map<String, Integer> ids = new HashMap<>();
             if (screen.getWidgets() != null) {

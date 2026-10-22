@@ -22,9 +22,9 @@ import java.util.logging.Level;
  * @param scriptTimeoutMs предел времени одного вызова скрипта в миллисекундах; {@code <= 0} - без предела
  * @param storage         сохранение глобала storage на диск
  */
-public record PluginConfig(boolean hotReload, long scriptTimeoutMs, CloseOn closeOn, Storage storage, Particles particles, Screens screens) {
+public record PluginConfig(boolean hotReload, long scriptTimeoutMs, CloseOn closeOn, Storage storage, Particles particles, Screens screens, java.util.List<String> packs) {
     public static final String FILE = "config.jmc";
-    public static final PluginConfig DEFAULTS = new PluginConfig(true, 1000, CloseOn.DEFAULTS, Storage.DEFAULTS, Particles.DEFAULTS, Screens.DEFAULTS);
+    public static final PluginConfig DEFAULTS = new PluginConfig(true, 1000, CloseOn.DEFAULTS, Storage.DEFAULTS, Particles.DEFAULTS, Screens.DEFAULTS, java.util.List.of());
 
     /**
      * Сущности экранов: {@code dyn screens = { packets: true, viewDistance: 64 };}
@@ -111,6 +111,16 @@ public record PluginConfig(boolean hotReload, long scriptTimeoutMs, CloseOn clos
         }
     }
 
+    /** {@code dyn packs = ["WordBomb", ...];} - папки в {@code plugins/} с экранами/скриптами/частицами. */
+    private static java.util.List<String> packs(Object v) {
+        Object j = JmcValues.toJava(v);
+        if (j instanceof String s) return s.isBlank() ? java.util.List.of() : java.util.List.of(s.trim());
+        if (!(j instanceof java.util.List<?> list)) return java.util.List.of();
+        java.util.List<String> out = new java.util.ArrayList<>();
+        for (Object o : list) if (o != null && !o.toString().isBlank()) out.add(o.toString().trim());
+        return java.util.List.copyOf(out);
+    }
+
     /** Прочитать конфиг; если файла нет, он создаётся из ресурсов плагина. */
     public static PluginConfig load(JavaPlugin plugin) {
         Path file = plugin.getDataFolder().toPath().resolve(FILE);
@@ -135,7 +145,8 @@ public record PluginConfig(boolean hotReload, long scriptTimeoutMs, CloseOn clos
                     CloseOn.parse(JmcValues.get(table, "closeOn", "close_on")),
                     Storage.parse(JmcValues.get(table, "storage")),
                     Particles.parse(JmcValues.get(table, "particles")),
-                    Screens.parse(JmcValues.get(table, "screens")));
+                    Screens.parse(JmcValues.get(table, "screens")),
+                    packs(JmcValues.get(table, "packs", "contentPacks", "content_packs")));
         } catch (IOException | RuntimeException e) {
             plugin.getLogger().log(Level.WARNING, FILE + " could not be read, using defaults: " + e.getMessage());
             return DEFAULTS;

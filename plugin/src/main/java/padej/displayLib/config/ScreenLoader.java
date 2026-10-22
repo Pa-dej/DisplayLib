@@ -5,6 +5,8 @@ import me.padej.jumper.parser.ParseError;
 import me.padej.jumper.runtime.JTable;
 import me.padej.jumper.runtime.JmpError;
 import padej.displayLib.DisplayLib;
+import padej.displayLib.pack.ContentPack;
+import padej.displayLib.pack.ContentPacks;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -34,24 +36,24 @@ public class ScreenLoader {
     public static final String EXTENSION = ".jmc";
 
     private final DisplayLib plugin;
-    private final Path screensDirectory;
+    /** Набор, файл которого сейчас разбирается (основной поток) */
+    private ContentPack loading;
 
     public ScreenLoader(DisplayLib plugin) {
         this.plugin = plugin;
-        this.screensDirectory = plugin.getDataFolder().toPath().resolve("screens");
-
-        try {
-            Files.createDirectories(screensDirectory);
-        } catch (IOException e) {
-            plugin.getLogger().log(Level.SEVERE, "Failed to create screens directory", e);
-        }
     }
 
     /**
      * Загрузить все экраны из папки screens (рекурсивно)
      */
     public Map<String, ScreenDefinition> loadAllScreens() {
+        return loadAllScreens(ContentPacks.main());
+    }
+
+    /** Загрузить все экраны из {@code screens/} набора (рекурсивно). */
+    public Map<String, ScreenDefinition> loadAllScreens(ContentPack pack) {
         Map<String, ScreenDefinition> screens = new HashMap<>();
+        Path screensDirectory = pack.screens();
 
         try {
             if (!Files.exists(screensDirectory)) {
@@ -63,12 +65,12 @@ public class ScreenLoader {
                 files.filter(path -> path.toString().endsWith(EXTENSION))
                         .sorted()
                         .forEach(path -> {
-                            ScreenDefinition screen = loadScreenFromFile(path);
+                            ScreenDefinition screen = loadScreenFromFile(pack, path);
                             if (screen != null) {
                                 ScreenDefinition previous = screens.put(screen.getId(), screen);
                                 if (previous != null) {
                                     plugin.getLogger().warning("Duplicate screen id '" + screen.getId()
-                                            + "' in " + path.getFileName() + ": the later file wins");
+                                            + "' in " + pack.describe(path) + ": the later file wins");
                                 }
                             }
                         });
@@ -83,12 +85,28 @@ public class ScreenLoader {
     /**
      * Загрузить экран из файла {@code <fileId>.jmc}
      */
-    public ScreenDefinition loadScreen(String fileId) {
-        Path screenFile = screensDirectory.resolve(fileId + EXTENSION);
+    public ScreenDefinition loadScreen(ContentPack pack, String fileId) {
+        Path screenFile = pack.screens().resolve(fileId + EXTENSION);
         if (Files.exists(screenFile)) {
-            return loadScreenFromFile(screenFile);
+            return loadScreenFromFile(pack, screenFile);
         }
         return null;
+    }
+
+    /** Экран из файла, как из набора DisplayLib. */
+    public ScreenDefinition loadScreenFromFile(Path file) {
+        return loadScreenFromFile(ContentPacks.main(), file);
+    }
+
+    /** Экран из файла набора {@code pack}: скрипт экрана ищется в его {@code scripts/}. */
+    public ScreenDefinition loadScreenFromFile(ContentPack pack, Path file) {
+        ContentPack previous = loading;
+        loading = pack;
+        try {
+            return readScreen(file);
+        } finally {
+            loading = previous;
+        }
     }
 
     /**
@@ -96,7 +114,7 @@ public class ScreenLoader {
      *
      * @return определение экрана или null, если файл не читается (причина в логе)
      */
-    public ScreenDefinition loadScreenFromFile(Path file) {
+    private ScreenDefinition readScreen(Path file) {
         Object data;
         try {
             data = Config.load(file);
@@ -129,6 +147,7 @@ public class ScreenLoader {
 
     private ScreenDefinition parseScreen(JTable data, Path file) {
         ScreenDefinition screen = new ScreenDefinition();
+        screen.setPack(loading);
 
         String id = str(data, "id");
         if (id == null || id.isBlank()) {
@@ -178,7 +197,7 @@ public class ScreenLoader {
             screen.setScript(script.trim());
         } else {
             // по умолчанию - scripts/<id>.jmp, если такой файл есть (как в редакторе)
-            java.nio.file.Path def = plugin.getDataFolder().toPath().resolve("scripts").resolve(screen.getId() + ".jmp");
+            java.nio.file.Path def = (loading != null ? loading.scripts() : plugin.getDataFolder().toPath().resolve("scripts")).resolve(screen.getId() + ".jmp");
             if (java.nio.file.Files.isRegularFile(def)) screen.setScript(screen.getId() + ".jmp");
         }
 
@@ -260,7 +279,8 @@ public class ScreenLoader {
      * Папка экранов
      */
     public Path getScreensDirectory() {
-        return screensDirectory;
+        ContentPack main = ContentPacks.main();
+        return main != null ? main.screens() : plugin.getDataFolder().toPath().resolve("screens");
     }
 
     /**

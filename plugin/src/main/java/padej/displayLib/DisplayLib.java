@@ -13,6 +13,8 @@ import padej.displayLib.render.shapes.Highlight;
 import padej.displayLib.script.JumperEngine;
 import padej.displayLib.ui.UIManager;
 import padej.displayLib.ui.ScreenDisplays;
+import padej.displayLib.pack.ContentPack;
+import padej.displayLib.pack.ContentPacks;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.io.File;
@@ -88,6 +90,19 @@ public final class DisplayLib extends JavaPlugin {
         // config.jmc: hotReload, scriptTimeoutMs
         config = PluginConfig.load(this);
 
+        // Наборы содержимого: папка DisplayLib и папки из config.jmc (packs); плагины добавляют свои через
+        // ContentPacks.register(plugin) - у каждого свои screens/, scripts/, particles/ и scripts.jma
+        ContentPacks.install(this);
+        Path pluginsDir = getDataFolder().toPath().toAbsolutePath().getParent();
+        for (String name : config.packs()) {
+            Path root = pluginsDir.resolve(name).normalize();
+            if (!root.startsWith(pluginsDir) || !java.nio.file.Files.isDirectory(root)) {
+                getLogger().warning("config.jmc packs: folder plugins/" + name + " not found; skipped");
+                continue;
+            }
+            ContentPacks.register(this, root);
+        }
+
         // Скрипты (.jmp) под политикой доступа (scripts.jma) - раньше экранов:
         // статический разбор экранов читает скрипты под той же политикой
         scriptEngine = new JumperEngine(this, config.scriptTimeoutMs());
@@ -113,7 +128,9 @@ public final class DisplayLib extends JavaPlugin {
         }
 
         // Эффекты частиц (particles/*.jmc)
-        particleRegistry = new ParticleRegistry(getDataFolder().toPath().resolve("particles"), getLogger());
+        particleRegistry = new ParticleRegistry(() -> ContentPacks.all().stream()
+                .map(p -> new ParticleRegistry.Source(p == ContentPacks.main() ? "particles/" : p.name() + "/particles/", p.particles()))
+                .toList(), getLogger());
         particleRegistry.loadAll();
         particleManager = new ParticleManager(this, config.particles().maxAlive(),
                 config.particles().packets(), config.particles().viewDistance(), config.particles().async());
@@ -124,6 +141,22 @@ public final class DisplayLib extends JavaPlugin {
                 new PublicScreenStore(dataDir.resolve("public_screens.jmc"), getLogger()));
         // Сохранённые публичные экраны - на первом тике: миры загружены, другие плагины включены
         getServer().getScheduler().runTask(this, () -> UIManager.getInstance().restorePublicScreens());
+
+        // наборы, зарегистрированные дальше (плагины в onEnable), подхватываются сразу
+        ContentPacks.hooks(new ContentPacks.Hooks() {
+            @Override
+            public void added(ContentPack pack) {
+                scriptEngine.loadPolicy(pack);
+                screenRegistry.addPack(pack);
+                particleRegistry.loadAll();
+            }
+
+            @Override
+            public void removed(ContentPack pack) {
+                screenRegistry.removePack(pack);
+                particleRegistry.loadAll();
+            }
+        });
 
         DisplayLibCommand commandExecutor = new DisplayLibCommand(this);
         getCommand("displaylib").setExecutor(commandExecutor);
@@ -154,6 +187,7 @@ public final class DisplayLib extends JavaPlugin {
             manager.cleanup();
         }
         ScreenDisplays.shutdown(); // сущности экранов исчезают у клиентов
+        ContentPacks.shutdown();
 
         // После закрытия экранов: onClose("shutdown") ещё мог писать в storage
         if (autosaveTask != null) {

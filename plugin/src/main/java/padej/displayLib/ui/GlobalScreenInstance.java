@@ -103,7 +103,7 @@ public class GlobalScreenInstance implements ScreenAPI.Host {
         
         // У публичного экрана нет владельца: глобал player равен null,
         // кликнувший игрок приходит аргументом обработчика
-        this.scriptContext = new ScriptContext((DisplayLib) DisplayLib.getInstance(), engine, this, null, scriptFile);
+        this.scriptContext = new ScriptContext((DisplayLib) DisplayLib.getInstance(), engine, this, null, definition.getPack(), scriptFile);
         
         double radius = definition.getInteractionRadius();
         this.radiusSq = radius > 0 ? radius * radius : -1;

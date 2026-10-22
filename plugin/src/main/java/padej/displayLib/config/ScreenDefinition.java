@@ -42,6 +42,12 @@ import java.util.List;
  * @see ScreenLoader
  */
 public class ScreenDefinition {
+    /** Набор содержимого, из которого загружен экран (его scripts/ и scripts.jma); null - DisplayLib */
+    private padej.displayLib.pack.ContentPack pack;
+
+    public padej.displayLib.pack.ContentPack getPack() { return pack; }
+    public void setPack(padej.displayLib.pack.ContentPack pack) { this.pack = pack; }
+
     /**
      * Уникальный идентификатор экрана.
      * Используется для открытия экрана через команды и API скриптов.

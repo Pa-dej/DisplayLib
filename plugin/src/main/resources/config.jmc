@@ -41,3 +41,8 @@ dyn particles = { maxAlive: 1500, packets: true, viewDistance: 96, async: true }
 //                  сервера плагин сам вернётся к сущностям.
 //   viewDistance - с какого расстояния игроки видят публичные экраны (только для пакетов)
 dyn screens = { packets: true, viewDistance: 64 };
+
+// Наборы содержимого других плагинов: папки в plugins/, у каждой свои screens/, scripts/, particles/ и
+// scripts.jma (политика доступа скриптов этой папки). Плагин может зарегистрировать свою папку и сам:
+// ContentPacks.register(this) в onEnable - тогда здесь его писать не нужно.
+// dyn packs = ["WordBomb"];

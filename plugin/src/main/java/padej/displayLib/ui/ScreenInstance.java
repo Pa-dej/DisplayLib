@@ -106,7 +106,7 @@ public class ScreenInstance extends WidgetManager implements ScreenAPI.Host {
         this.closeDistanceSq = closeDistance > 0 ? closeDistance * closeDistance : -1;
         
         // Скриптовое окружение: глобалы player/screen/storage/timer/log и сам скрипт
-        this.scriptContext = new ScriptContext((DisplayLib) DisplayLib.getInstance(), engine, this, viewer, scriptFile);
+        this.scriptContext = new ScriptContext((DisplayLib) DisplayLib.getInstance(), engine, this, viewer, definition.getPack(), scriptFile);
 
         if (morphFrom != null && definition.getMorph().isEnabled()) {
             morph = new MorphTransition(definition.getMorph());

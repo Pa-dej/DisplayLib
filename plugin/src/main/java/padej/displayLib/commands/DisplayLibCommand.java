@@ -347,7 +347,9 @@ public class DisplayLibCommand implements CommandExecutor, TabCompleter {
                 for (var e : screens.entrySet()) {
                     int total = e.getValue().getWidgets() != null ? e.getValue().getWidgets().size() : 0;
                     var inert = e.getValue().getInertWidgetIds();
-                    sender.sendMessage("§7- §f" + e.getKey() + " §7(" + total + ", " + inert.size() + ")"
+                    var pack = e.getValue().getPack();
+                    String from = pack != null && pack != padej.displayLib.pack.ContentPacks.main() ? " §8[" + pack.name() + "]" : "";
+                    sender.sendMessage("§7- §f" + e.getKey() + from + " §7(" + total + ", " + inert.size() + ")"
                             + (inert.isEmpty() ? "" : " §8" + String.join(", ", inert)));
                 }
             }

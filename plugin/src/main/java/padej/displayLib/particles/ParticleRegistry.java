@@ -20,23 +20,44 @@ import java.util.stream.Stream;
 public final class ParticleRegistry {
     public static final String EXTENSION = ".jmc";
 
-    private final Path directory;
-    private final java.util.logging.Logger log;
-    private Map<String, ParticleEffect> effects = Map.of();
-
-    public ParticleRegistry(Path directory, java.util.logging.Logger log) {
-        this.directory = directory;
-        this.log = log;
+    /** Папка эффектов и имя для сообщений ({@code particles/x.jmc} или {@code WordBomb/particles/x.jmc}) */
+    public record Source(String prefix, Path directory) {
     }
 
-    public Path getDirectory() {
-        return directory;
+    private final java.util.logging.Logger log;
+    private final java.util.function.Supplier<List<Source>> sources;
+    private Map<String, ParticleEffect> effects = Map.of();
+    /** Папка текущего разбираемого файла (для сообщений) */
+    private Source current;
+
+    /** Одна папка (тесты, инструменты). */
+    public ParticleRegistry(Path directory, java.util.logging.Logger log) {
+        this(() -> List.of(new Source("particles/", directory)), log);
+    }
+
+    /**
+     * Несколько папок (наборы содержимого): перечитываются все при каждом {@link #loadAll()}; при одинаковом id
+     * остаётся эффект из папки, что раньше в списке.
+     */
+    public ParticleRegistry(java.util.function.Supplier<List<Source>> sources, java.util.logging.Logger log) {
+        this.sources = sources;
+        this.log = log;
     }
 
     /** Прочитать все файлы заново; прежний набор заменяется целиком. */
     public void loadAll() {
         Map<String, ParticleEffect> loaded = new LinkedHashMap<>();
-        Map<String, Path> origin = new LinkedHashMap<>();
+        Map<String, String> origin = new LinkedHashMap<>();
+        for (Source source : sources.get()) {
+            current = source;
+            loadDir(source.directory(), loaded, origin);
+        }
+        current = null;
+        effects = Collections.unmodifiableMap(loaded);
+        log.info("Loaded " + effects.size() + " particle effect(s)");
+    }
+
+    private void loadDir(Path directory, Map<String, ParticleEffect> loaded, Map<String, String> origin) {
         if (Files.isDirectory(directory)) {
             List<Path> files;
             try (Stream<Path> walk = Files.walk(directory)) {
@@ -50,29 +71,27 @@ public final class ParticleRegistry {
                 if (effect == null) continue;
                 if (org.bukkit.Bukkit.getServer() != null) {
                     for (String item : effect.render().items()) {
-                        if (ParticleEffect.item(item) == null) log.warning("particles/" + relative(file) + ": unknown item '" + item + "'");
+                        if (ParticleEffect.item(item) == null) log.warning(relative(file) + ": unknown item '" + item + "'");
                     }
                     for (String block : effect.render().blocks()) {
                         try {
                             org.bukkit.Bukkit.createBlockData(block);
                         } catch (IllegalArgumentException e) {
-                            log.warning("particles/" + relative(file) + ": unknown block '" + block + "'");
+                            log.warning(relative(file) + ": unknown block '" + block + "'");
                         }
                     }
                 }
                 if (effect.id().equalsIgnoreCase("list") || effect.id().equalsIgnoreCase("stop")) {
-                    log.warning("particles/" + relative(file) + ": id '" + effect.id() + "' is reserved by /displaylib particle " + effect.id() + "; rename it");
+                    log.warning(relative(file) + ": id '" + effect.id() + "' is reserved by /displaylib particle " + effect.id() + "; rename it");
                 }
-                Path previous = origin.putIfAbsent(effect.id(), file);
+                String previous = origin.putIfAbsent(effect.id(), relative(file));
                 if (previous != null) {
-                    log.warning("Particle effect id '" + effect.id() + "' in " + relative(file) + " is already defined in " + relative(previous) + "; skipped");
+                    log.warning("Particle effect id '" + effect.id() + "' in " + relative(file) + " is already defined in " + previous + "; skipped");
                     continue;
                 }
                 loaded.put(effect.id(), effect);
             }
         }
-        effects = Collections.unmodifiableMap(loaded);
-        log.info("Loaded " + effects.size() + " particle effect(s)");
     }
 
     /** Разобрать один файл; {@code null} и предупреждение в консоли, если он с ошибкой. */
@@ -84,9 +103,9 @@ public final class ParticleRegistry {
             if (!(top instanceof JTable table)) throw new IllegalArgumentException("expected top-level variables");
             return ParticleEffect.parse(table, fallbackId);
         } catch (ParseError e) {
-            log.warning("particles/" + relative(file) + " (" + e.line + ":" + e.col + "): " + e.getMessage());
+            log.warning(relative(file) + " (" + e.line + ":" + e.col + "): " + e.getMessage());
         } catch (IOException | RuntimeException e) {
-            log.warning("particles/" + relative(file) + ": " + e.getMessage());
+            log.warning(relative(file) + ": " + e.getMessage());
         }
         return null;
     }
@@ -100,6 +119,8 @@ public final class ParticleRegistry {
     }
 
     private String relative(Path file) {
-        return directory.relativize(file).toString().replace('\\', '/');
+        Source s = current;
+        if (s == null || !file.startsWith(s.directory())) return file.getFileName().toString();
+        return s.prefix() + s.directory().relativize(file).toString().replace('\\', '/');
     }
 }

@@ -75,6 +75,15 @@ public final class ScriptContext {
      * @param scriptFile путь скрипта относительно {@code scripts/}; {@code null}, если у экрана нет скрипта
      */
     public ScriptContext(DisplayLib plugin, JumperEngine engine, ScreenAPI.Host host, Player owner, String scriptFile) {
+        this(plugin, engine, host, owner, null, scriptFile);
+    }
+
+    /**
+     * @param pack набор содержимого экрана: скрипт берётся из его {@code scripts/} под его {@code scripts.jma};
+     *             {@code null} - DisplayLib
+     */
+    public ScriptContext(DisplayLib plugin, JumperEngine engine, ScreenAPI.Host host, Player owner,
+                         padej.displayLib.pack.ContentPack pack, String scriptFile) {
         this.owner = owner;
         this.ownerApi = owner != null ? new PlayerAPI(owner, input) : null;
         if (ownerApi != null) playerApis.put(owner.getUniqueId(), ownerApi);
@@ -92,7 +101,7 @@ public final class ScriptContext {
             globals.put("storage", storageApi);
             globals.put("timer", timerApi);
             globals.put("log", logApi);
-            this.script = engine.load(scriptFile, globals);
+            this.script = engine.load(pack, scriptFile, globals);
         }
     }
 
